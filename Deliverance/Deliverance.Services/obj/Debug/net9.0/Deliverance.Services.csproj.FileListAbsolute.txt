@@ -1,0 +1,17 @@
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Services.deps.json
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Services.runtimeconfig.json
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Services.dll
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Services.pdb
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Model.dll
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\bin\Debug\net9.0\Deliverance.Model.pdb
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.csproj.AssemblyReference.cache
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.AssemblyInfoInputs.cache
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.AssemblyInfo.cs
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.csproj.CoreCompileInputs.cache
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Delivera.F4BDEACA.Up2Date
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.dll
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\refint\Deliverance.Services.dll
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.pdb
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\Deliverance.Services.genruntimeconfig.cache
+C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\Deliverance.Services\obj\Debug\net9.0\ref\Deliverance.Services.dll
