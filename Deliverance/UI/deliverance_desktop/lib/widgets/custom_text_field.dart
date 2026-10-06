@@ -7,11 +7,22 @@ class CustomTextField extends StatelessWidget {
   final String? labelText;
   final TextInputType? keyboardType;
   final VoidCallback? onTap;
+  final Function(String)? onSubmited;
   final bool? readOnly;
   final FormFieldValidator? validator;
-  final int? width;
+  final double? width;
+  final int? maxLines;
+  final int? minLines;
+  final TextStyle? textStyle;
+  final Icon? prefixIcon;
+  final Widget? suffixIcon;
+  final FocusNode? focusNode;
+  final GlobalKey<FormFieldState>? formFieldKey;
   const CustomTextField({
     super.key,
+    this.focusNode,
+    this.formFieldKey,
+    this.onSubmited,
     this.controller,
     this.obscureText = false,
     this.hintText,
@@ -21,50 +32,65 @@ class CustomTextField extends StatelessWidget {
     this.readOnly,
     this.validator,
     this.width,
+    this.maxLines = 1,
+    this.minLines = 1,
+    this.textStyle,
+    this.prefixIcon,
+    this.suffixIcon,
   });
 
   @override
   Widget build(BuildContext context) {
-    final field = TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      onTap: onTap,
-      validator: validator,
-      readOnly: readOnly == null ? false : readOnly as bool,
-      style: Theme.of(context).textTheme.labelSmall,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: Colors.white70),
-        filled: true,
-        errorStyle: TextStyle(
-          color: Theme.of(context).colorScheme.primary,
-          fontSize: 14.0,
-          fontWeight: FontWeight.bold,
-          fontStyle: FontStyle.italic,
-        ),
-        fillColor: Theme.of(context).colorScheme.surfaceContainer,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-            width: 1.0,
+    final field = SizedBox(
+      width: width ?? double.infinity,
+      child: TextFormField(
+        key: formFieldKey,
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        onTap: onTap,
+        validator: validator,
+        readOnly: readOnly == null ? false : readOnly as bool,
+        maxLines: maxLines,
+        minLines: minLines,
+        onFieldSubmitted: onSubmited,
+        style: textStyle ?? Theme.of(context).textTheme.labelSmall,
+        decoration: InputDecoration(
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
+          hintText: hintText,
+          hintStyle: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: Colors.white70),
+          filled: true,
+          errorStyle: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 14.0,
+            fontWeight: FontWeight.bold,
+            fontStyle: FontStyle.italic,
           ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-            width: 2.0,
+          fillColor: Theme.of(context).colorScheme.surfaceContainer,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outline,
+              width: 1.0,
+            ),
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(5),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-            width: 2.0,
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outline,
+              width: 2.0,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outline,
+              width: 2.0,
+            ),
           ),
         ),
       ),

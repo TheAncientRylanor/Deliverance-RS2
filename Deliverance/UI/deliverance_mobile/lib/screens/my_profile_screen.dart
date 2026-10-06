@@ -1,15 +1,14 @@
 import 'dart:io';
-
-import 'package:deliverance_mobile/layouts/master_screen.dart';
-import 'package:deliverance_mobile/models/user.dart';
-import 'package:deliverance_mobile/models/user.multipart.dart';
 import 'package:deliverance_mobile/models/user.update.multipart.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/providers/user_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/api_constants.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
+import 'package:deliverance_mobile/widgets/custom_toast.dart';
+import 'package:deliverance_mobile/widgets/dialogs/reset_password_dialog.dart';
 import 'package:deliverance_mobile/widgets/image_holder.dart';
 import 'package:deliverance_mobile/widgets/image_picker.dart';
 import 'package:flutter/material.dart';
@@ -24,21 +23,21 @@ class MyProfileScreen extends StatefulWidget {
 
 class _MyProfileScreen extends State<MyProfileScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormFieldState> _usernameFieldKey =
+      GlobalKey<FormFieldState>();
   late AuthProvider _authProvider;
   late UserProvider _userProvider;
   late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
+  late final FocusNode _usernameFocusNode;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   bool isLoading = false;
-  User? result;
   bool isReadOnly = true;
-  final _baseUrl = const String.fromEnvironment(
-    "baseUrl",
-    defaultValue: "http://10.0.2.2:5095/",
-  );
+  bool _isLoggingOut = false;
+  bool _isUsernameUsed = false;
   @override
   void initState() {
     super.initState();
@@ -48,14 +47,45 @@ class _MyProfileScreen extends State<MyProfileScreen> {
     _emailController = TextEditingController();
     _firstNameController = TextEditingController();
     _lastNameController = TextEditingController();
+    _usernameFocusNode = FocusNode();
+    _usernameFocusNode.addListener(_handleUsernameFocusChange);
     initValues();
   }
 
+  void _handleUsernameFocusChange() {
+    if (!_usernameFocusNode.hasFocus && !isReadOnly) {
+      checkUsernameUsage().then((_) {
+        // Validate only the username field so other fields aren't affected.
+        if (mounted) _usernameFieldKey.currentState?.validate();
+      });
+    }
+  }
+
+  Future<void> checkUsernameUsage() async {
+    final username = _usernameController.text.trim();
+    // The user's current username is "used" by themselves, so it's always allowed.
+    if (username.isEmpty || username == _userProvider.data?.username) {
+      if (_isUsernameUsed) setState(() => _isUsernameUsed = false);
+      return;
+    }
+    try {
+      final result = await _userProvider.userNameExist(username);
+      if (!mounted) return;
+      setState(() {
+        _isUsernameUsed = result;
+      });
+    } on ApiClientException catch (e) {
+      if (!mounted) return;
+      alertBox(context, "Error", e.message, mode: AlertBoxMode.ok);
+    }
+  }
+
   void initValues() {
-    _usernameController.text = _userProvider.data?.username as String;
-    _emailController.text = _userProvider.data?.email as String;
-    _lastNameController.text = _userProvider.data?.lastName ?? "";
-    _firstNameController.text = _userProvider.data?.firstName ?? "";
+    final user = _userProvider.data;
+    _usernameController.text = user?.username ?? "";
+    _emailController.text = user?.email ?? "";
+    _lastNameController.text = user?.lastName ?? "";
+    _firstNameController.text = user?.firstName ?? "";
   }
 
   void toggleEdit() {
@@ -65,15 +95,60 @@ class _MyProfileScreen extends State<MyProfileScreen> {
   }
 
   String get editButtonText => isReadOnly ? "Edit" : "Save";
+  String get cancelButtonText => isReadOnly ? "Log out" : "Cancel";
   Future<void> onEditButtonPressed() async {
     if (isReadOnly) {
-      toggleEdit(); // just enter edit mode
+      toggleEdit();
     } else {
-      await saveValues(); // currently editing -> attempt save
+      await saveValues();
     }
   }
 
-  Future saveValues() async {
+  Future<void> onCancelButtonPressed() async {
+    if (isReadOnly) {
+      final result = await alertBox(
+        context,
+        "Confirmation",
+        "Are you sure that you want to log out?",
+      );
+      if (result != true) return;
+      setState(() => _isLoggingOut = true);
+      try {
+        await _authProvider.logout();
+        if (!mounted) return;
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
+      } on ApiClientException catch (e) {
+        if (!mounted) return;
+        alertBox(context, "Error", e.toString());
+      } finally {
+        if (mounted) setState(() => _isLoggingOut = false);
+      }
+    } else {
+      setState(() {
+        initValues();
+        _selectedImage = null;
+        _isUsernameUsed = false;
+        isReadOnly = true;
+      });
+    }
+  }
+
+  Future<void> onResetPasswordPressed() async {
+    final changed = await resetPasswordDialog(context);
+    if (changed != true || !mounted) return;
+    showCustomToast(
+      context,
+      "Password changed. Please sign in with your new password.",
+      type: ToastType.success,
+    );
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  Future<void> saveValues() async {
+    await checkUsernameUsage();
+    if (!mounted) return;
     if (_formKey.currentState!.validate()) {
       setState(() => isLoading = true);
       try {
@@ -84,230 +159,245 @@ class _MyProfileScreen extends State<MyProfileScreen> {
           username: _usernameController.text,
           profileImage: _selectedImage,
         );
-        await _userProvider.updateUser(
-          _userProvider.data!.uuid as String,
-          newRequest,
-        );
-        setState(() => isReadOnly = true);
+        await _userProvider.updateUser(_userProvider.data!.uuid!, newRequest);
+        if (!mounted) return;
+        setState(() {
+          isReadOnly = true;
+          _selectedImage = null;
+        });
+        showCustomToast(context, "Profile updated successfully");
       } on ApiClientException catch (e) {
+        if (!mounted) return;
         alertBox(context, "Update error", e.message);
       } finally {
-        setState(() => isLoading = false);
+        if (mounted) setState(() => isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MasterScreen(
-      title: "My profile",
-      child: Scaffold(
-        body: isLoading
-            ? Center(
-                child: globalLoadingSpinner(
-                  size: 48,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              )
-            : SingleChildScrollView(
-                child: Center(
-                  child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          SizedBox(
-                            height: 280,
-                            width: 280,
-                            child: Align(
-                              alignment: Alignment.center,
-                              child: Container(
-                                width: 240,
-                                height: 240,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(200),
-                                  border: Border.all(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    width: 1.0,
-                                  ),
+    return Scaffold(
+      body: isLoading
+          ? Center(
+              child: globalLoadingSpinner(
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : SingleChildScrollView(
+              child: Center(
+                child: Column(
+                  children: [
+                    Stack(
+                      children: [
+                        SizedBox(
+                          height: 280,
+                          width: 280,
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: 240,
+                              height: 240,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(200),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.0,
                                 ),
-                                child: Center(
-                                  child: ClipOval(
-                                    child: buildProfileImage(
-                                      _selectedImage,
-                                      _userProvider.data?.imagePath ?? "",
-                                      _baseUrl,
-                                    ),
+                              ),
+                              child: Center(
+                                child: ClipOval(
+                                  child: buildProfileImage(
+                                    _selectedImage,
+                                    _userProvider.data?.imagePath ?? "",
+                                    ApiConstants.baseUrl,
                                   ),
                                 ),
                               ),
                             ),
                           ),
+                        ),
 
-                          if (!isReadOnly)
-                            Positioned(
-                              bottom: 5,
-                              right: 15,
-                              child: Container(
-                                width: 80,
-                                height: 80,
+                        if (!isReadOnly)
+                          Positioned(
+                            bottom: 5,
+                            right: 15,
+                            child: Container(
+                              width: 80,
+                              height: 80,
 
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainer,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  onPressed: () async {
-                                    final tempImage = await pickImage(
-                                      ImageSource.gallery,
-                                      _picker,
-                                    );
-                                    if (!mounted) return;
-                                    if (tempImage != null) {
-                                      setState(() {
-                                        _selectedImage = tempImage;
-                                      });
-                                    }
-                                  },
-                                  icon: Icon(
-                                    Icons.camera_alt_outlined,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    size: 40,
-                                  ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainer,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 40),
-                      Form(
-                        key: _formKey,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            spacing: 15,
-                            children: [
-                              CustomTextField(
-                                controller: _firstNameController,
-                                labelText: "First name",
-                                readOnly: isReadOnly,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your first name';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              CustomTextField(
-                                controller: _lastNameController,
-                                labelText: "Last name",
-                                readOnly: isReadOnly,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your last name';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              CustomTextField(
-                                controller: _usernameController,
-                                labelText: "Username",
-                                readOnly: isReadOnly,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your username';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              CustomTextField(
-                                controller: _emailController,
-                                labelText: "Email",
-                                readOnly: isReadOnly,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
-                                  }
-                                  if (!value.contains('@')) {
-                                    return 'Please enter a valid email address';
-                                  }
-                                  return null; // Return null when validation passes
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 40),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 60,
-                          horizontal: 10,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: SecondaryButton(
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
                                 onPressed: () async {
-                                  final result = await alertBox(
-                                    context,
-                                    "Are you sure that you want to log out?",
-                                    "Confirmation",
+                                  final tempImage = await pickImage(
+                                    ImageSource.gallery,
+                                    _picker,
                                   );
-                                  if (result == true) {
-                                    try {
-                                      await _authProvider.logout();
-                                      if (!context.mounted) return;
-                                      Navigator.popUntil(
-                                        context,
-                                        (route) => route.isFirst,
-                                      );
-                                    } on ApiClientException catch (e) {
-                                      if (!context.mounted) return;
-                                      Navigator.pop(context);
-                                      alertBox(context, "Error", e.toString());
-                                    }
+                                  if (!mounted) return;
+                                  if (tempImage != null) {
+                                    setState(() {
+                                      _selectedImage = tempImage;
+                                    });
                                   }
                                 },
-                                label: "Log out",
+                                icon: Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 40,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: PrimaryButton(
-                                onPressed: () {
-                                  onEditButtonPressed();
-                                },
-                                label: editButtonText,
-                              ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 40),
+                    Form(
+                      key: _formKey,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          spacing: 15,
+                          children: [
+                            CustomTextField(
+                              controller: _firstNameController,
+                              labelText: "First name",
+                              readOnly: isReadOnly,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your first name';
+                                }
+                                return null;
+                              },
                             ),
+                            CustomTextField(
+                              controller: _lastNameController,
+                              labelText: "Last name",
+                              readOnly: isReadOnly,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your last name';
+                                }
+                                return null;
+                              },
+                            ),
+                            CustomTextField(
+                              controller: _usernameController,
+                              focusNode: _usernameFocusNode,
+                              formFieldKey: _usernameFieldKey,
+                              labelText: "Username",
+                              readOnly: isReadOnly,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your username';
+                                }
+                                if (_isUsernameUsed) {
+                                  return "Username is used. Try different one";
+                                }
+                                return null;
+                              },
+                            ),
+                            CustomTextField(
+                              controller: _emailController,
+                              labelText: "Email",
+                              readOnly: isReadOnly,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your email';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Please enter a valid email address';
+                                }
+                                return null;
+                              },
+                            ),
+                            !isReadOnly
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        spacing: 8,
+                                        children: [
+                                          Text(
+                                            "Password",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium
+                                                ?.copyWith(
+                                                  color: const Color.fromRGBO(
+                                                    255,
+                                                    255,
+                                                    255,
+                                                    1.00,
+                                                  ),
+                                                ),
+                                          ),
+                                          PrimaryButton(
+                                            onPressed: onResetPasswordPressed,
+                                            label: "Reset",
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox(),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 40),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 60,
+                        horizontal: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SecondaryButton(
+                              isLoading: _isLoggingOut,
+                              onPressed: onCancelButtonPressed,
+                              label: cancelButtonText,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: PrimaryButton(
+                              onPressed: onEditButtonPressed,
+                              label: editButtonText,
+                              isLoading: isLoading,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-      ),
+            ),
     );
   }
 
   @override
   void dispose() {
+    _usernameFocusNode.removeListener(_handleUsernameFocusChange);
+    _usernameFocusNode.dispose();
     _usernameController.dispose();
     _emailController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 }

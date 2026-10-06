@@ -4,6 +4,7 @@ import 'package:deliverance_desktop/models/search_result.dart';
 import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/api_constants.dart';
+import 'package:deliverance_desktop/utils/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -27,11 +28,12 @@ abstract class BaseProvider<T> with ChangeNotifier {
     }
 
     var uri = Uri.parse(url);
-    var headers = createHeaders();
 
-    var response = await http.get(uri, headers: headers);
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.get(uri, headers: headers);
+    });
 
-    validateResponse(response);
     var data = jsonDecode(response.body);
 
     var result = SearchResult<T>();
@@ -45,11 +47,12 @@ abstract class BaseProvider<T> with ChangeNotifier {
   Future<T> getById(int id) async {
     var url = "$_baseUrl$endpoint/$id";
     var uri = Uri.parse(url);
-    var headers = createHeaders();
 
-    http.Response response = await http.get(uri, headers: headers);
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.get(uri, headers: headers);
+    });
 
-    validateResponse(response);
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);
     setData(parsed);
@@ -59,14 +62,16 @@ abstract class BaseProvider<T> with ChangeNotifier {
   Future<T> insert(dynamic request) async {
     var url = "$_baseUrl$endpoint";
     var uri = Uri.parse(url);
-    var headers = createHeaders();
-
     var jsonRequest = jsonEncode(request);
-    var response = await http.post(uri, headers: headers, body: jsonRequest);
-    validateResponse(response);
+
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.post(uri, headers: headers, body: jsonRequest);
+    });
+
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);
-    setData(parsed);
+    notifyListeners();
     return parsed;
   }
 
@@ -80,12 +85,12 @@ abstract class BaseProvider<T> with ChangeNotifier {
     });
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);
-    setData(parsed);
+    notifyListeners();
     return parsed;
   }
 
   Future remove(int id) async {
-    final response = await sendWithRetry(() async {
+    await sendWithRetry(() async {
       var url = "$_baseUrl$endpoint/$id";
       var uri = Uri.parse(url);
       var headers = createHeaders();
@@ -103,6 +108,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     notifyListeners();
   }
 
+  // ignore: strict_top_level_inference
   T fromJson(data) {
     throw Exception("Method not implemented");
   }
@@ -190,6 +196,16 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
       if (success) {
         response = await requestFn();
+      }
+
+      if (response.statusCode == 401) {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+        throw ApiClientException(
+          'Your session has expired. Please sign in again.',
+        );
       }
     }
     validateResponse(response);

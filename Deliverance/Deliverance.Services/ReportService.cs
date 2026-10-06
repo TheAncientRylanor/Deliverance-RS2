@@ -1,8 +1,11 @@
+using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
+using Deliverance.Services.Messaging;
+using Deliverance.Services.ServiceStateMachine;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -14,16 +17,23 @@ namespace Deliverance.Services
     public class ReportService : BaseCRUDService<Report, ReportResponse, ReportSearchObject
         , ReportInsertRequest, ReportUpdateRequest>, IReportService
     {
+        private readonly BaseReportState _reportState;
+        private readonly IReportEventPublisher _reportEventPublisher;
+
         public ReportService(DeliveranceDbContext dbContext, IMapper mapper,
-            IValidator<ReportInsertRequest> insertValidator, IValidator<ReportUpdateRequest> updateValidator)
+            IValidator<ReportInsertRequest> insertValidator, IValidator<ReportUpdateRequest> updateValidator,
+            BaseReportState reportState, IReportEventPublisher reportEventPublisher)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
-
+            _reportState = reportState;
+            _reportEventPublisher = reportEventPublisher;
         }
 
         protected override Report MapInsertRequestToEntity(ReportInsertRequest request)
         {
             var entity = base.MapInsertRequestToEntity(request);
+
+            entity.Status = request.IsDraft ? nameof(DraftReportState) : nameof(UnseenReportState);
 
             entity.OfficeReports = request.OfficeReports?
                 .Select(officeReportRequest => new OfficeReport
@@ -33,13 +43,22 @@ namespace Deliverance.Services
                     DeviceReports = officeReportRequest.DeviceReports?
                         .Select(deviceReportRequest => new DeviceReport
                         {
-                            Severity = deviceReportRequest.Severity,
+                            Occurance = deviceReportRequest.Occurance,
                             Detail = deviceReportRequest.Detail,
                             DeviceId = deviceReportRequest.DeviceId,
                         })
                         .ToList() ?? new List<DeviceReport>()
                 })
                 .ToList() ?? new List<OfficeReport>();
+
+            entity.ReportOccurances = request.ReportOccurances?
+                .Where(reportOccuranceRequest => reportOccuranceRequest.Answer != null)
+                .Select(reportOccuranceRequest => new ReportOccurance
+                {
+                    OccuranceId = reportOccuranceRequest.OccuranceId,
+                    Answer = reportOccuranceRequest.Answer!.Value,
+                })
+                .ToList() ?? new List<ReportOccurance>();
 
             return entity;
         }
@@ -61,7 +80,7 @@ namespace Deliverance.Services
                     DeviceReports = officeReportRequest.DeviceReports?
                         .Select(deviceReportRequest => new DeviceReport
                         {
-                            Severity = deviceReportRequest.Severity,
+                            Occurance = deviceReportRequest.Occurance,
                             Detail = deviceReportRequest.Detail,
                             DeviceId = deviceReportRequest.DeviceId,
                         })
@@ -80,58 +99,170 @@ namespace Deliverance.Services
                         deviceReportRequest => new DeviceReport
                         {
                             OfficeReportId = existingOfficeReport.Id,
-                            Severity = deviceReportRequest.Severity,
+                            Occurance = deviceReportRequest.Occurance,
                             Detail = deviceReportRequest.Detail,
                             DeviceId = deviceReportRequest.DeviceId,
                         },
                         (existingDeviceReport, deviceReportRequest) =>
                         {
-                            existingDeviceReport.Severity = deviceReportRequest.Severity;
+                            existingDeviceReport.Occurance = deviceReportRequest.Occurance;
                             existingDeviceReport.Detail = deviceReportRequest.Detail;
                             existingDeviceReport.DeviceId = deviceReportRequest.DeviceId;
                         });
                 });
+
+            var answeredOccurances = request.ReportOccurances?
+                .Where(occuranceUpdateRequest => occuranceUpdateRequest.Answer != null)
+                .ToList() ?? new List<ReportOccuranceUpdate>();
+
+            SyncCollection(
+                entity.ReportOccurances,
+                answeredOccurances,
+                reportOccurance => reportOccurance.OccuranceId.ToString(),
+                occuranceUpdateRequest => occuranceUpdateRequest.OccuranceId.ToString(),
+                occuranceUpdateRequest => new ReportOccurance
+                {
+                    ReportId = entity.Id,
+                    OccuranceId = occuranceUpdateRequest.OccuranceId,
+                    Answer = occuranceUpdateRequest.Answer!.Value,
+                },
+                (existingReportOccurance, occuranceUpdateRequest) =>
+                {
+                    existingReportOccurance.Answer = occuranceUpdateRequest.Answer!.Value;
+                });
         }
 
-        protected override IEnumerable<Report> ApplyFilters(IEnumerable<Report> query, ReportSearchObject? search, Guid userId)
+        protected override IQueryable<Report> ApplyFilters(IQueryable<Report> query, ReportSearchObject? search, Guid userId, bool isAdmin = false)
         {
-            query = query.Where(x => x.UserUUID == userId);
+            if (!isAdmin)
+            {
+                query = query.Where(x => x.UserUUID == userId);
+            }
+            else
+            {
+                query = query.Where(x => x.Status != nameof(StatusEnum.DraftReportState));
+            }
 
             if (search != null)
             {
                 if (!string.IsNullOrWhiteSpace(search.ReportName))
                 {
-                    query = query.Where(x => x.ReportName.Contains(search.ReportName, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(x => x.ReportName.Contains(search.ReportName));
+                }
+                if (search.OfficeId != null)
+                {
+                    query = query.Where(x => x.OfficeReports.Any(officeReport =>
+                        officeReport.OfficeId == search.OfficeId
+                        && (search.DeviceId == null || officeReport.DeviceReports.Any(deviceReport => deviceReport.DeviceId == search.DeviceId))));
+                }
+                else if (search.DeviceId != null)
+                {
+                    query = query.Where(x => x.OfficeReports.Any(officeReport =>
+                        officeReport.DeviceReports.Any(deviceReport => deviceReport.DeviceId == search.DeviceId)));
+                }
+                if(search.UserId != null && Guid.TryParse(search.UserId,out Guid id))
+                {
+                
+                    query = query.Where(x=>x.UserUUID == id);
+                }
+                if (search.Status != null)
+                {
+                    query = search.Status switch
+                    {
+                        ReportStatusFilter.Draft => query.Where(x => x.Status == nameof(StatusEnum.DraftReportState)),
+                        ReportStatusFilter.Cleared => query.Where(x => x.Status == nameof(StatusEnum.ClearedReportState)),
+                        ReportStatusFilter.Active => query.Where(x => x.Status == nameof(StatusEnum.SeenReportState) || x.Status == nameof(StatusEnum.UnseenReportState)),
+                        _ => query
+                    };
                 }
             }
-
             return query;
         }
-
-        public override async Task<ReportResponse> GetByIdAsync(int id, Guid userId)
+        public override async Task<ReportResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
         {
-            var entity = this._dbContext.Set<Report>()
-                .Include(x => x.OfficeReports)
-                    .ThenInclude(x => x.DeviceReports)
-                .AsNoTracking().FirstOrDefault(x => x.Id == id);
-
+            var entity = await GetQuery()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
                 throw new KeyNotFoundException($"{typeof(Report).Name} with id {id} not found.");
             }
-            if (entity.UserUUID != userId)
+            if (!isAdmin && entity.UserUUID != userId)
             {
                 throw new ClientException("You do not have access to this report.");
             }
 
-            return await Task.FromResult(_mapper.Map<ReportResponse>(entity));
+            return _mapper.Map<ReportResponse>(entity);
         }
 
-        public override IEnumerable<Report> GetQuery()
+        public override IQueryable<Report> GetQuery()
         {
             return this._dbContext.Set<Report>()
+            .Include(x => x.ReportOccurances)
+                .ThenInclude(x => x.Occurance)
                 .Include(x => x.OfficeReports)
-                    .ThenInclude(x => x.DeviceReports);
+                    .ThenInclude(x => x.DeviceReports)
+                    .ThenInclude(x=>x.Device)
+                .Include(x => x.OfficeReports)
+                    .ThenInclude(x => x.Office)
+                .Include(x => x.User)
+                // One SQL query per included collection instead of a single
+                // join that repeats each report once per occurance x device row.
+                .AsSplitQuery();
+        }
+
+        public override async Task<ReportResponse> InsertAsync(ReportInsertRequest request, Guid userId)
+        {
+            var result = await base.InsertAsync(request, userId);
+            result = await GetByIdAsync(result.Id, userId);
+            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = result.Id, Type = ChangeType.Created });
+            return result;
+        }
+
+        public override async Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request, Guid userId, bool isAdmin = false)
+        {
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
+            var result = await state.UpdateAsync(id, request);
+            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
+            return result;
+        }
+
+        public override async Task DeleteAsync(int id, Guid userId, bool isAdmin = false)
+        {
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
+            await state.DeleteAsync(id);
+            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Removed });
+        }
+
+        public async Task<ReportResponse> SeenAsync(int id, Guid userId, bool isAdmin = false)
+        {
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
+            return await state.SeenAsync(id, isAdmin);
+        }
+
+        public async Task<ReportResponse> ClearAsync(int id, Guid userId, bool isAdmin = false)
+        {
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
+            return await state.ClearAsync(id, isAdmin);
+        }
+
+        private async Task<Report> EnsureOwnedEntityAsync(int id, Guid userId, bool isAdmin)
+        {
+            var entity = await this._dbContext.Set<Report>().FindAsync(id);
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"{typeof(Report).Name} with id {id} not found.");
+            }
+            if (!isAdmin && entity.UserUUID != userId)
+            {
+                throw new ClientException("You do not have access to this report.");
+            }
+
+            return entity;
         }
     }
 }

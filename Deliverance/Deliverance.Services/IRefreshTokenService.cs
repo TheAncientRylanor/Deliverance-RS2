@@ -9,7 +9,7 @@ namespace Deliverance.Services
 {
     public interface IRefreshTokenService
     {
-        Task<RefreshTokens> GetStoredTokenAsync(string refreshToken);
+        Task<RefreshTokens?> GetStoredTokenAsync(string refreshToken);
         Task InsertAsync(RefreshTokens refreshToken);
         Task DeleteAllUserRefreshTokensAsync(Guid userId);
     }

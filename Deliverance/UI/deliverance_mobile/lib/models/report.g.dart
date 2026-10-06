@@ -3,10 +3,8 @@ part of 'report.dart';
 Report _$ReportFromJson(Map<String, dynamic> json) => Report(
   id: json['id'] as int?,
   reportName: json['reportName'] as String?,
-  status: json['status'] as int?,
-  dateReported: json['dateReported'] == null
-      ? null
-      : DateTime.parse(json['dateReported'] as String),
+  status: json['status'] as String?,
+  dateReported: DateTime.parse(json['dateReported'] as String),
   severity: json['severity'] as int?,
   detail: json['detail'] as String?,
   userUUID: json['userUUID'] as String?,
@@ -14,18 +12,28 @@ Report _$ReportFromJson(Map<String, dynamic> json) => Report(
   officeReports: (json['officeReports'] as List<dynamic>?)
       ?.map((e) => OfficeReport.fromJson(e as Map<String, dynamic>))
       .toList(),
+  reportOccurances: (json['reportOccurances'] as List<dynamic>?)
+      ?.map((e) => ReportOccurance.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  issueType: json['issueType'] as int?,
+  isDraft: json['isDraft'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ReportToJson(Report instance) => <String, dynamic>{
   'id': instance.id,
   'reportName': instance.reportName,
   'status': instance.status,
-  'dateReported': instance.dateReported?.toIso8601String(),
+  'dateReported': instance.dateReported.toIso8601String(),
   'severity': instance.severity,
   'detail': instance.detail,
   'userUUID': instance.userUUID,
   'reportClearedBy': instance.reportClearedBy,
   'officeReports': instance.officeReports?.map((e) => e.toJson()).toList(),
+  'reportOccurances': instance.reportOccurances
+      ?.map((e) => e.toJson())
+      .toList(),
+  'issueType': instance.issueType,
+  'isDraft': instance.isDraft,
 };
 
 OfficeReport _$OfficeReportFromJson(Map<String, dynamic> json) => OfficeReport(
@@ -36,6 +44,7 @@ OfficeReport _$OfficeReportFromJson(Map<String, dynamic> json) => OfficeReport(
   deviceReports: (json['deviceReports'] as List<dynamic>?)
       ?.map((e) => DeviceReport.fromJson(e as Map<String, dynamic>))
       .toList(),
+  name: json['name'] as String?,
 );
 
 Map<String, dynamic> _$OfficeReportToJson(OfficeReport instance) =>
@@ -44,7 +53,8 @@ Map<String, dynamic> _$OfficeReportToJson(OfficeReport instance) =>
       'reportId': instance.reportId,
       'officeId': instance.officeId,
       'numReportedDevices': instance.numReportedDevices,
-      'deviceReports': instance.deviceReports?.map((e) => e.toJson()).toList(),
+      'deviceReports': instance.deviceReports.map((e) => e.toJson()).toList(),
+      'name': instance.name,
     };
 
 DeviceReport _$DeviceReportFromJson(Map<String, dynamic> json) => DeviceReport(
@@ -53,6 +63,7 @@ DeviceReport _$DeviceReportFromJson(Map<String, dynamic> json) => DeviceReport(
   detail: json['detail'] as String?,
   officeReportId: json['officeReportId'] as int?,
   deviceId: json['deviceId'] as int?,
+  name: json['name'] as String,
 );
 
 Map<String, dynamic> _$DeviceReportToJson(DeviceReport instance) =>
@@ -62,4 +73,19 @@ Map<String, dynamic> _$DeviceReportToJson(DeviceReport instance) =>
       'detail': instance.detail,
       'officeReportId': instance.officeReportId,
       'deviceId': instance.deviceId,
+      'name': instance.name,
+    };
+
+ReportOccurance _$ReportOccuranceFromJson(Map<String, dynamic> json) =>
+    ReportOccurance(
+      occuranceId: json['occuranceId'] as int?,
+      question: json['question'] as String?,
+      answer: json['answer'] as int?,
+    );
+
+Map<String, dynamic> _$ReportOccuranceToJson(ReportOccurance instance) =>
+    <String, dynamic>{
+      'occuranceId': instance.occuranceId,
+      'question': instance.question,
+      'answer': instance.answer,
     };

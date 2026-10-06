@@ -8,55 +8,73 @@ using Microsoft.AspNetCore.Mvc;
 namespace Deliverance.WebAPI.Controllers
 {
     public class UserController : BaseCRUDController<UserResponse, UserSearchObject,
-        UserInsertRequest, UserUpdateRequest,IUserService>
+        UserInsertRequest, UserUpdateRequest, IUserService>
     {
         public UserController(IUserService userService) : base(userService)
         {
 
         }
-    [HttpGet("UUID/{id}")]
-    public async Task<ActionResult<UserResponse>> GetByUUID(string id)
-    {
-        try
-        {
 
-            Guid GuidResult = Guid.Parse(id);
-            var result = await _service.GetByUUID(GuidResult);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-    }
-    [HttpPut("UpdateUser/{id}")]
-    public async Task<ActionResult<UserResponse>> UpdateUser(string id,[FromForm]UserUpdateRequest request)
-    {
-        try
-        {
+        // Users are keyed by UUID, so the generic int-id endpoints can't work.
+        // Use UUID/{id} and UpdateUser/{id} instead.
+        [NonAction]
+        public override Task<ActionResult<UserResponse>> GetById(int id) => throw new NotSupportedException();
 
-            Guid GuidResult = Guid.Parse(id);
-            var result = await _service.UpdateUserAsync(GuidResult,request);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
+        [NonAction]
+        public override Task<ActionResult<UserResponse>> Update(int id, UserUpdateRequest request) => throw new NotSupportedException();
+
+        [NonAction]
+        public override Task<IActionResult> Delete(int id) => throw new NotSupportedException();
+        [HttpGet("UUID/{id}")]
+        public async Task<ActionResult<UserResponse>> GetByUUID(string id)
         {
-            return NotFound();
+            try
+            {
+
+                Guid GuidResult = Guid.Parse(id);
+                var result = await _service.GetByUUID(GuidResult, User.GetUserId(), User.IsAdmin());
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
-    }
-    [AllowAnonymous]
-    [HttpPost("InsertUser")]
-    public async Task<ActionResult<UserResponse>> InsertUser([FromForm]UserInsertRequest request)
-    {
-        try
+        [HttpPut("UpdateUser/{id}")]
+        public async Task<ActionResult<UserResponse>> UpdateUser(string id, [FromForm] UserUpdateRequest request)
         {
-            var result = await _service.InsertAsync(request);
-            return Ok(result);
+            try
+            {
+
+                Guid GuidResult = Guid.Parse(id);
+                var result = await _service.UpdateUserAsync(GuidResult, request, User.GetUserId(), User.IsAdmin());
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
-        catch (KeyNotFoundException)
+        [AllowAnonymous]
+        [HttpPost("InsertUser")]
+        public async Task<ActionResult<UserResponse>> InsertUser([FromForm] UserInsertRequest request)
         {
-            return NotFound();
+            try
+            {
+                var result = await _service.InsertAsync(request);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
-    }
+        [AllowAnonymous]
+        [HttpPost("CheckUsername")]
+        public async Task<bool> CheckUsername(string request)
+        {
+            var result = await _service.IsUsernameUsed(request);
+            return result;
+        }
     }
 }

@@ -13,9 +13,10 @@ import 'package:deliverance_mobile/widgets/image_picker.dart';
 import 'package:deliverance_mobile/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -23,6 +24,8 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormFieldState> _usernameFieldKey =
+      GlobalKey<FormFieldState>();
   UserProvider userProvider = UserProvider();
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _firstName = TextEditingController();
@@ -30,8 +33,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _username = TextEditingController();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
+  // ignore: non_constant_identifier_names
   final TextEditingController _re_password = TextEditingController();
+  late FocusNode _userNameFocusNode;
   File? _selectedImage;
+  bool _isSaving = false;
+  bool _isUsernameUsed = false;
+  bool _obscurePassword = true;
+  @override
+  void initState() {
+    super.initState();
+    _userNameFocusNode = FocusNode();
+    _userNameFocusNode.addListener(_handleFocusChange);
+    userProvider = context.read<UserProvider>();
+  }
+
+  @override
+  void dispose() {
+    _userNameFocusNode.removeListener(_handleFocusChange);
+    _userNameFocusNode.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
+    _username.dispose();
+    _email.dispose();
+    _password.dispose();
+    _re_password.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (!_userNameFocusNode.hasFocus) {
+      checkUsernameUsage().then((_) {
+        // Validate only the username field so other empty fields don't light up.
+        if (mounted) _usernameFieldKey.currentState?.validate();
+      });
+    }
+  }
+
+  Future<void> checkUsernameUsage() async {
+    final username = _username.text.trim();
+    if (username.isEmpty) {
+      if (_isUsernameUsed) setState(() => _isUsernameUsed = false);
+      return;
+    }
+    try {
+      var result = await userProvider.userNameExist(username);
+      if (!mounted) return;
+      setState(() {
+        _isUsernameUsed = result;
+      });
+    } on ApiClientException catch (e) {
+      if (!mounted) return;
+      alertBox(context, "Error", e.message, mode: AlertBoxMode.ok);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,10 +127,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   CustomTextField(
                     controller: _username,
+                    focusNode: _userNameFocusNode,
+                    formFieldKey: _usernameFieldKey,
                     labelText: "Username",
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your Username';
+                      }
+                      if (_isUsernameUsed) {
+                        return "Username is used. Try different one";
                       }
                       return null;
                     },
@@ -116,16 +176,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   CustomTextField(
                     controller: _password,
                     labelText: "Password",
+                    obscureText: _obscurePassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
                       }
                       return null;
                     },
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                   CustomTextField(
                     controller: _re_password,
                     labelText: "Re-Password",
+                    obscureText: _obscurePassword,
+                    validator: (value) {
+                      if (value != _password.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
                   ),
                   SizedBox(height: 20),
                   Row(
@@ -141,6 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: PrimaryButton(
+                          isLoading: _isSaving,
                           onPressed: () {
                             _saveProfile();
                           },
@@ -169,32 +251,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _saveProfile() async {
+    await checkUsernameUsage();
+    if (!mounted) return;
     if (_formKey.currentState!.validate()) {
-      if (_re_password.text == _password.text) {
-        try {
-          UserInsertRequest request = UserInsertRequest(
-            firstName: _firstName.text,
-            lastName: _lastName.text,
-            email: _email.text,
-            username: _username.text,
-            password: _password.text,
-            profileImage: _selectedImage,
-          );
-          await userProvider.insertUser(request);
-          showCustomToast(context, "Profile saved successfully");
-          await Future.delayed(const Duration(milliseconds: 200));
-          if (mounted) Navigator.pop(context);
-        } on ApiClientException catch (e) {
-          alertBox(context, "Register error", e.message);
-        }
+      setState(() => _isSaving = true);
+      try {
+        UserInsertRequest request = UserInsertRequest(
+          firstName: _firstName.text,
+          lastName: _lastName.text,
+          email: _email.text,
+          username: _username.text,
+          password: _password.text,
+          profileImage: _selectedImage,
+        );
+        await userProvider.insertUser(request);
+        if (!mounted) return;
+        showCustomToast(context, "Profile saved successfully");
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (mounted) Navigator.pop(context);
+      } on ApiClientException catch (e) {
+        if (!mounted) return;
+        alertBox(context, "Register error", e.message, mode: AlertBoxMode.ok);
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _username.dispose();
-    _email.dispose();
-    super.dispose();
   }
 }

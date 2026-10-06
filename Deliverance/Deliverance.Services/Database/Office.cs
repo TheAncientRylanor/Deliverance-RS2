@@ -18,7 +18,7 @@ public class Office : IUserOwnedEntity
     public int? NumOfDevices { get; set; }
     public int? NumOfScouts { get; set; }
 
-    public Guid? UserUUID {get;set;}
+    public Guid UserUUID {get;set;}
 
     [ForeignKey("UserUUID")]
     public User User {get;set;}

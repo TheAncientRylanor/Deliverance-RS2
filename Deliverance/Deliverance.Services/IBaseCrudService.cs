@@ -9,7 +9,7 @@ namespace Deliverance.Services
         where TSearch : BaseSearchObject
     {
         Task<TResponse> InsertAsync(TInsertRequest request,Guid userId = default);
-        Task<TResponse> UpdateAsync(int id, TUpdateRequest request,Guid userId = default);
-        Task DeleteAsync(int id,Guid userId = default);
+        Task<TResponse> UpdateAsync(int id, TUpdateRequest request,Guid userId = default, bool isAdmin = false);
+        Task DeleteAsync(int id,Guid userId = default, bool isAdmin = false);
     }
 }

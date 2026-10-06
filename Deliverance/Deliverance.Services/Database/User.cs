@@ -1,3 +1,4 @@
+using Deliverance.Model.Enums;
 using Deliverance.Services.Database;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ public class User
     public string? LastName { get; set; }
 
 
-    public int? RoleId { get; set; }
+    public RoleEnum? RoleId { get; set; }
 
     [Required]
     public string Email { get; set; } =  string.Empty;

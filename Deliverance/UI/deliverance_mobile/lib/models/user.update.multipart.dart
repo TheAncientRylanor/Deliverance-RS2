@@ -34,6 +34,7 @@ class UserUpdateMultipart {
     return request;
   }
 
+  /*
   Map<String, String> _toFormFields() {
     final fields = <String, String>{};
     if (firstName != null) fields['firstName'] = firstName!;
@@ -52,4 +53,5 @@ class UserUpdateMultipart {
     }
     return files;
   }
+  */
 }

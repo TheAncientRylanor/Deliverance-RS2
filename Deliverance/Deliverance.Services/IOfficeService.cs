@@ -8,6 +8,6 @@ namespace Deliverance.Services
     public interface IOfficeService :
         IBaseCRUDService<OfficeResponse, OfficeSearchObject, OfficeInsertRequest, OfficeUpdateRequest>
     {
-        
+      Task<OfficeResponse> GetFromReport(int officeReportId, int id, Guid userId, bool isAdmin = false);
     }
 }

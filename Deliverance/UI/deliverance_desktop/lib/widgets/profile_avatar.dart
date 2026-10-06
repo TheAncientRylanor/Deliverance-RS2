@@ -9,11 +9,12 @@ class ProfileAvatar extends StatelessWidget {
   final double? containerHeight;
   final double? containerWidth;
   const ProfileAvatar({
+    super.key,
     required this.child,
     required this.isEditable,
     required this.onEditTap,
-    this.height,
-    this.width,
+    this.height = 280,
+    this.width = 280,
     this.containerHeight,
     this.containerWidth,
   });
@@ -23,8 +24,8 @@ class ProfileAvatar extends StatelessWidget {
     return Stack(
       children: [
         SizedBox(
-          height: height ?? 280,
-          width: width ?? 280,
+          height: height,
+          width: width,
           child: Align(
             alignment: Alignment.center,
             child: Container(

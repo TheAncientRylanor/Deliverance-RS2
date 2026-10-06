@@ -4,7 +4,7 @@ namespace Deliverance.Model.Request
 {
     public class DeviceReportInsertRequest
     {
-        public SeverityEnum? Severity { get; set; }
+        public string? Occurance { get; set; }
 
         public string? Detail { get; set; }
 

@@ -22,26 +22,26 @@ namespace Deliverance.Services
 
         }
 
-        protected override IEnumerable<Device> ApplyFilters(IEnumerable<Device> query, DeviceSearchObject? search,Guid userId)
+        protected override IQueryable<Device> ApplyFilters(IQueryable<Device> query, DeviceSearchObject? search,Guid userId, bool isAdmin = false)
         {
             if (search != null)
             {
                 if (!string.IsNullOrWhiteSpace(search.Name))
                 {
-                    query = query.Where(p => p.Name.Contains(search.Name, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(p => p.Name.Contains(search.Name));
                 }
                 if (!string.IsNullOrWhiteSpace(search.Manufacturer))
                 {
-                    query = query.Where(p => p.Manufacturer.Contains(search.Manufacturer, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(p => p.Manufacturer.Contains(search.Manufacturer));
                 }
 
                 if (!string.IsNullOrWhiteSpace(search.MacAddress))
                 {
-                    query = query.Where(p => p.MacAddress.Contains(search.MacAddress, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(p => p.MacAddress.Contains(search.MacAddress));
                 }
                 if (!string.IsNullOrWhiteSpace(search.IpAddress))
                 {
-                    query = query.Where(p => p.IpAddress.Contains(search.IpAddress, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(p => p.IpAddress.Contains(search.IpAddress));
                 }
             }
 

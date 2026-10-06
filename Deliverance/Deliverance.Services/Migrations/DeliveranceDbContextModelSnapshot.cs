@@ -74,7 +74,7 @@ namespace Deliverance.Services.Migrations
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("UserUUID")
+                    b.Property<Guid>("UserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
@@ -92,6 +92,9 @@ namespace Deliverance.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -100,7 +103,10 @@ namespace Deliverance.Services.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("UserUUID")
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
@@ -174,6 +180,9 @@ namespace Deliverance.Services.Migrations
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
 
                     b.HasIndex("UserUUID");
 
@@ -283,10 +292,10 @@ namespace Deliverance.Services.Migrations
                     b.Property<int>("DeviceId")
                         .HasColumnType("int");
 
-                    b.Property<int>("OfficeReportId")
-                        .HasColumnType("int");
+                    b.Property<string>("Occurance")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Severity")
+                    b.Property<int>("OfficeReportId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -296,6 +305,50 @@ namespace Deliverance.Services.Migrations
                     b.HasIndex("OfficeReportId");
 
                     b.ToTable("DeviceReports");
+                });
+
+            modelBuilder.Entity("Occurance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Occurances");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Question = "Have you encountered this problem before?"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Question = "Have you restarted the device?"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Question = "Is the device properly connected to power?"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Question = "Is the device connected to the network?"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Question = "Has anything changed recently (updates, settings, cables)?"
+                        });
                 });
 
             modelBuilder.Entity("Office", b =>
@@ -311,7 +364,8 @@ namespace Deliverance.Services.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int?>("NumOfDevices")
                         .HasColumnType("int");
@@ -322,10 +376,13 @@ namespace Deliverance.Services.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("UserUUID")
+                    b.Property<Guid>("UserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.HasIndex("UserUUID");
 
@@ -373,6 +430,9 @@ namespace Deliverance.Services.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<int?>("IssueType")
+                        .HasColumnType("int");
+
                     b.Property<string>("ReportClearedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -384,17 +444,46 @@ namespace Deliverance.Services.Migrations
                     b.Property<int?>("Severity")
                         .HasColumnType("int");
 
-                    b.Property<int?>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid?>("UserUUID")
+                    b.Property<Guid>("UserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Status");
+
                     b.HasIndex("UserUUID");
 
                     b.ToTable("Reports");
+                });
+
+            modelBuilder.Entity("ReportOccurance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Answer")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OccuranceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccuranceId");
+
+                    b.HasIndex("ReportId");
+
+                    b.ToTable("ReportOccurances");
                 });
 
             modelBuilder.Entity("ReportQuestion", b =>
@@ -411,6 +500,47 @@ namespace Deliverance.Services.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ReportQuestions");
+                });
+
+            modelBuilder.Entity("ReportStatistics", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DateReported")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DeviceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OfficeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OfficeReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("OfficeId");
+
+                    b.HasIndex("ReportId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("DateReported", "OfficeId");
+
+                    b.ToTable("ReportStatistics");
                 });
 
             modelBuilder.Entity("Role", b =>
@@ -515,7 +645,8 @@ namespace Deliverance.Services.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -543,11 +674,18 @@ namespace Deliverance.Services.Migrations
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("UUID");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Users");
 
@@ -594,7 +732,8 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("User", "User")
                         .WithMany("ChatBotMessages")
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -604,7 +743,8 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("User", "User")
                         .WithMany("Contacts")
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -687,7 +827,9 @@ namespace Deliverance.Services.Migrations
                 {
                     b.HasOne("User", "User")
                         .WithMany()
-                        .HasForeignKey("UserUUID");
+                        .HasForeignKey("UserUUID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -716,7 +858,62 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("User", "User")
                         .WithMany("Reports")
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReportOccurance", b =>
+                {
+                    b.HasOne("Occurance", "Occurance")
+                        .WithMany("ReportOccurances")
+                        .HasForeignKey("OccuranceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Report", "Report")
+                        .WithMany("ReportOccurances")
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Occurance");
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("ReportStatistics", b =>
+                {
+                    b.HasOne("Device", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Office", "Office")
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Report", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+
+                    b.Navigation("Office");
+
+                    b.Navigation("Report");
 
                     b.Navigation("User");
                 });
@@ -775,6 +972,11 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Scout");
                 });
 
+            modelBuilder.Entity("Occurance", b =>
+                {
+                    b.Navigation("ReportOccurances");
+                });
+
             modelBuilder.Entity("Office", b =>
                 {
                     b.Navigation("Devices");
@@ -790,6 +992,8 @@ namespace Deliverance.Services.Migrations
             modelBuilder.Entity("Report", b =>
                 {
                     b.Navigation("OfficeReports");
+
+                    b.Navigation("ReportOccurances");
                 });
 
             modelBuilder.Entity("Role", b =>

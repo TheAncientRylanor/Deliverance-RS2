@@ -3,13 +3,11 @@ import 'package:deliverance_desktop/models/office.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
 import 'package:deliverance_desktop/screens/add_office_screen.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
-import 'package:deliverance_desktop/utils/constants.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
-import 'package:deliverance_desktop/widgets/device_details_dialog.dart';
+import 'package:deliverance_desktop/widgets/office_canvas.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 
 class OfficesScreen extends StatefulWidget {
@@ -22,7 +20,7 @@ class OfficesScreen extends StatefulWidget {
 class _OfficesScreenState extends State<OfficesScreen> {
   late OfficeProvider _officeProvider;
   Map<int, String> _offices = {};
-  late Office _selectedOffice;
+  Office? _selectedOffice;
   int? selectedKey;
   bool isLoading = true;
   bool isLoadingOffice = false;
@@ -40,36 +38,60 @@ class _OfficesScreenState extends State<OfficesScreen> {
 
   void loadValues() async {
     try {
-      var result = await _officeProvider.get();
-      if (result.items != null && result.items!.isNotEmpty) {
-        _offices = Map.fromEntries(
-          result.items!.map(
-            (office) => MapEntry(office.id as int, office.name as String),
-          ),
-        );
-      }
+      final offices = await _officeProvider.getAll();
+      _offices = Map.fromEntries(
+        offices.map(
+          (office) => MapEntry(office.id as int, office.name as String),
+        ),
+      );
     } on ApiClientException catch (e) {
-      alertBox(context, "Error", e.message);
+      if (!mounted) return;
+      alertBoxMoveBack(context, "Error", e.message, onRetry: loadValues);
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _getOffice() async {
-    isLoadingOffice = true;
+    setState(() {
+      isLoadingOffice = true;
+      // Drop the previous office so a failed load can't leave it on screen
+      // under a different selection.
+      _selectedOffice = null;
+    });
     try {
       if (selectedKey != null) {
         _selectedOffice = await _officeProvider.getById(selectedKey!);
       }
     } on ApiClientException catch (e) {
+      if (!mounted) return;
       alertBox(context, "Error", e.message);
     } finally {
-      setState(() {
-        isLoadingOffice = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingOffice = false;
+        });
+      }
     }
+  }
+
+  Future<void> _enterFullScreenMap() async {
+    final office = _selectedOffice;
+    if (office == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullScreenOfficeMap(
+          office: office,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          iconColor: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
   }
 
   @override
@@ -85,7 +107,7 @@ class _OfficesScreenState extends State<OfficesScreen> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: 100),
+                    const SizedBox(height: 100),
                     Wrap(
                       spacing: 50,
                       runSpacing: 20,
@@ -96,11 +118,9 @@ class _OfficesScreenState extends State<OfficesScreen> {
                         CustomDropDown(
                           items: _offices,
                           label: "Offices",
-                          onChanged: (value) => {
-                            setState(() {
-                              selectedKey = value;
-                            }),
-                            _getOffice(),
+                          onChanged: (value) {
+                            selectedKey = value;
+                            _getOffice();
                           },
                         ),
                         SecondaryButton(
@@ -155,8 +175,12 @@ class _OfficesScreenState extends State<OfficesScreen> {
                                 ),
                                 child: isLoadingOffice
                                     ? globalLoadingSpinner()
-                                    : selectedKey != null
-                                    ? _drawOffice(canvasSize)
+                                    : _selectedOffice != null
+                                    ? OfficeCanvas(
+                                        office: _selectedOffice!,
+                                        canvasSize: canvasSize,
+                                        isReport: false,
+                                      )
                                     : null,
                               );
                             },
@@ -164,10 +188,12 @@ class _OfficesScreenState extends State<OfficesScreen> {
                           Positioned(
                             bottom: 0,
                             right: 0,
-                            child: Icon(
-                              Icons.fullscreen,
+                            child: IconButton(
+                              onPressed: _selectedOffice == null
+                                  ? null
+                                  : _enterFullScreenMap,
+                              icon: Icon(Icons.fullscreen, size: 80),
                               color: Theme.of(context).colorScheme.primary,
-                              size: 80,
                             ),
                           ),
                         ],
@@ -177,15 +203,15 @@ class _OfficesScreenState extends State<OfficesScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         PrimaryButton(
-                          onPressed: selectedKey == null
+                          onPressed: _selectedOffice == null
                               ? null
                               : () async {
+                                  final office = _selectedOffice!;
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => AddOfficeScreen(
-                                        office: _selectedOffice,
-                                      ),
+                                      builder: (context) =>
+                                          AddOfficeScreen(office: office),
                                     ),
                                   );
                                   if (!mounted) return;
@@ -212,39 +238,56 @@ class _OfficesScreenState extends State<OfficesScreen> {
             ),
     );
   }
+}
 
-  Widget _drawOffice(Size canvasSize) {
-    return Stack(
-      children: [
-        for (var device in _selectedOffice.devices ?? [])
-          Positioned(
-            left: device.positionX * canvasSize.width,
-            top: device.positionY * canvasSize.height,
-            child: Column(
+class _FullScreenOfficeMap extends StatelessWidget {
+  final Office office;
+  final Color backgroundColor;
+  final Color iconColor;
+
+  const _FullScreenOfficeMap({
+    required this.office,
+    required this.backgroundColor,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final canvasSize = Size(
+              constraints.maxWidth,
+              constraints.maxHeight,
+            );
+            return Stack(
               children: [
-                IconButton(
-                  mouseCursor: SystemMouseCursors.click,
-                  onPressed: () {
-                    showDeviceDetailsDialog(context, device);
-                  },
-                  icon: SvgPicture.asset(
-                    iconForType((device.type as String)),
-                    width: 80.0,
-                    height: 80.0,
-                    colorFilter: ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
+                Positioned.fill(
+                  child: OfficeCanvas(
+                    office: office,
+                    canvasSize: canvasSize,
+                    isReport: false,
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.fullscreen_exit,
+                      color: iconColor,
+                      size: 80,
                     ),
                   ),
                 ),
-                Text(
-                  device.name ?? "",
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
               ],
-            ),
-          ),
-      ],
+            );
+          },
+        ),
+      ),
     );
   }
 }

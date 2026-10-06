@@ -15,6 +15,7 @@ namespace Deliverance.Model.Responses
         public string? VlanID {get;set;}
         public string? OS {get;set; }    
         public string? Manufacturer { get; set; }
+        public bool? IsReported {get;set;}
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

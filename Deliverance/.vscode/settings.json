@@ -1,0 +1,27 @@
+{
+  "files.watcherExclude": {
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/.vs/**": true,
+    "**/.dart_tool/**": true,
+    "**/build/**": true
+  },
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true,
+    "**/.dart_tool": true,
+    "**/build": true
+  },
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true
+  },
+  "dart.analysisExcludedFolders": [
+    "UI/deliverance_mobile/build",
+    "UI/deliverance_mobile/.dart_tool",
+    "UI/deliverance_desktop/build",
+    "UI/deliverance_desktop/.dart_tool"
+  ]
+}

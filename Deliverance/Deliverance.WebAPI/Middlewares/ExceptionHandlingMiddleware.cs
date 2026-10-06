@@ -29,7 +29,7 @@ public class ExceptionHandlingMiddleware
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
         }
-         catch (ClientException ex)
+        catch (ClientException ex)
         {
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -38,12 +38,29 @@ public class ExceptionHandlingMiddleware
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
         }
+        catch (KeyNotFoundException ex)
+        {
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+
+            var payload = new { message = ex.Message };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync(
+                JsonSerializer.Serialize(new { message = "You are not authorized. Please sign in again." }));
+        }
         catch (Exception)
         {
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             await context.Response.WriteAsync(
-                JsonSerializer.Serialize(new { message = "Server error" }));
+                JsonSerializer.Serialize(new { message = "Internal server error. Please try again." }));
         }
+
     }
 }

@@ -1,0 +1,23 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+
+# Visual Studio
+.vs/
+*.dbmdl
+*.ide/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+
+# EF Core
+*.dbmdl
+
+# Logs
+*.log

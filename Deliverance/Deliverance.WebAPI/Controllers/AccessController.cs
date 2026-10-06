@@ -1,5 +1,6 @@
 ﻿using Deliverance.Model.Request;
 using Deliverance.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Deliverance.WebAPI.Controllers
@@ -29,6 +30,29 @@ namespace Deliverance.WebAPI.Controllers
         {
             var result = await _accessManager.LoginWithRefreshTokenAsync(request);
             return Ok(result);
+        }
+
+        [HttpPost("AdminLogin")]
+        public async Task<ActionResult> AdminLogin([FromBody] UserLoginRequest request)
+        {
+            var result = await _accessManager.AdminLoginAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("AdminLoginWithRefreshToken")]
+        public async Task<ActionResult> AdminLoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
+        {
+            var result = await _accessManager.AdminLoginWithRefreshTokenAsync(request);
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] UserPasswordChangeRequest request)
+        {
+            var userId = User.GetUserId();
+            await _accessManager.ChangePasswordAsync(request, userId);
+            return Ok();
         }
 
         [HttpPost("Register")]

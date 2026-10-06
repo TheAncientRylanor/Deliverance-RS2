@@ -1,3 +1,4 @@
+import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
 
 enum DropDownMode { single, multi }
@@ -12,7 +13,11 @@ class CustomDropDown<T> extends StatefulWidget {
   final List<T>? initialValues;
 
   final ValueChanged<T?>? onChanged;
-  final ValueChanged<List<String>>? onChangedMulti;
+  final ValueChanged<List<T>>? onChangedMulti;
+
+  /// Called before an item is unchecked in multi-select mode. Return `true`
+  /// to allow the removal, `false` to keep the item selected.
+  final Future<bool> Function(BuildContext context, T item)? onBeforeRemove;
 
   final TextStyle? textStyle;
 
@@ -25,6 +30,7 @@ class CustomDropDown<T> extends StatefulWidget {
     this.initialValues,
     this.onChanged,
     this.onChangedMulti,
+    this.onBeforeRemove,
     this.textStyle,
   });
   @override
@@ -57,6 +63,7 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
   }
 
   Future<void> _openMultiSelect(BuildContext context) async {
+    final theme = Theme.of(context);
     final result = await showDialog<List<T>>(
       context: context,
       builder: (dialogContext) {
@@ -64,7 +71,20 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(widget.label),
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: theme.colorScheme.outline),
+              ),
+              titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              contentPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              title: Text(
+                widget.label,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
               content: SizedBox(
                 width: 300,
                 child: SingleChildScrollView(
@@ -74,9 +94,23 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
                       final isChecked = tempSelected.contains(entry.key);
                       return CheckboxListTile(
                         value: isChecked,
-                        title: Text(entry.value),
+                        title: Text(
+                          entry.value,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        activeColor: theme.colorScheme.primary,
+                        checkColor: theme.colorScheme.onPrimary,
                         controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (checked) {
+                        onChanged: (checked) async {
+                          if (checked == false && widget.onBeforeRemove != null) {
+                            final allowed = await widget.onBeforeRemove!(
+                              context,
+                              entry.key,
+                            );
+                            if (!allowed) return;
+                          }
                           setDialogState(() {
                             if (checked == true) {
                               tempSelected.add(entry.key);
@@ -91,14 +125,25 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.of(dialogContext).pop(tempSelected),
-                  child: const Text('Done'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        height: 44,
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        label: 'Cancel',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PrimaryButton(
+                        height: 44,
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(tempSelected),
+                        label: 'Done',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -111,9 +156,7 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
       setState(() {
         selectedValues = result;
       });
-      widget.onChangedMulti?.call(
-        selectedValues.map((v) => widget.items[v] ?? '').toList(),
-      );
+      widget.onChangedMulti?.call(selectedValues);
     }
   }
 

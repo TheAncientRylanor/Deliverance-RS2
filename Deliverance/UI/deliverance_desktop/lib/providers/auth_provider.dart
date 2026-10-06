@@ -10,6 +10,8 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 
 enum AuthStatus { authenticated, unauthenticated }
 
+const _adminRoleId = '2';
+
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   static String? _accesstoken;
@@ -25,23 +27,66 @@ class AuthProvider extends ChangeNotifier {
   }
 
   AuthProvider._internal();
+
   bool get isAuthenticated => _isAuthenticated;
+
+  bool _isAdminToken(String? token) {
+    if (token == null || token.isEmpty) return false;
+    try {
+      final decoded = JwtDecoder.decode(token);
+      return decoded['role']?.toString() == _adminRoleId;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future login(String username, String password) async {
-    var url = "${_baseUrl}Access/Login";
+    var url = "${_baseUrl}Access/AdminLogin";
     var uri = Uri.parse(url);
     var headers = createHeaders();
-
     var body = jsonEncode({"username": username, "password": password});
-
     var response = await http.post(uri, headers: headers, body: body);
 
     validateResponse(response);
     var data = jsonDecode(response.body);
-    _accesstoken = data['accesstoken'];
+    final accessToken = data['accesstoken'] as String?;
+    if (!_isAdminToken(accessToken)) {
+      throw ApiClientException(
+        'Only admin accounts can access this application.',
+      );
+    }
+    _accesstoken = accessToken;
     _refreshtoken = data['refreshtoken'];
-    saveToken();
+    await saveToken();
     _isAuthenticated = true;
     notifyListeners();
+  }
+
+  /// Changes the current user's password. The backend revokes every refresh
+  /// token of the user, so the local session is cleared afterwards.
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    var uri = Uri.parse("${_baseUrl}Access/ChangePassword");
+    var body = jsonEncode({
+      "oldPassword": oldPassword,
+      "newPassword": newPassword,
+    });
+
+    Future<http.Response> send() => http.post(
+      uri,
+      headers: {
+        ...createHeaders(),
+        "Authorization": "Bearer ${_accesstoken ?? ''}",
+      },
+      body: body,
+    );
+
+    var response = await send();
+    if (response.statusCode == 401 && await refreshToken()) {
+      response = await send();
+    }
+
+    validateResponse(response);
+    await logout();
   }
 
   Future<void> logout() async {
@@ -93,6 +138,10 @@ class AuthProvider extends ChangeNotifier {
     }
 
     if (!checkIfTokenExpired(storedAccess)) {
+      if (!_isAdminToken(storedAccess)) {
+        await deleteToken();
+        return AuthStatus.unauthenticated;
+      }
       _accesstoken = storedAccess;
       _refreshtoken = storedRefresh;
       _isAuthenticated = true;
@@ -100,13 +149,12 @@ class AuthProvider extends ChangeNotifier {
       return AuthStatus.authenticated;
     }
 
-    if (storedRefresh == null ||
-        storedRefresh.isEmpty ||
-        checkIfTokenExpired(storedRefresh)) {
+    if (storedRefresh == null || storedRefresh.isEmpty) {
       await deleteToken();
       return AuthStatus.unauthenticated;
     }
 
+    _refreshtoken = storedRefresh;
     try {
       await loginWithRefreshToken();
       return AuthStatus.authenticated;
@@ -117,7 +165,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> loginWithRefreshToken() async {
-    var url = "${_baseUrl}Access/LoginWithRefreshToken";
+    var url = "${_baseUrl}Access/AdminLoginWithRefreshToken";
     var uri = Uri.parse(url);
     var headers = createHeaders();
     var body = jsonEncode({"refreshToken": refreshtoken});
@@ -126,7 +174,14 @@ class AuthProvider extends ChangeNotifier {
 
     validateResponse(response);
     var data = jsonDecode(response.body);
-    _accesstoken = data['accesstoken'];
+    final accessToken = data['accesstoken'] as String?;
+    if (!_isAdminToken(accessToken)) {
+      await deleteToken();
+      throw ApiClientException(
+        'Only admin accounts can access this application.',
+      );
+    }
+    _accesstoken = accessToken;
     _refreshtoken = data['refreshtoken'];
     await saveToken();
     _isAuthenticated = true;

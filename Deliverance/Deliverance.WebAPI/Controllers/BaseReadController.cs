@@ -29,8 +29,8 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     [HttpGet]
     public virtual async Task<PageResult<TResponse>> GetAll([FromQuery] TSearch? search)
     {
-        var userId = User.GetUserId(); 
-        var results = await _service.GetAllAsync(search,userId);
+        var userId = User.GetUserId();
+        var results = await _service.GetAllAsync(search,userId,User.IsAdmin());
         return results;
     }
 
@@ -39,8 +39,8 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     {
         try
         {
-            var userId = User.GetUserId(); 
-            var result = await _service.GetByIdAsync(id,userId);
+            var userId = User.GetUserId();
+            var result = await _service.GetByIdAsync(id,userId,User.IsAdmin());
             return Ok(result);
         }
         catch (KeyNotFoundException)

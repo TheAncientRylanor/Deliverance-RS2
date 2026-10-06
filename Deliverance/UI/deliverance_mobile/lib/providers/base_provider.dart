@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:deliverance_mobile/models/search_result.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
@@ -30,34 +31,32 @@ abstract class BaseProvider<T> with ChangeNotifier {
       var queryString = getQueryString(filter);
       url = "$url?$queryString";
     }
-
     var uri = Uri.parse(url);
-    var headers = createHeaders();
 
-    var response = await http.get(uri, headers: headers);
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.get(uri, headers: headers);
+    });
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
+    var data = jsonDecode(response.body);
 
-      var result = SearchResult<T>();
+    var result = SearchResult<T>();
 
-      result.totalCount = data['totalCount'];
-      result.items = List<T>.from(data["items"].map((e) => fromJson(e)));
+    result.totalCount = data['totalCount'];
+    result.items = List<T>.from(data["items"].map((e) => fromJson(e)));
 
-      return result;
-    } else {
-      throw new Exception("Unknown error");
-    }
+    return result;
   }
 
   Future<T> getById(int id) async {
     var url = "$_baseUrl$endpoint/$id";
     var uri = Uri.parse(url);
-    var headers = createHeaders();
 
-    http.Response response = await http.get(uri, headers: headers);
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.get(uri, headers: headers);
+    });
 
-    validateResponse(response);
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);
     setData(parsed);
@@ -67,18 +66,17 @@ abstract class BaseProvider<T> with ChangeNotifier {
   Future<T> insert(dynamic request) async {
     var url = "$_baseUrl$endpoint";
     var uri = Uri.parse(url);
-    var headers = createHeaders();
-
     var jsonRequest = jsonEncode(request);
-    var response = await http.post(uri, headers: headers, body: jsonRequest);
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
-      final parsed = fromJson(data);
-      setData(parsed);
-      return parsed;
-    } else {
-      throw Exception("Unknown error");
-    }
+
+    final response = await sendWithRetry(() async {
+      var headers = createHeaders();
+      return await http.post(uri, headers: headers, body: jsonRequest);
+    });
+
+    var data = jsonDecode(response.body);
+    final parsed = fromJson(data);
+    setData(parsed);
+    return parsed;
   }
 
   Future<T> update(int id, [dynamic request]) async {
@@ -96,7 +94,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future remove(int id) async {
-    final response = await sendWithRetry(() async {
+    await sendWithRetry(() async {
       var url = "$_baseUrl$endpoint/$id";
       var uri = Uri.parse(url);
       var headers = createHeaders();
@@ -116,16 +114,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   T fromJson(data) {
     throw Exception("Method not implemented");
-  }
-
-  bool isValidResponse(Response response) {
-    if (response.statusCode < 299) {
-      return true;
-    } else if (response.statusCode == 401) {
-      throw Exception("Unauthorized");
-    } else {
-      throw Exception("Something bad happened please try again");
-    }
   }
 
   void validateResponse(Response response) {
@@ -211,6 +199,16 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
       if (success) {
         response = await requestFn();
+      }
+
+      if (response.statusCode == 401) {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+        throw ApiClientException(
+          'Your session has expired. Please sign in again.',
+        );
       }
     }
     validateResponse(response);

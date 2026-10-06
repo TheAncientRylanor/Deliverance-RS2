@@ -8,7 +8,7 @@ public class ChatBotMessage : IUserOwnedEntity
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public Guid? UserUUID { get; set; }
+    public Guid UserUUID { get; set; }
 
     [MaxLength(300)]
     public string? Content { get; set; }

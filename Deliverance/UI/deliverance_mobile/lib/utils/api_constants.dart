@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = const String.fromEnvironment(
+  static const String baseUrl = String.fromEnvironment(
     "baseUrl",
     defaultValue: "http://10.0.2.2:5095/",
   );

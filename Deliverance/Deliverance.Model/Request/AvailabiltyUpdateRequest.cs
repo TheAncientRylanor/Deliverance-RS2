@@ -8,7 +8,7 @@ namespace Deliverance.Model.Request
 {
     public class AvailablitiesUpdateRequest
     {
-        public int Id {get;set; }= 0;
+        public int? Id {get;set; }
         public string Day { get; set; } = string.Empty;
 
         public TimeOnly? FromTime { get; set; }

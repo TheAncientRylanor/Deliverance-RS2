@@ -1,13 +1,11 @@
 using Deliverance.Model.Exceptions;
-using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
+
 
 namespace Deliverance.Services
 {
@@ -54,7 +52,7 @@ namespace Deliverance.Services
                 entity.Availabilities,
                 request.Availabilities,
                 availability => availability.Id.ToString(),
-                availabilityRequest => availabilityRequest.Id.ToString(),
+                availabilityRequest => availabilityRequest.Id?.ToString() ?? "",
                 availabilityRequest => new Availability
                 {
                     ContactId = entity.Id,
@@ -76,7 +74,7 @@ namespace Deliverance.Services
                 entity.ContactEmails,
                 request.ContactEmails,
                 email => email.Id.ToString(),
-                emailRequest => emailRequest.Id.ToString(),
+                emailRequest => emailRequest.Id.ToString() ?? "",
                 emailRequest => new ContactEmail
                 {
                     ContactId = entity.Id,
@@ -88,7 +86,7 @@ namespace Deliverance.Services
                 entity.ContactPhoneNumbers,
                 request.ContactPhoneNumbers,
                 phoneNumber => phoneNumber.Id.ToString(),
-                phoneNumberRequest => phoneNumberRequest.Id.ToString(),
+                phoneNumberRequest => phoneNumberRequest.Id.ToString() ?? "",
                 phoneNumberRequest => new ContactPhoneNumber
                 {
                     ContactId = entity.Id,
@@ -97,12 +95,15 @@ namespace Deliverance.Services
                 (existingPhoneNumber, phoneNumberRequest) => existingPhoneNumber.PhoneNumber = phoneNumberRequest.PhoneNumber);
         }
 
-        protected override IEnumerable<Contact> ApplyFilters(IEnumerable<Contact> query, ContactsSearchObject? search,Guid userId)
+        protected override IQueryable<Contact> ApplyFilters(IQueryable<Contact> query, ContactsSearchObject? search,Guid userId, bool isAdmin = false)
         {
-            query = query.Where(x=>x.UserUUID == userId);
+            if (!isAdmin)
+            {
+                query = query.Where(x=>x.UserUUID == userId);
+            }
             return query;
         }
-        public override async Task<ContactsResponse> GetByIdAsync(int id,Guid userId)
+        public override async Task<ContactsResponse> GetByIdAsync(int id,Guid userId, bool isAdmin = false)
         {
             var entity = this._dbContext.Set<Contact>()
             .Include(x=>x.ContactEmails)
@@ -113,14 +114,14 @@ namespace Deliverance.Services
             {
                 throw new KeyNotFoundException($"{typeof(Contact).Name} with id {id} not found.");
             }
-            if (entity.UserUUID != userId)
+            if (!isAdmin && entity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this contact."); 
+                throw new ClientException("You do not have access to this contact.");
             }
             
             return await Task.FromResult(_mapper.Map<ContactsResponse>(entity));
         }
-        public override IEnumerable<Contact> GetQuery()
+        public override IQueryable<Contact> GetQuery()
         {
             return this._dbContext.Set<Contact>()
             .Include(x=>x.ContactEmails)

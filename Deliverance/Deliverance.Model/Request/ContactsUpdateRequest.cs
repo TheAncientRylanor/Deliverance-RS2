@@ -7,9 +7,9 @@ namespace Deliverance.Model.Responses
 
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
-        public  ICollection<UpdateEmail>? ContactEmails { get; set; }
+        public required ICollection<UpdateEmail> ContactEmails { get; set; }
 
-        public  ICollection<UpdatePhoneNumber>? ContactPhoneNumbers { get; set; }
+        public required ICollection<UpdatePhoneNumber> ContactPhoneNumbers { get; set; }
         public ICollection<AvailablitiesUpdateRequest>? Availabilities {get;set;}
     }
     public class UpdateEmail

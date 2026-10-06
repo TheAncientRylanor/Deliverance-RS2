@@ -59,4 +59,17 @@ class UserProvider extends BaseProvider<User> {
     setData(user);
     return user;
   }
+
+  Future<bool> userNameExist(String username) async {
+    final response = await sendWithRetry(() async {
+      var baseURL = BaseProvider.baseUrl;
+      var url =
+          "$baseURL$endpoint/CheckUsername?request=${Uri.encodeQueryComponent(username)}";
+      var uri = Uri.parse(url);
+      var headers = createHeaders();
+      return await http.post(uri, headers: headers);
+    });
+    var data = jsonDecode(response.body);
+    return data;
+  }
 }
