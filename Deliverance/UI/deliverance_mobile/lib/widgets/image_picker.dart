@@ -12,4 +12,5 @@ Future<File?> pickImage(ImageSource source, ImagePicker picker) async {
   if (pickedFile != null) {
     return File(pickedFile.path);
   }
+  return null;
 }

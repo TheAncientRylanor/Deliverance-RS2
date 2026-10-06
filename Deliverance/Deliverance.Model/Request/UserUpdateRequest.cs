@@ -14,6 +14,6 @@ namespace Deliverance.Model.Request
         public string? Email { get; set; }
         public string? Username { get; set; }
         public string? PhoneNumber { get; set; }
-        public IFormFile ProfileImage {get;set;}
+        public IFormFile? ProfileImage {get;set;}
     }
 }

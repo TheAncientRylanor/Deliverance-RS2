@@ -44,6 +44,8 @@ dependencies:
   flutter_ruler_slider: ^0.0.7
   flutter_svg: ^2.3.0
   multi_dropdown: ^3.2.2
+  intl: ^0.20.3
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
@@ -65,7 +67,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
+  assets:
+    - assets/icons/
   fonts:
     - family: Abel
       fonts:

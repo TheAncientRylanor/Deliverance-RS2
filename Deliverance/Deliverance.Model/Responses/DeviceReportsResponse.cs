@@ -6,11 +6,12 @@ namespace Deliverance.Model.Responses
     {
         public int Id { get; set; }
 
-        public SeverityEnum? Severity { get; set; }
+        public string? Occurance { get; set; }
 
         public string? Detail { get; set; }
         public int OfficeReportId { get; set; }
 
         public int DeviceId { get; set; }
+        public string Name {get;set;} = string.Empty;
     }
 }

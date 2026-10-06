@@ -19,16 +19,9 @@ namespace Deliverance.Services
             _refreshTokens = _context.RefreshTokens;
         }
 
-        public async Task<RefreshTokens> GetStoredTokenAsync(string refreshToken)
+        public async Task<RefreshTokens?> GetStoredTokenAsync(string refreshToken)
         {
-            var token = await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-
-            if (token == null)
-            {
-                throw new Exception("Refresh token not found.");
-            }
-
-            return token;
+            return await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
         }
 
         public async Task InsertAsync(RefreshTokens refreshToken)

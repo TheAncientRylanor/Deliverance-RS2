@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/api_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -17,22 +18,17 @@ class AuthProvider extends ChangeNotifier {
   static const _storage = FlutterSecureStorage();
   static String? get accesstoken => _accesstoken;
   String? get refreshtoken => _refreshtoken;
-  String _baseUrl = "";
+  String _baseUrl = ApiConstants.baseUrl;
   static final AuthProvider instance = AuthProvider._internal();
   Future<bool>? _refreshFuture;
   factory AuthProvider() {
     return instance;
   }
 
-  AuthProvider._internal() {
-    _baseUrl = const String.fromEnvironment(
-      "BASE_URL",
-      defaultValue: "http://10.0.2.2:5095/Access",
-    );
-  }
+  AuthProvider._internal();
   bool get isAuthenticated => _isAuthenticated;
   Future login(String username, String password) async {
-    var url = "$_baseUrl/Login";
+    var url = "${_baseUrl}Access/Login";
     var uri = Uri.parse(url);
     var headers = createHeaders();
 
@@ -44,9 +40,36 @@ class AuthProvider extends ChangeNotifier {
     var data = jsonDecode(response.body);
     _accesstoken = data['accesstoken'];
     _refreshtoken = data['refreshtoken'];
-    saveToken();
+    await saveToken();
     _isAuthenticated = true;
     notifyListeners();
+  }
+
+  /// Changes the current user's password. The backend revokes every refresh
+  /// token of the user, so the local session is cleared afterwards.
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    var uri = Uri.parse("${_baseUrl}Access/ChangePassword");
+    var body = jsonEncode({
+      "oldPassword": oldPassword,
+      "newPassword": newPassword,
+    });
+
+    Future<http.Response> send() => http.post(
+      uri,
+      headers: {
+        ...createHeaders(),
+        "Authorization": "Bearer ${_accesstoken ?? ''}",
+      },
+      body: body,
+    );
+
+    var response = await send();
+    if (response.statusCode == 401 && await refreshToken()) {
+      response = await send();
+    }
+
+    validateResponse(response);
+    await logout();
   }
 
   Future<void> logout() async {
@@ -105,13 +128,12 @@ class AuthProvider extends ChangeNotifier {
       return AuthStatus.authenticated;
     }
 
-    if (storedRefresh == null ||
-        storedRefresh.isEmpty ||
-        checkIfTokenExpired(storedRefresh)) {
+    if (storedRefresh == null || storedRefresh.isEmpty) {
       await deleteToken();
       return AuthStatus.unauthenticated;
     }
 
+    _refreshtoken = storedRefresh;
     try {
       await loginWithRefreshToken();
       return AuthStatus.authenticated;
@@ -122,7 +144,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> loginWithRefreshToken() async {
-    var url = "$_baseUrl/LoginWithRefreshToken";
+    var url = "${_baseUrl}Access/LoginWithRefreshToken";
     var uri = Uri.parse(url);
     var headers = createHeaders();
     var body = jsonEncode({"refreshToken": refreshtoken});

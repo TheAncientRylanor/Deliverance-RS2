@@ -8,13 +8,17 @@ public class Contact : IUserOwnedEntity
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public Guid? UserUUID { get; set; }
+    public Guid UserUUID { get; set; }
 
     [Required]
     public string FirstName { get; set; } = string.Empty;
 
     [Required]
     public string LastName { get; set; }= string.Empty;
+
+    [Required]
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation Properties
     [ForeignKey("UserUUID")]

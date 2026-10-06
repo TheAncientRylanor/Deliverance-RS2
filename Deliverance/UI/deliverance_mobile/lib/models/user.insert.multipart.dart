@@ -36,13 +36,13 @@ class UserInsertRequest {
     }
     return request;
   }
-
+  /*
   Map<String, String> _toFormFields() {
     final fields = <String, String>{};
-    if (firstName != null) fields['firstName'] = firstName;
-    if (lastName != null) fields['lastName'] = lastName;
-    if (email != null) fields['email'] = email;
-    if (username != null) fields['username'] = username;
+    fields['firstName'] = firstName;
+    fields['lastName'] = lastName;
+    fields['email'] = email;
+    fields['username'] = username;
     return fields;
   }
 
@@ -55,4 +55,5 @@ class UserInsertRequest {
     }
     return files;
   }
+  */
 }

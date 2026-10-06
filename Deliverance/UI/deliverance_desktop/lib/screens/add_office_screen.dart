@@ -9,7 +9,6 @@ import 'package:deliverance_desktop/widgets/custom_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 
 class AddOfficeScreen extends StatefulWidget {
@@ -46,6 +45,15 @@ class _PlacedDevice {
   });
 }
 
+/// What the device dialog returns: the edited details, or a request to
+/// remove the device from the office.
+class _DeviceDialogResult {
+  final _PlacedDevice? device;
+  final bool delete;
+  const _DeviceDialogResult.save(this.device) : delete = false;
+  const _DeviceDialogResult.delete() : device = null, delete = true;
+}
+
 class _AddOfficeScreenState extends State<AddOfficeScreen> {
   static const double _barSize = 250;
   static const double _horizontalSize = 200;
@@ -58,6 +66,11 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
     "Switch": 'assets/icons/switch.svg',
     "Router": 'assets/icons/router.svg',
   };
+  // Size of a placed device on the canvas: an 80px icon plus the IconButton
+  // padding, and room for the name below it.
+  static const double _deviceWidth = 96;
+  static const double _deviceHeight = 120;
+  bool _isSaving = false;
   bool _isVerticalBarOpen = true;
   bool _isHorizontalBarOpen = true;
   String _officeName = "";
@@ -99,31 +112,49 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
     _officeProvider = context.read<OfficeProvider>();
   }
 
+  /// Keeps a device's top-left corner (as a fraction of the canvas) inside
+  /// the canvas, so the whole device stays visible.
+  Offset _clampToCanvas(Offset fraction, Size canvasSize) {
+    final maxX = canvasSize.width > _deviceWidth
+        ? (canvasSize.width - _deviceWidth) / canvasSize.width
+        : 0.0;
+    final maxY = canvasSize.height > _deviceHeight
+        ? (canvasSize.height - _deviceHeight) / canvasSize.height
+        : 0.0;
+    return Offset(fraction.dx.clamp(0.0, maxX), fraction.dy.clamp(0.0, maxY));
+  }
+
   void _handleDrop(String type, Offset globalPosition) {
     final RenderBox box =
         _canvasKey.currentContext!.findRenderObject() as RenderBox;
+    // globalPosition is the top-left of the drag preview, which is where the
+    // device should land.
     final Offset localOffset = box.globalToLocal(globalPosition);
     final Size canvasSize = box.size;
-    const double iconSize = 80;
     final newDevice = _PlacedDevice(
       type: type,
-      offset: Offset(
-        ((localOffset.dx - iconSize / 2) / canvasSize.width).clamp(0.0, 1.0),
-        ((localOffset.dy - iconSize / 2) / canvasSize.height).clamp(0.0, 1.0),
+      offset: _clampToCanvas(
+        Offset(
+          localOffset.dx / canvasSize.width,
+          localOffset.dy / canvasSize.height,
+        ),
+        canvasSize,
       ),
     );
     setState(() {
       _placedDevices.add(newDevice);
     });
 
-    _showAddDeviceDialog(context, newDevice);
+    _showAddDeviceDialog(context, newDevice, isNew: true);
   }
 
   Future<void> _saveData() async {
+    if (_isSaving) return;
     final result = await _showOfficeName(context, _officeName);
-    if (result == null) return;
+    if (result == null || !mounted) return;
     setState(() {
       _officeName = result;
+      _isSaving = true;
     });
 
     final office = Office(
@@ -165,11 +196,14 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } on ApiClientException catch (e) {
+      if (!mounted) return;
       alertBox(
         context,
         _isEditing ? "Update error" : "Insert error",
         e.message,
       );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -287,11 +321,15 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                                       child: GestureDetector(
                                         onPanUpdate: (details) {
                                           setState(() {
-                                            device.offset += Offset(
-                                              details.delta.dx /
-                                                  canvasSize.width,
-                                              details.delta.dy /
-                                                  canvasSize.height,
+                                            device.offset = _clampToCanvas(
+                                              device.offset +
+                                                  Offset(
+                                                    details.delta.dx /
+                                                        canvasSize.width,
+                                                    details.delta.dy /
+                                                        canvasSize.height,
+                                                  ),
+                                              canvasSize,
                                             );
                                           });
                                         },
@@ -401,17 +439,18 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                           if (_isHorizontalBarOpen) ...[
                             Flexible(
                               child: PrimaryButton(
-                                onPressed: () {
-                                  _saveData();
-                                },
+                                onPressed: _saveData,
+                                isLoading: _isSaving,
                                 label: "Save",
                               ),
                             ),
                             Flexible(
                               child: SecondaryButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
+                                onPressed: _isSaving
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                      },
                                 label: "Cancel",
                               ),
                             ),
@@ -446,10 +485,13 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
     );
   }
 
+  /// [isNew] is true right after a drop: cancelling then removes the device
+  /// again instead of leaving an empty one on the canvas.
   Future<void> _showAddDeviceDialog(
     BuildContext context,
-    _PlacedDevice device,
-  ) {
+    _PlacedDevice device, {
+    bool isNew = false,
+  }) {
     final theme = Theme.of(context);
 
     final deviceNameController = TextEditingController(text: device.deviceName);
@@ -464,7 +506,7 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
     );
     final macAddressController = TextEditingController(text: device.macAdress);
     bool isChecked = false;
-    return showDialog<_PlacedDevice>(
+    return showDialog<_DeviceDialogResult>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => Dialog(
@@ -578,6 +620,31 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        if (!isNew) ...[
+                          SecondaryButton(
+                            onPressed: () async {
+                              final confirmed = await alertBox(
+                                dialogContext,
+                                "Delete device",
+                                device.id == null
+                                    ? "Remove this device from the office?"
+                                    : "Remove this device from the office? "
+                                          "When you save the office, its "
+                                          "report history is deleted too.",
+                                mode: AlertBoxMode.choice,
+                              );
+                              if (confirmed != true || !dialogContext.mounted) {
+                                return;
+                              }
+                              Navigator.of(
+                                dialogContext,
+                              ).pop(const _DeviceDialogResult.delete());
+                            },
+                            label: "Delete device",
+                            width: 180,
+                          ),
+                          const Spacer(),
+                        ],
                         SecondaryButton(
                           onPressed: () => Navigator.of(dialogContext).pop(),
                           label: "Cancel",
@@ -586,16 +653,18 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                         PrimaryButton(
                           onPressed: () {
                             Navigator.of(dialogContext).pop(
-                              _PlacedDevice(
-                                type: device.type,
-                                offset: device.offset,
-                                deviceName: deviceNameController.text,
-                                ipAddress: ipAddressController.text,
-                                subnetMask: subnetMaskController.text,
-                                vlanID: vlanIdController.text,
-                                osAndVersion: osVersionController.text,
-                                manufacturer: manufacturerController.text,
-                                macAdress: macAddressController.text,
+                              _DeviceDialogResult.save(
+                                _PlacedDevice(
+                                  type: device.type,
+                                  offset: device.offset,
+                                  deviceName: deviceNameController.text,
+                                  ipAddress: ipAddressController.text,
+                                  subnetMask: subnetMaskController.text,
+                                  vlanID: vlanIdController.text,
+                                  osAndVersion: osVersionController.text,
+                                  manufacturer: manufacturerController.text,
+                                  macAdress: macAddressController.text,
+                                ),
                               ),
                             );
                           },
@@ -610,8 +679,17 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
           ),
         ),
       ),
-    ).then((result) {
-      if (result == null) return;
+    ).then((dialogResult) {
+      if (!mounted) return;
+      if (dialogResult == null) {
+        if (isNew) setState(() => _placedDevices.remove(device));
+        return;
+      }
+      if (dialogResult.delete) {
+        setState(() => _placedDevices.remove(device));
+        return;
+      }
+      final result = dialogResult.device!;
       setState(() {
         device.deviceName = result.deviceName;
         device.ipAddress = result.ipAddress;
@@ -627,6 +705,7 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
   Future<String?> _showOfficeName(BuildContext context, String officeName) {
     final theme = Theme.of(context);
     final officeNameController = TextEditingController(text: officeName);
+    final formKey = GlobalKey<FormState>();
     return showDialog<String>(
       context: context,
       builder: (BuildContext context) {
@@ -648,14 +727,35 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                     style: theme.textTheme.displayLarge,
                     textAlign: TextAlign.center,
                   ),
-                  CustomTextField(controller: officeNameController),
+                  Form(
+                    key: formKey,
+                    child: CustomTextField(
+                      controller: officeNameController,
+                      // Same rules as the API's office validator.
+                      validator: (value) {
+                        final name = (value as String? ?? "").trim();
+                        if (name.isEmpty) return "Office name is required";
+                        if (name.length < 3) {
+                          return "Office name must be at least 3 characters";
+                        }
+                        if (name.length > 20) {
+                          return "Office name can be at most 20 characters";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
                   Row(
                     spacing: 10,
                     children: [
                       Expanded(
                         child: PrimaryButton(
                           onPressed: () {
-                            Navigator.pop(context, officeNameController.text);
+                            if (!formKey.currentState!.validate()) return;
+                            Navigator.pop(
+                              context,
+                              officeNameController.text.trim(),
+                            );
                           },
                           label: "Save",
                         ),

@@ -25,55 +25,74 @@ namespace Deliverance.Services
             _mapper = mapper;
             _dbContext = dbContext;
         }
-
+        protected abstract IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, TSearch? search,Guid userId = default, bool isAdmin = false);
 
         /// <summary>
-        /// Applies search filters to the query. Override in derived classes to implement specific filtering logic.
+        /// Matches the requested sort column against the entity's mapped columns
+        /// (case-insensitive) and returns its exact name, or "" if there is none.
+        /// EF.Property needs the exact name, and navigations or unmapped properties
+        /// can't be sorted on in SQL.
         /// </summary>
-        protected abstract IEnumerable<TEntity> ApplyFilters(IEnumerable<TEntity> query, TSearch? search,Guid userId = default);
-
         protected string CompareSortBy(string sortBy)
         {
-            Type entity = typeof(TEntity);
-            PropertyInfo[] properties = entity.GetProperties();
-            foreach(PropertyInfo prop in properties)
+            var property = _dbContext.Model.FindEntityType(typeof(TEntity))?
+                .GetProperties()
+                .FirstOrDefault(p => string.Equals(p.Name, sortBy, StringComparison.OrdinalIgnoreCase));
+            return property?.Name ?? "";
+        }
+
+        /// <summary>
+        /// Applies the requested sort, then the primary key as a tie-breaker, so
+        /// Skip/Take pages are stable (no overlaps or gaps between pages).
+        /// </summary>
+        protected IQueryable<TEntity> ApplySorting(IQueryable<TEntity> query, TSearch search)
+        {
+            IOrderedQueryable<TEntity>? ordered = null;
+
+            if (!string.IsNullOrWhiteSpace(search.SortBy))
             {
-                if(prop.Name.ToLower() == sortBy.ToLower())
+                string sortProperty = CompareSortBy(search.SortBy);
+                if (!string.IsNullOrEmpty(sortProperty))
                 {
-                    return sortBy;
+                    ordered = search.Descending
+                        ? query.OrderByDescending(x => EF.Property<object>(x, sortProperty))
+                        : query.OrderBy(x => EF.Property<object>(x, sortProperty));
                 }
             }
-            return "";
+
+            var keyProperties = _dbContext.Model.FindEntityType(typeof(TEntity))?
+                .FindPrimaryKey()?.Properties.Select(p => p.Name) ?? Enumerable.Empty<string>();
+            foreach (var key in keyProperties)
+            {
+                ordered = ordered == null
+                    ? query.OrderBy(x => EF.Property<object>(x, key))
+                    : ordered.ThenBy(x => EF.Property<object>(x, key));
+            }
+
+            return ordered ?? query;
         }
-        public virtual  IEnumerable<TEntity> GetQuery()
+        public virtual  IQueryable<TEntity> GetQuery()
         {
             return this._dbContext.Set<TEntity>();
         }
-        public virtual async Task<PageResult<TResponse>> GetAllAsync(TSearch? search = null,Guid userId = default)
+        public virtual async Task<PageResult<TResponse>> GetAllAsync(TSearch? search = null,Guid userId = default, bool isAdmin = false)
         {
-            IEnumerable<TEntity> query = GetQuery();
-            query = ApplyFilters(query, search,userId);
+            search ??= (TSearch)Activator.CreateInstance(typeof(TSearch))!;
+
+            // Lists are read-only, so skip change tracking.
+            IQueryable<TEntity> query = GetQuery().AsNoTracking();
+            query = ApplyFilters(query, search,userId, isAdmin);
 
             int? totalCount = null;
 
             if (search.IncludeTotalCount ?? false)
             {
-                totalCount = query.Count();
+                totalCount = await query.CountAsync();
             }
 
-            if (!string.IsNullOrWhiteSpace(search.SortBy))
-            {
-                if (search.Descending)
-                {
-                    query = query.AsQueryable().OrderByDescending(x => EF.Property<object>(x, CompareSortBy(search.SortBy)));
-                }
-                else
-                {
-                    query = query.AsQueryable().OrderBy(x => EF.Property<object>(x, CompareSortBy(search.SortBy)));
-                }
-            }
+            query = ApplySorting(query, search);
 
-            if (search.Page.HasValue)
+            if (search.Page.HasValue && search.PageSize.HasValue)
             {
                 query = query.Skip((search.Page.Value - 1) * search.PageSize.Value);
             }
@@ -83,31 +102,35 @@ namespace Deliverance.Services
                 query = query.Take(search.PageSize.Value);
             }
 
-            var list = query.Select(item => _mapper.Map<TResponse>(item)).ToList();
+            var entities = await query.ToListAsync();
+            var list = entities.Select(item => _mapper.Map<TResponse>(item)).ToList();
 
             var pageResult = new PageResult<TResponse>
             {
                 Items = list,
-                TotalCount = totalCount
+                TotalCount = totalCount,
+                TotalPages = totalCount > 0 && search.PageSize > 0
+                    ? (int)Math.Ceiling((double)totalCount.Value / search.PageSize.Value)
+                    : null,
             };
 
-            return await Task.FromResult(pageResult);
+            return pageResult;
         }
 
-        public virtual async Task<TResponse> GetByIdAsync(int id,Guid userId)
+        public virtual async Task<TResponse> GetByIdAsync(int id,Guid userId, bool isAdmin = false)
         {
-            var entity = this._dbContext.Set<TEntity>().Find(id);
-            if (entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty)
-            {
-            if (ownedEntity.UserUUID != userId)
-            throw new ClientException("You do not have access to this resource.");
-            }
+            var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
             if (entity == null)
             {
                 throw new KeyNotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
             }
+            if (!isAdmin && entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty
+                && ownedEntity.UserUUID != userId)
+            {
+                throw new ClientException("You do not have access to this resource.");
+            }
 
-            return await Task.FromResult(_mapper.Map<TResponse>(entity));
+            return _mapper.Map<TResponse>(entity);
         }
     }
 }

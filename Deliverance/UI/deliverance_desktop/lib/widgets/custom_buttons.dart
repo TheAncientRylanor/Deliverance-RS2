@@ -1,3 +1,4 @@
+import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:flutter/material.dart';
 
 class PrimaryButton extends StatelessWidget {
@@ -6,6 +7,7 @@ class PrimaryButton extends StatelessWidget {
   final double? width;
   final double height;
   final Icon? icon;
+  final bool isLoading;
 
   const PrimaryButton({
     super.key,
@@ -14,6 +16,7 @@ class PrimaryButton extends StatelessWidget {
     this.width = 165,
     this.height = 50,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -31,36 +34,43 @@ class PrimaryButton extends StatelessWidget {
             ),
             side: BorderSide(color: Theme.of(context).colorScheme.surface),
           ),
-          onPressed: onPressed,
-          child: icon != null
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 10,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.surface,
-                              fontSize: 22,
-                              fontWeight: FontWeight(400),
-                            ),
-                      ),
-                    ),
-                    icon!,
-                  ],
+          onPressed: isLoading ? null : onPressed,
+          child: isLoading
+              ? globalLoadingSpinner(
+                  size: height * 0.5,
+                  color: Theme.of(context).colorScheme.surface,
                 )
-              : Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  softWrap: true,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.surface,
-                    fontSize: 22,
-                  ),
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: icon != null
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 10,
+                          children: [
+                            Text(
+                              label,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.surface,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight(400),
+                                  ),
+                            ),
+                            icon!,
+                          ],
+                        )
+                      : Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.surface,
+                                fontSize: 22,
+                              ),
+                        ),
                 ),
         ),
       ),
@@ -74,6 +84,7 @@ class SecondaryButton extends StatelessWidget {
   final double? width;
   final double height;
   final Icon? icon;
+  final bool isLoading;
   const SecondaryButton({
     super.key,
     required this.onPressed,
@@ -81,6 +92,7 @@ class SecondaryButton extends StatelessWidget {
     this.width = 165,
     this.height = 50,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -98,35 +110,50 @@ class SecondaryButton extends StatelessWidget {
             ),
             side: BorderSide(color: Theme.of(context).colorScheme.outline),
           ),
-          onPressed: onPressed,
-          child: icon != null
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 10,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: const Color.fromRGBO(255, 255, 255, 1.00),
-                              fontSize: 22,
-                            ),
-                      ),
-                    ),
-                    icon!,
-                  ],
+          onPressed: isLoading ? null : onPressed,
+          child: isLoading
+              ? globalLoadingSpinner(
+                  size: height * 0.5,
+                  color: const Color.fromRGBO(255, 255, 255, 1.00),
                 )
-              : Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  softWrap: true,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: const Color.fromRGBO(255, 255, 255, 1.00),
-                    fontSize: 22,
-                  ),
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: icon != null
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 10,
+                          children: [
+                            Text(
+                              label,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: const Color.fromRGBO(
+                                      255,
+                                      255,
+                                      255,
+                                      1.00,
+                                    ),
+                                    fontSize: 22,
+                                  ),
+                            ),
+                            icon!,
+                          ],
+                        )
+                      : Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: const Color.fromRGBO(
+                                  255,
+                                  255,
+                                  255,
+                                  1.00,
+                                ),
+                                fontSize: 22,
+                              ),
+                        ),
                 ),
         ),
       ),

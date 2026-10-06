@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Shows a themed date picker followed by a time picker, combining the
-/// results into a single [DateTime]. Both pickers are wrapped so they use
-/// the app's [ColorScheme] instead of Flutter's defaults.
-///
-/// Returns `null` if the user cancels either step.
 Future<DateTime?> pickDateAndTime(
   BuildContext context, {
   DateTime? initialDate,

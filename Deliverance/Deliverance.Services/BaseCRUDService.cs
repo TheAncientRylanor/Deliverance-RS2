@@ -91,27 +91,22 @@ namespace Deliverance.Services
             this._dbContext.Set<TEntity>().Add(entity);
             await this._dbContext.SaveChangesAsync();
 
-            return await Task.FromResult(_mapper.Map<TResponse>(entity));
+            return _mapper.Map<TResponse>(entity);
         }
 
-        public virtual async Task<TResponse> UpdateAsync(int id, TUpdateRequest request,Guid userId)
+        public virtual async Task<TResponse> UpdateAsync(int id, TUpdateRequest request,Guid userId, bool isAdmin = false)
         {
             var validationResult = await _updateValidator.ValidateAsync(request);
             if (validationResult.IsValid == false)
             {
-                var errors = validationResult.Errors.Select(e => _mapper.Map<ValidationFailure>(e));
                 throw new ValidationException(validationResult.Errors);
             }
 
-            var entity = this._dbContext.Set<TEntity>().Find(id);
+            var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
 
             if (entity == null)
                 throw new KeyNotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
-                 if (entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty)
-                {
-                    if (ownedEntity.UserUUID != userId)
-                    throw new ClientException("You do not have access to this resource.");
-                }
+            EnsureOwner(entity, userId, isAdmin);
             MapUpdateRequestToEntity(request, entity);
 
             var updatedAtProperty = entity.GetType().GetProperty("UpdatedAt");
@@ -122,26 +117,34 @@ namespace Deliverance.Services
 
             await this._dbContext.SaveChangesAsync();
 
-            return await Task.FromResult(_mapper.Map<TResponse>(entity));
+            return _mapper.Map<TResponse>(entity);
         }
 
         /// <summary>
         /// Deletes an entity from the data source by id.
         /// </summary>
-        public virtual async Task DeleteAsync(int id,Guid userId)
+        public virtual async Task DeleteAsync(int id,Guid userId, bool isAdmin = false)
         {
-            var entity = this._dbContext.Set<TEntity>().Find(id);
-            if (entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty)
-            {
-            if (ownedEntity.UserUUID != userId)
-            throw new ClientException("You do not have access to this resource.");
-            }
+            var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
+            EnsureOwner(entity, userId, isAdmin);
 
             this._dbContext.Set<TEntity>().Remove(entity);
             await this._dbContext.SaveChangesAsync();
         }
+        /// <summary>
+        /// Non-admins may only change entities they own (IUserOwnedEntity).
+        /// </summary>
+        protected static void EnsureOwner(TEntity entity, Guid userId, bool isAdmin)
+        {
+            if (!isAdmin && entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty
+                && ownedEntity.UserUUID != userId)
+            {
+                throw new ClientException("You do not have access to this resource.");
+            }
+        }
+
          public static void SyncCollection<TItem, TRequest>(
             ICollection<TItem> existingItems,
             IEnumerable<TRequest>? incomingItems,

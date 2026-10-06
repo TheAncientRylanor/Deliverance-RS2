@@ -1,10 +1,13 @@
 import 'package:deliverance_mobile/layouts/master_screen.dart';
+import 'package:deliverance_mobile/models/base_search_object.dart';
 import 'package:deliverance_mobile/models/contact.dart';
 import 'package:deliverance_mobile/models/search_result.dart';
 import 'package:deliverance_mobile/providers/contact_provider.dart';
 import 'package:deliverance_mobile/screens/add_contact_screen.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
+import 'package:deliverance_mobile/widgets/custom_paginator.dart';
+import 'package:deliverance_mobile/widgets/custom_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,8 +19,14 @@ class ContactsScreen extends StatefulWidget {
 
 class _ContactsScreen extends State<ContactsScreen> {
   late ContactProvider _contactProvider;
-  late SearchResult<Contact> _contacts;
+  SearchResult<Contact> _contacts = SearchResult();
+  final BaseSearchObject _searchObject = BaseSearchObject(
+    page: 1,
+    pageSize: 4,
+    includeTotalCount: true,
+  );
   bool isLoading = true;
+  int? _removingContactId;
 
   @override
   void initState() {
@@ -26,16 +35,25 @@ class _ContactsScreen extends State<ContactsScreen> {
     _initValues();
   }
 
+  int get _totalPages {
+    final totalCount = _contacts.totalCount ?? 0;
+    final pageSize = _searchObject.pageSize ?? 4;
+    if (totalCount == 0 || pageSize == 0) return totalCount == 0 ? 0 : 1;
+    return (totalCount / pageSize).ceil();
+  }
+
   Future<void> _initValues() async {
     try {
-      final data = await _contactProvider.get();
+      final data = await _contactProvider.get(filter: _searchObject.toJson());
+      if (!mounted) return;
+      _contacts = data;
+    } on Exception catch (e) {
+      if (!mounted) return;
+      alertBoxMoveBack(context, 'Error', e.toString(), onRetry: _initValues);
+    } finally {
       setState(() {
-        _contacts = data;
         isLoading = false;
       });
-    } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Error', e.toString());
-      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -44,15 +62,17 @@ class _ContactsScreen extends State<ContactsScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
+    setState(() => _removingContactId = contact.id);
     try {
-      _contactProvider.remove(contact.id as int);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Contact sucessfuly removed")),
-      );
+      await _contactProvider.remove(contact.id as int);
+      if (!mounted) return;
+      showCustomToast(context, "Contact removed successfully");
       setState(() => isLoading = true);
       await _initValues();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
+    } finally {
+      if (mounted) setState(() => _removingContactId = null);
     }
   }
 
@@ -60,8 +80,10 @@ class _ContactsScreen extends State<ContactsScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            AddContactScreen(isUpdating: true, contact: contact),
+        builder: (context) => MasterScreen(
+          title: "Contacts",
+          child: AddContactScreen(isUpdating: true, contact: contact),
+        ),
       ),
     );
 
@@ -77,7 +99,10 @@ class _ContactsScreen extends State<ContactsScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AddContactScreen(isUpdating: false),
+        builder: (context) => const MasterScreen(
+          title: "Contacts",
+          child: AddContactScreen(isUpdating: false),
+        ),
       ),
     );
 
@@ -91,48 +116,55 @@ class _ContactsScreen extends State<ContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MasterScreen(
-      title: "Contacts",
-      child: Scaffold(
-        body: isLoading
-            ? Center(
-                child: globalLoadingSpinner(
-                  size: 48,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              )
-            : SingleChildScrollView(
-                child: Center(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 70.0),
-                        child: Text(
-                          "Contacts",
-                          style: Theme.of(context).textTheme.displayLarge,
-                        ),
+    return Scaffold(
+      body: isLoading
+          ? Center(
+              child: globalLoadingSpinner(
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : SingleChildScrollView(
+              child: Center(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 70.0),
+                      child: Text(
+                        "Contacts",
+                        style: Theme.of(context).textTheme.displayLarge,
                       ),
-                      PrimaryButton(
-                        onPressed: _handleAddContact,
-                        label: "Add contact",
-                        width: 180,
+                    ),
+                    PrimaryButton(
+                      onPressed: _handleAddContact,
+                      label: "Add contact",
+                      width: 180,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 50,
+                        vertical: 50,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 50,
-                          vertical: 50,
-                        ),
-                        child: ContactList(
-                          contacts: _contacts.items ?? [],
-                          onEdit: _handleEdit,
-                          onRemove: _handleRemove,
-                        ),
+                      child: ContactList(
+                        contacts: _contacts.items ?? [],
+                        onEdit: _handleEdit,
+                        onRemove: _handleRemove,
+                        removingContactId: _removingContactId,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 30),
+                    CustomPaginator(
+                      currentPage: _searchObject.page ?? 1,
+                      totalPages: _totalPages,
+                      pageSize: _searchObject.pageSize ?? 4,
+                      searchObject: _searchObject,
+                      onChanged: _initValues,
+                    ),
+                    const SizedBox(height: 50),
+                  ],
                 ),
               ),
-      ),
+            ),
     );
   }
 }
@@ -141,12 +173,14 @@ class ContactList extends StatelessWidget {
   final List<Contact> contacts;
   final void Function(Contact contact) onEdit;
   final void Function(Contact contact) onRemove;
+  final int? removingContactId;
 
   const ContactList({
     super.key,
     required this.contacts,
     required this.onEdit,
     required this.onRemove,
+    this.removingContactId,
   });
 
   @override
@@ -159,34 +193,25 @@ class ContactList extends StatelessWidget {
             contact: contact,
             onEdit: () => onEdit(contact),
             onRemove: () => onRemove(contact),
+            isRemoving: removingContactId == contact.id,
           ),
       ],
     );
   }
 }
-/*
-return ListView.builder(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: contacts.length,
-      itemBuilder: (context, index) {
-        final contact = contacts[index];
-   
-      },
-    );
-*/
 
 class ContactCard extends StatelessWidget {
   final Contact contact;
   final VoidCallback onEdit;
   final VoidCallback onRemove;
+  final bool isRemoving;
 
   const ContactCard({
     super.key,
     required this.contact,
     required this.onEdit,
     required this.onRemove,
+    this.isRemoving = false,
   });
 
   @override
@@ -244,11 +269,12 @@ class ContactCard extends StatelessWidget {
                               onPressed: onRemove,
                               label: "Remove",
                               height: 30,
+                              isLoading: isRemoving,
                             ),
                           ),
                           Expanded(
                             child: PrimaryButton(
-                              onPressed: onEdit,
+                              onPressed: isRemoving ? null : onEdit,
                               label: "Edit",
                               height: 30,
                             ),
@@ -313,6 +339,7 @@ class _ContactEmailList extends StatelessWidget {
               child: Text(
                 email.email as String,
                 style: Theme.of(context).textTheme.labelMedium,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -349,12 +376,20 @@ class _ContactPhoneList extends StatelessWidget {
               child: Text(
                 phone.phoneNumber as String,
                 style: Theme.of(context).textTheme.labelMedium,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
       ],
     );
   }
+}
+
+String _formatTimeString(String? time) {
+  if (time == null || time.isEmpty) return '';
+  final parts = time.split(':');
+  if (parts.length < 2) return time;
+  return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
 }
 
 class _ContactAvailabilty extends StatelessWidget {
@@ -403,7 +438,7 @@ class _ContactAvailabilty extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: Text(
-                    '${ava.fromTime ?? ''} - ${ava.toTime ?? ''}',
+                    '${_formatTimeString(ava.fromTime)} - ${_formatTimeString(ava.toTime)}',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ),
@@ -423,7 +458,7 @@ void showContactDialog(BuildContext context, Contact contact) {
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       title: Center(child: Text('${contact.firstName} ${contact.lastName}')),
       titleTextStyle: Theme.of(context).textTheme.headlineMedium,
       scrollable: true,
@@ -448,7 +483,7 @@ void showContactDialog(BuildContext context, Contact contact) {
               ),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Text(
             "Phone numbers",
             style: Theme.of(context).textTheme.headlineSmall,

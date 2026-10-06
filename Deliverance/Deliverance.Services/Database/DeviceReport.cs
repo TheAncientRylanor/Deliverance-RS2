@@ -8,7 +8,7 @@ public class DeviceReport
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public SeverityEnum? Severity { get; set; }
+    public string? Occurance { get; set; }
 
     [MaxLength(255)]
     public string? Detail { get; set; }

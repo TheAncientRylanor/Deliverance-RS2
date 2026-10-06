@@ -29,6 +29,7 @@ Devices _$DevicesFromJson(Map<String, dynamic> json) => Devices(
   vlanID: json['vlanID'] as String?,
   os: json['os'] as String?,
   manufacturer: json['manufacturer'] as String?,
+  isReported: json['isReported'] as bool?,
 );
 
 Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
@@ -46,4 +47,5 @@ Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
   'vlanID': instance.vlanID,
   'os': instance.os,
   'manufacturer': instance.manufacturer,
+  'isReported': instance.isReported,
 };

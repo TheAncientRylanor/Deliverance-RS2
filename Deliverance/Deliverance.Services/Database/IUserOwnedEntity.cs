@@ -1,4 +1,4 @@
 public interface IUserOwnedEntity
 {
-    Guid? UserUUID { get; }
+    Guid UserUUID { get; }
 }

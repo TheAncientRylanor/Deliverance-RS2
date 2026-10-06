@@ -13,7 +13,11 @@ namespace Deliverance.Services.Database
                 entity.Property(e => e.UUID)
                     .HasColumnType("UNIQUEIDENTIFIER")
                     .IsRequired();
+                entity.Property(u => u.Username).HasMaxLength(100);
+                entity.Property(u => u.Email).HasMaxLength(256);
 
+                entity.HasIndex(u => u.Username).IsUnique();
+                entity.HasIndex(u => u.Email).IsUnique();
             });
             modelBuilder.Entity<User>()
             .HasOne(u => u.Role)
@@ -59,6 +63,11 @@ namespace Deliverance.Services.Database
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<Report>(entity =>
+            {
+                entity.Property(r => r.Status).HasMaxLength(50);
+                entity.HasIndex(r => r.Status);
+            });
             modelBuilder.Entity<OfficeReport>()
             .HasOne(or => or.Report)
             .WithMany(r => r.OfficeReports)
@@ -90,12 +99,46 @@ namespace Deliverance.Services.Database
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<ReportOccurance>()
+            .HasOne(ro => ro.Report)
+            .WithMany(r => r.ReportOccurances)
+            .HasForeignKey(ro => ro.ReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ReportOccurance>()
+            .HasOne(ro => ro.Occurance)
+            .WithMany(o => o.ReportOccurances)
+            .HasForeignKey(ro => ro.OccuranceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+
+            modelBuilder.Entity<RefreshTokens>()
+            .HasIndex(rt => rt.Token)
+            .IsUnique();
+
             modelBuilder.Entity<RefreshTokens>()
             .HasOne(m => m.User)
             .WithMany(u => u.RefreshToken)
             .HasForeignKey(m => m.UserUUID)
-            .HasPrincipalKey(u => u.UUID) 
+            .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ReportStatistics>()
+            .HasIndex(rs => new { rs.DateReported, rs.OfficeId });
+
+            modelBuilder.Entity<ReportStatistics>()
+            .HasOne(rs => rs.User)
+            .WithMany()
+            .HasForeignKey(rs => rs.UserId)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Office>(entity =>
+            {
+                // nvarchar(max) can't be indexed, so the name needs a length.
+                entity.Property(o => o.Name).HasMaxLength(100);
+                entity.HasIndex(o => o.Name).IsUnique();
+            });
         }
     }
 }

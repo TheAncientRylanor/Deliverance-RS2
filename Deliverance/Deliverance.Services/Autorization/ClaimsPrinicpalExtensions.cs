@@ -1,3 +1,4 @@
+using Deliverance.Model.Enums;
 using System.Security.Claims;
 
 public static class ClaimsPrincipalExtensions
@@ -12,4 +13,17 @@ public static class ClaimsPrincipalExtensions
 
         return userId;
     }
+
+    public static RoleEnum? GetUserRole(this ClaimsPrincipal user)
+    {
+        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        if (roleClaim is null || !int.TryParse(roleClaim, out var roleId))
+            return null;
+
+        return (RoleEnum)roleId;
+    }
+
+    public static bool IsAdmin(this ClaimsPrincipal user)
+        => user.GetUserRole() == RoleEnum.Admin;
 }

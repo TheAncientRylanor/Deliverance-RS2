@@ -1,6 +1,15 @@
-import 'package:deliverance_desktop/layouts/master_screen.dart';
+import 'package:deliverance_desktop/models/report.dart';
+import 'package:deliverance_desktop/models/report_status_filter.dart';
+import 'package:deliverance_desktop/models/search_models/report_search_object.dart';
+import 'package:deliverance_desktop/models/search_result.dart';
+import 'package:deliverance_desktop/providers/report_provider.dart';
+import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/util_widgets.dart';
+import 'package:deliverance_desktop/widgets/custom_paginator.dart';
 import 'package:deliverance_desktop/widgets/report_card.dart';
+import 'package:deliverance_desktop/widgets/search_sort_header.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -10,112 +19,105 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreen extends State<ReportsScreen> {
-  int _pageSize = 4;
+  late ReportProvider _reportProvider;
+  SearchResult<Report> _reportList = SearchResult();
+  final ReportSearchObject _reportSearchObject = ReportSearchObject(
+    page: 1,
+    pageSize: 4,
+    includeTotalCount: true,
+    status: ReportStatusFilter.active,
+  );
+  bool isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    _reportProvider = context.read<ReportProvider>();
+    initValues();
+  }
+
+  int get _totalPages {
+    final totalCount = _reportList.totalCount ?? 0;
+    final pageSize = _reportSearchObject.pageSize ?? 4;
+    if (totalCount == 0 || pageSize == 0) return totalCount == 0 ? 0 : 1;
+    return (totalCount / pageSize).ceil();
+  }
+
+  Future<void> initValues() async {
+    try {
+      _reportList = await _reportProvider.get(
+        filter: _reportSearchObject.toJson(),
+      );
+    } on ApiClientException catch (e) {
+      if (!mounted) return;
+      alertBoxMoveBack(context, "Error", e.message, onRetry: initValues);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MasterScreen(
-      title: "Active reports",
-      child: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 50),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 20,
+    return SingleChildScrollView(
+      child: isLoading
+          ? globalLoadingSpinner()
+          : Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  FilledButton(
-                    onPressed: () {},
-                    style: FilledButton.styleFrom(
-                      shape: CircleBorder(),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      padding: EdgeInsets.all(20),
-                    ),
-                    child: Icon(Icons.search, size: 50),
+                  const SizedBox(height: 50),
+                  SearchSortHeader(
+                    searchHint: "Search reports by name...",
+                    sortDialogTitle: "Sort reports",
+                    sortColumns: const {
+                      'ReportName': 'Report Name',
+                      'Status': 'Status',
+                      'DateReported': 'Date Reported',
+                      'IssueType': 'Issue Type',
+                    },
+                    currentSortBy: _reportSearchObject.sortBy,
+                    currentDescending: _reportSearchObject.descending ?? true,
+                    onSearch: (value) {
+                      _reportSearchObject.reportName = value;
+                      _reportSearchObject.page = 1;
+                      initValues();
+                    },
+                    onSort: (sortBy, descending) {
+                      _reportSearchObject.sortBy = sortBy;
+                      _reportSearchObject.descending = descending;
+                      _reportSearchObject.page = 1;
+                      initValues();
+                    },
                   ),
-                  FilledButton(
-                    onPressed: () {},
-                    style: FilledButton.styleFrom(
-                      shape: CircleBorder(),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      padding: EdgeInsets.all(20),
+                  const SizedBox(height: 80),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Wrap(
+                      spacing: 40,
+                      runSpacing: 30,
+                      children: [
+                        for (var report in _reportList.items ?? [])
+                          RepaintBoundary(
+                            key: ValueKey(report.id),
+                            child: ReportCard(report: report),
+                          ),
+                      ],
                     ),
-                    child: Icon(Icons.sort, size: 50),
+                  ),
+                  const SizedBox(height: 40),
+                  CustomPaginator(
+                    currentPage: _reportSearchObject.page ?? 1,
+                    totalPages: _totalPages,
+                    pageSize: _reportSearchObject.pageSize ?? 4,
+                    searchObject: _reportSearchObject,
+                    onChanged: initValues,
                   ),
                 ],
               ),
-              SizedBox(height: 80),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Wrap(
-                  spacing: 40,
-                  runSpacing: 30,
-                  children: [for (int i = 0; i < 10; i++) ReportCard()],
-                ),
-              ),
-              SizedBox(height: 40),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  RotatedBox(
-                    quarterTurns: 2,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_forward_ios),
-                      color: Theme.of(context).colorScheme.primary,
-                      onPressed: () {},
-                      iconSize: 40,
-                    ),
-                  ),
-                  SizedBox(width: 20),
-                  Text(
-                    "1 of 1",
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  SizedBox(width: 20),
-                  IconButton(
-                    icon: Icon(Icons.arrow_forward_ios),
-                    color: Theme.of(context).colorScheme.primary,
-                    onPressed: () {},
-                    iconSize: 40,
-                  ),
-                  SizedBox(width: 20),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: _pageSize,
-                        items: [4, 8, 16, 32]
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value.toString()),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _pageSize = value;
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }

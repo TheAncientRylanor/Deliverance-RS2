@@ -31,10 +31,11 @@ namespace Deliverance.Services.Validators
                 .WithMessage("Device MAC addresses must be unique within an office");
 
             RuleFor(x => x.Devices)
+                // New devices are sent with Id 0, so only existing ids must be unique.
                 .Must(devices => devices == null || devices
-                    .Select(d => d.Id)
-                    .Distinct()
-                    .Count() == devices.Count)
+                    .Where(d => d.Id != 0)
+                    .GroupBy(d => d.Id)
+                    .All(g => g.Count() == 1))
                 .WithMessage("Duplicate device ids are not allowed within an office");
         }
 

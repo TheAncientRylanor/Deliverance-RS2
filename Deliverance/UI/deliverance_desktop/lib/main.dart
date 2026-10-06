@@ -1,13 +1,19 @@
-import 'package:deliverance_desktop/layouts/globalLastScreen.dart';
 import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
+import 'package:deliverance_desktop/providers/report_provider.dart';
+import 'package:deliverance_desktop/providers/report_statistics_provider.dart';
+import 'package:deliverance_desktop/providers/selected_report_provider.dart';
+import 'package:deliverance_desktop/providers/selected_user_provider.dart';
+import 'package:deliverance_desktop/providers/user_provider.dart';
 import 'package:deliverance_desktop/screens/home_screen.dart';
 import 'package:deliverance_desktop/themes/fontTheme.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/navigation_service.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:month_year_picker/month_year_picker.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -15,8 +21,12 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => GlobalData()),
         ChangeNotifierProvider(create: (_) => OfficeProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ReportStatisticsProvider()),
+        ChangeNotifierProvider(create: (_) => SelectedReportProvider()),
+        ChangeNotifierProvider(create: (_) => SelectedUserProvider()),
       ],
 
       child: const MyApp(),
@@ -31,13 +41,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      navigatorKey: navigatorKey,
+      routes: {'/login': (context) => const LoginScreen()},
+      localizationsDelegates:
+          MonthYearPickerLocalizations.localizationsDelegates,
+      supportedLocales: MonthYearPickerLocalizations.supportedLocales,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Color.fromRGBO(26, 32, 44, 1.00),
           surface: Color.fromRGBO(26, 32, 44, 1.00),
           onSurface: Colors.white,
           surfaceContainer: Color.fromRGBO(45, 55, 72, 1.00),
-          primary: Color.fromRGBO(255, 179, 0, 1.00),
+          primary: Color.fromRGBO(255, 179, 0, 1),
           secondary: Color.fromRGBO(26, 32, 44, 1.00),
           onPrimary: Color.fromRGBO(26, 32, 44, 1.00),
           onSecondary: Color.fromRGBO(255, 255, 255, 1.00),
@@ -63,10 +78,17 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _authFuture = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    ).tryAutoLogin();
+    _authFuture = _initAuth();
+  }
+
+  Future<AuthStatus> _initAuth() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final status = await authProvider.tryAutoLogin();
+    if (status == AuthStatus.authenticated) {
+      await userProvider.loadCurrentUser();
+    }
+    return status;
   }
 
   @override
@@ -82,16 +104,54 @@ class _AuthGateState extends State<AuthGate> {
         if (snapshot.data == AuthStatus.authenticated) {
           return HomeScreen();
         }
-        return LoginScreen();
+        return const LoginScreen();
       },
     );
   }
 }
 
-class LoginScreen extends StatelessWidget {
-  LoginScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoggingIn = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (_isLoggingIn) return;
+    setState(() => _isLoggingIn = true);
+    try {
+      await context.read<AuthProvider>().login(
+        _usernameController.text,
+        _passwordController.text,
+      );
+      if (!mounted) return;
+      await context.read<UserProvider>().loadCurrentUser();
+      if (!mounted) return;
+      // Replace the login screen so going back can't return to it.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    } on ApiClientException catch (e) {
+      if (!mounted) return;
+      alertBox(context, "Login error", e.message);
+    } finally {
+      if (mounted) setState(() => _isLoggingIn = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,62 +176,25 @@ class LoginScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.displayLarge,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   CustomTextField(
                     labelText: "Username",
                     controller: _usernameController,
+                    onSubmited: (_) => _login(),
                   ),
-                  SizedBox(height: 20),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 20),
                   CustomTextField(
                     obscureText: true,
                     labelText: "Password",
                     controller: _passwordController,
+                    onSubmited: (_) => _login(),
                   ),
-                  SizedBox(
+                  const SizedBox(height: 60),
+                  PrimaryButton(
+                    onPressed: _login,
+                    isLoading: _isLoggingIn,
+                    label: 'Log in',
                     width: 200,
-                    child: Column(
-                      children: [
-                        SizedBox(height: 60),
-                        PrimaryButton(
-                          onPressed: () async {
-                            AuthProvider authProvider =
-                                Provider.of<AuthProvider>(
-                                  context,
-                                  listen: false,
-                                );
-                            try {
-                              await authProvider.login(
-                                _usernameController.text,
-                                _passwordController.text,
-                              );
-                              if (!context.mounted) return;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HomeScreen(),
-                                ),
-                              );
-                            } on ApiClientException catch (e) {
-                              alertBox(context, "Login error", e.toString());
-                            }
-                          },
-                          label: 'Log in',
-                        ),
-                        SizedBox(height: 20),
-                        SecondaryButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LoginScreen(),
-                              ),
-                            );
-                          },
-                          label: 'Register',
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),

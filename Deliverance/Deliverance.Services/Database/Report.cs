@@ -14,18 +14,19 @@ public class Report : IUserOwnedEntity
     [MaxLength(30)]
     public string ReportName { get; set; }  = string.Empty;
 
-    public int? Status { get; set; }
+    public string? Status { get; set; }
 
     [Required]
     public DateTime DateReported { get; set; }
 
 
     public SeverityEnum? Severity { get; set; }
+    public IssueEnum? IssueType {get;set;}
 
     [MaxLength(255)]
     public string? Detail { get; set; }
 
-    public Guid? UserUUID { get; set; }
+    public Guid UserUUID { get; set; }
 
     public string? ReportClearedBy { get; set; }
 
@@ -34,4 +35,7 @@ public class Report : IUserOwnedEntity
     public User? User { get; set; }
 
     public ICollection<OfficeReport> OfficeReports { get; set; } = new List<OfficeReport>();
+
+    public ICollection<ReportOccurance> ReportOccurances { get; set; } = new List<ReportOccurance>();
+
 }

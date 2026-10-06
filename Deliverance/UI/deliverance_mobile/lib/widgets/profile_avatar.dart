@@ -5,6 +5,7 @@ class ProfileAvatar extends StatelessWidget {
   final bool isEditable;
   final VoidCallback onEditTap;
   const ProfileAvatar({
+    super.key,
     required this.child,
     required this.isEditable,
     required this.onEditTap,

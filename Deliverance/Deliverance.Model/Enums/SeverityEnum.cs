@@ -8,9 +8,10 @@ namespace Deliverance.Model.Enums
 {
     public enum SeverityEnum
     {
-        None = 0,
-        Mild = 1,
-        Danger = 2,
-        Extreme = 3,
+        None = 1,
+        Mild = 2,
+        Medium = 3,
+        Danger= 4,
+        Extreme = 5,
     }
 }

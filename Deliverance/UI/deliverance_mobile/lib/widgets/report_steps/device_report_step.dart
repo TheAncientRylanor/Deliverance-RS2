@@ -1,4 +1,5 @@
-﻿import 'package:deliverance_mobile/models/office.dart';
+﻿import 'package:deliverance_mobile/models/answer_enum.dart';
+import 'package:deliverance_mobile/models/office.dart';
 import 'package:deliverance_mobile/models/report.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
@@ -6,27 +7,52 @@ import 'package:flutter/material.dart';
 
 class DeviceReportStep extends StatefulWidget {
   final Devices _selectedDevice;
-  const DeviceReportStep({super.key, required this._selectedDevice});
+  final String _officeName;
+  final DeviceReport? _deviceReport;
+  const DeviceReportStep({
+    super.key,
+    required this._selectedDevice,
+    required this._officeName,
+    required this._deviceReport,
+  });
 
-  static Future<DeviceReport?> show(BuildContext context, Devices device) {
+  static Future<DeviceReport?> show(
+    BuildContext context,
+    Devices device,
+    String officeName,
+    DeviceReport? deviceReport,
+  ) {
     return showDialog<DeviceReport>(
       context: context,
-      builder: (context) => DeviceReportStep(selectedDevice: device),
+      builder: (context) => DeviceReportStep(
+        selectedDevice: device,
+        officeName: officeName,
+        deviceReport: deviceReport,
+      ),
     );
   }
 
   @override
-  _DeviceReportStepState createState() => _DeviceReportStepState();
+  State<DeviceReportStep> createState() => _DeviceReportStepState();
 }
 
 class _DeviceReportStepState extends State<DeviceReportStep> {
-  TextEditingController _description = TextEditingController();
+  final TextEditingController _description = TextEditingController();
   String _selectedOccurance = "";
   late DeviceReport deviceReport;
+
+  @override
+  void initState() {
+    super.initState();
+    _description.text = widget._deviceReport?.detail ?? "";
+    _selectedOccurance = widget._deviceReport?.occurance ?? "";
+  }
+
   @override
   Widget build(BuildContext context) {
     TextStyle? style = Theme.of(context).textTheme.labelMedium;
     return Dialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       insetPadding: const EdgeInsets.all(20),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -35,9 +61,7 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
             spacing: 20,
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildContent(context, style),
-            ],
+            children: [_buildContent(context, style)],
           ),
         ),
       ),
@@ -46,11 +70,11 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
 
   Widget _buildContent(BuildContext context, TextStyle? style) {
     return Column(
-      spacing: 20,
+      spacing: 40,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          widget._selectedDevice.officeName as String,
+          widget._officeName,
           style: Theme.of(context).textTheme.displayLarge,
         ),
         Table(
@@ -72,17 +96,8 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                   child: Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text(
-                      'Manufacturer',
-                      style: style?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                TableCell(
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Text(
-                      'Reported before',
-                      style: style?.copyWith(fontWeight: FontWeight.bold),
+                      widget._selectedDevice.name as String,
+                      style: style,
                     ),
                   ),
                 ),
@@ -94,8 +109,8 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                   child: Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text(
-                      widget._selectedDevice.name as String,
-                      style: style,
+                      'Manufacturer',
+                      style: style?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -105,6 +120,19 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                     child: Text(
                       widget._selectedDevice.manufacturer ?? "Unknown",
                       style: style,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            TableRow(
+              children: [
+                TableCell(
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'Reported before',
+                      style: style?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -118,83 +146,94 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
             ),
           ],
         ),
-        CustomTextField(textStyle: Theme.of(context).textTheme.headlineLarge),
+        CustomTextField(
+          textStyle: Theme.of(context).textTheme.titleSmall,
+          minLines: 4,
+          maxLines: 30,
+          labelText: "1. Description",
+          controller: _description,
+        ),
         Column(
           children: [
             Container(
               height: 250,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            "2.1 Have you ever encountered this problem previously?",
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelMedium,
+              ),
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "2.1 Have you ever encountered this problem previously?",
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        RadioGroup<String>(
+                          groupValue: _selectedOccurance.isEmpty
+                              ? null
+                              : _selectedOccurance,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedOccurance = value ?? '';
+                            });
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: AnswerEnum.values
+                                .map(
+                                  (answer) => RadioListTile<String>(
+                                    title: Text(answer.label),
+                                    value: answer.label,
+                                  ),
+                                )
+                                .toList(),
                           ),
-                          const SizedBox(height: 10),
-                          RadioGroup<String>(
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedOccurance = value ?? '';
-                              });
-                            },
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                RadioListTile<String>(
-                                  title: Text("Yes"),
-                                  value: "Yes",
-                                ),
-                                RadioListTile<String>(
-                                  title: Text("No"),
-                                  value: "No",
-                                ),
-                                RadioListTile<String>(
-                                  title: Text("Not sure"),
-                                  value: "Not sure",
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-        Row(
-          children: [
-            SecondaryButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              label: "Cancel",
             ),
-            PrimaryButton(
-              onPressed: () {
-                deviceReport = DeviceReport(
-                  detail: _description.text,
-                  deviceId: widget._selectedDevice.id,
-                  occurance: _selectedOccurance,
-                );
-                Navigator.pop(context, deviceReport);
-              },
-              label: "Report",
+          ],
+        ),
+        Row(
+          spacing: 10,
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                label: "Cancel",
+              ),
+            ),
+            Expanded(
+              child: PrimaryButton(
+                onPressed: () {
+                  deviceReport = DeviceReport(
+                    id: widget._deviceReport?.id,
+                    detail: _description.text,
+                    deviceId: widget._selectedDevice.id,
+                    occurance: _selectedOccurance,
+                    officeReportId: widget._deviceReport?.officeReportId,
+                    name: widget._selectedDevice.name,
+                  );
+                  Navigator.pop(context, deviceReport);
+                },
+                label: "Report",
+              ),
             ),
           ],
         ),

@@ -8,6 +8,8 @@ namespace Deliverance.Model.Responses
 
         public int OfficeId { get; set; }
 
+        public string Name { get; set; } = string.Empty;
+
         public int? NumReportedDevices { get; set; }
         public ICollection<DeviceReportsResponse> DeviceReports { get; set; } = new List<DeviceReportsResponse>();
     }

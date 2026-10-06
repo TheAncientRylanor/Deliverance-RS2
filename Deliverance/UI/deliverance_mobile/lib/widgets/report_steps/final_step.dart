@@ -1,3 +1,7 @@
+import 'package:deliverance_mobile/models/answer_enum.dart';
+import 'package:deliverance_mobile/models/issue_enum.dart';
+import 'package:deliverance_mobile/models/report.dart';
+import 'package:deliverance_mobile/models/severity_enum.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +12,12 @@ class FinalStep extends StatefulWidget {
   final TextEditingController locationController;
   final TextEditingController devicesController;
   final TextEditingController dateController;
-  final List<String> selectedOccurance;
+  final List<ReportOccurance> selectedOccurance;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
   final double severity;
-  final TextEditingController issueTypeController;
+  final IssueEnum issueType;
+  final bool isSubmitting;
 
   const FinalStep({
     super.key,
@@ -25,7 +30,8 @@ class FinalStep extends StatefulWidget {
     required this.titleController,
     required this.descriptionController,
     required this.severity,
-    required this.issueTypeController,
+    required this.issueType,
+    this.isSubmitting = false,
   });
 
   @override
@@ -33,22 +39,13 @@ class FinalStep extends StatefulWidget {
 }
 
 class _FinalStepState extends State<FinalStep> {
-  static const Map<String, List<String>> _questions = {
-    'Was this a one-time occurrence?': ['Yes', 'No'],
-    'Has this happened before?': ['Yes', 'No', 'Not sure'],
-    'Did it occur during business hours?': ['Yes', 'No'],
-    'Was anyone else present when it happened?': ['Yes', 'No', 'Not sure'],
-  };
-
   int _currentQuestionIndex = 0;
-
-  List<String> get _questionKeys => _questions.keys.toList();
 
   void _goToPreviousQuestion() {
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex - 1).clamp(
         0,
-        _questions.length - 1,
+        widget.selectedOccurance.length - 1,
       );
     });
   }
@@ -57,7 +54,7 @@ class _FinalStepState extends State<FinalStep> {
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex + 1).clamp(
         0,
-        _questions.length - 1,
+        widget.selectedOccurance.length - 1,
       );
     });
   }
@@ -65,7 +62,7 @@ class _FinalStepState extends State<FinalStep> {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.titleSmall;
-    final subtitleStyle = Theme.of(context).textTheme.titleMedium;
+    final subtitleStyle = Theme.of(context).textTheme.headlineSmall;
 
     return SingleChildScrollView(
       child: Padding(
@@ -76,7 +73,7 @@ class _FinalStepState extends State<FinalStep> {
           children: [
             Text(
               "Final report",
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context).textTheme.headlineMedium,
               textAlign: TextAlign.center,
             ),
             Column(
@@ -138,14 +135,16 @@ class _FinalStepState extends State<FinalStep> {
                   textStyle: style,
                   readOnly: true,
                   controller: TextEditingController(
-                    text: widget.severity.round().toString(),
+                    text: SeverityEnum.fromValue(widget.severity.round()).label,
                   ),
                 ),
                 CustomTextField(
                   labelText: "Issue type",
                   textStyle: style,
                   readOnly: true,
-                  controller: widget.issueTypeController,
+                  controller: TextEditingController(
+                    text: widget.issueType.label,
+                  ),
                 ),
               ],
             ),
@@ -153,8 +152,15 @@ class _FinalStepState extends State<FinalStep> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                SecondaryButton(label: 'Back', onPressed: widget.onBack),
-                PrimaryButton(label: 'Submit', onPressed: widget.onSubmit),
+                SecondaryButton(
+                  label: 'Back',
+                  onPressed: widget.isSubmitting ? null : widget.onBack,
+                ),
+                PrimaryButton(
+                  label: 'Submit',
+                  onPressed: widget.onSubmit,
+                  isLoading: widget.isSubmitting,
+                ),
               ],
             ),
           ],
@@ -164,10 +170,14 @@ class _FinalStepState extends State<FinalStep> {
   }
 
   Widget _buildOccuranceSlideshow(BuildContext context, TextStyle? style) {
-    final selectedAnswer =
-        _currentQuestionIndex < widget.selectedOccurance.length
+    final hasOccurances = widget.selectedOccurance.isNotEmpty;
+    final currentOccurance = hasOccurances
         ? widget.selectedOccurance[_currentQuestionIndex]
-        : '';
+        : null;
+    final questionText = currentOccurance?.question ?? '-';
+    final answerText = currentOccurance?.answer != null
+        ? AnswerEnum.fromValue(currentOccurance!.answer!).label
+        : '-';
 
     return Column(
       children: [
@@ -181,7 +191,7 @@ class _FinalStepState extends State<FinalStep> {
               child: IconButton(
                 icon: const Icon(Icons.arrow_forward_ios),
                 color: Theme.of(context).colorScheme.primary,
-                onPressed: _currentQuestionIndex > 0
+                onPressed: hasOccurances && _currentQuestionIndex > 0
                     ? _goToPreviousQuestion
                     : null,
                 iconSize: 20,
@@ -205,13 +215,13 @@ class _FinalStepState extends State<FinalStep> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          _questionKeys[_currentQuestionIndex],
+                          questionText,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.labelMedium,
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          selectedAnswer.isEmpty ? '-' : selectedAnswer,
+                          answerText,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(
@@ -228,7 +238,10 @@ class _FinalStepState extends State<FinalStep> {
             IconButton(
               icon: const Icon(Icons.arrow_forward_ios),
               color: Theme.of(context).colorScheme.primary,
-              onPressed: _currentQuestionIndex < _questions.length - 1
+              onPressed:
+                  hasOccurances &&
+                      _currentQuestionIndex <
+                          widget.selectedOccurance.length - 1
                   ? _goToNextQuestion
                   : null,
               iconSize: 20,

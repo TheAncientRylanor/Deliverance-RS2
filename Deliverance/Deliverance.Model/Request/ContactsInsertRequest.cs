@@ -4,12 +4,11 @@ namespace Deliverance.Model.Responses
 {
     public class ContactsInsertRequest
     {
-        public Guid? UserUUID { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public required ICollection<InsertEmail> ContactEmails { get; set; }
 
-        public required ICollection<InsertPhoneNumber>? ContactPhoneNumbers { get; set; }
+        public required ICollection<InsertPhoneNumber> ContactPhoneNumbers { get; set; }
         public ICollection<AvailablitiesInsertRequest>? Availabilities {get;set;}
     }
     public class InsertEmail

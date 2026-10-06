@@ -2,6 +2,7 @@ import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
 import 'package:deliverance_mobile/screens/contacts_screen.dart';
 import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/screens/my_profile_screen.dart';
+import 'package:deliverance_mobile/screens/report_history_screen.dart';
 import 'package:deliverance_mobile/screens/report_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,37 +25,33 @@ class _MasterScreenState extends State<MasterScreen> {
   Widget _buildScreenForTitle(GlobalData globalData, String titleName) {
     switch (titleName.trim().toLowerCase()) {
       case 'home':
-        return const HomeScreen();
+        return MasterScreen(title: "Home", child: HomeScreen());
       case 'my profile':
-        return const MyProfileScreen();
+        return MasterScreen(title: "My profile", child: MyProfileScreen());
       case 'contacts':
-        return const ContactsScreen();
+        return MasterScreen(title: "Contacts", child: ContactsScreen());
       case 'add contacts':
-        return const ContactsScreen();
+        return MasterScreen(title: "Contacts", child: ContactsScreen());
       case 'report a problem':
-        return const ReportScreen();
+        return ReportScreen();
+      case 'my reports':
+        return MasterScreen(title: "my reports", child: ReportHistoryScreen());
       default:
-        return HomeScreen();
+        return MasterScreen(title: "Home", child: HomeScreen());
     }
   }
 
   Widget _buildButtonClass(String titleName) {
     final globalData = context.watch<GlobalData>();
     if (checkTitle(globalData, titleName)) {
+      // Already on this screen, so the button is disabled to avoid reloading it.
       return FilledButton(
-        onPressed: () {
-          globalData.updateWidget(titleName.toLowerCase());
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _buildScreenForTitle(globalData, titleName),
-            ),
-          );
-        },
+        onPressed: null,
         style: FilledButton.styleFrom(
           padding: EdgeInsets.all(5.0),
           fixedSize: Size(250, double.infinity),
           backgroundColor: Theme.of(context).colorScheme.outline,
+          disabledBackgroundColor: Theme.of(context).colorScheme.outline,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadiusGeometry.circular(5),
           ),
@@ -228,7 +225,7 @@ class _MasterScreenState extends State<MasterScreen> {
                                 title: Center(
                                   child: SizedBox(
                                     width: 250,
-                                    child: _buildButtonClass("History"),
+                                    child: _buildButtonClass("My reports"),
                                   ),
                                 ),
                               ),

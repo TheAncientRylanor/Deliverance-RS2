@@ -1,6 +1,8 @@
 import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
+import 'package:deliverance_mobile/layouts/master_screen.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/providers/contact_provider.dart';
+import 'package:deliverance_mobile/providers/occurance_provider.dart';
 import 'package:deliverance_mobile/providers/office_provider.dart';
 import 'package:deliverance_mobile/providers/report_provider.dart';
 import 'package:deliverance_mobile/providers/user_provider.dart';
@@ -8,6 +10,7 @@ import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/screens/register_screen.dart';
 import 'package:deliverance_mobile/themes/fontTheme.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/navigation_service.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
@@ -24,6 +27,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => GlobalData()),
         ChangeNotifierProvider(create: (_) => OfficeProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => OccuranceProvider()),
       ],
       child: const MyApp(),
     ),
@@ -37,12 +41,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      navigatorKey: navigatorKey,
+      routes: {'/login': (context) => const LoginScreen()},
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Color.fromRGBO(26, 32, 44, 1.00),
           surface: Color.fromRGBO(26, 32, 44, 1.00),
           onSurface: Colors.white,
           surfaceContainer: Color.fromRGBO(45, 55, 72, 1.00),
+          surfaceDim: Color.fromRGBO(31, 37, 49, 1),
           primary: Color.fromRGBO(255, 179, 0, 1.00),
           secondary: Color.fromRGBO(26, 32, 44, 1.00),
           onPrimary: Color.fromRGBO(26, 32, 44, 1.00),
@@ -86,18 +93,32 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
         if (snapshot.data == AuthStatus.authenticated) {
-          return HomeScreen();
+          return const MasterScreen(title: "Home", child: HomeScreen());
         }
-        return LoginScreen();
+        return const LoginScreen();
       },
     );
   }
 }
 
-class LoginScreen extends StatelessWidget {
-  LoginScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,17 +144,29 @@ class LoginScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.displayLarge,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   CustomTextField(
                     labelText: "Username",
                     controller: _usernameController,
                   ),
-                  SizedBox(height: 20),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 28),
                   CustomTextField(
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     labelText: "Password",
                     controller: _passwordController,
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                   SizedBox(
                     width: 200,
@@ -152,19 +185,29 @@ class LoginScreen extends StatelessWidget {
                                 _usernameController.text,
                                 _passwordController.text,
                               );
+                              if (!context.mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => HomeScreen(),
+                                  builder: (context) => const MasterScreen(
+                                    title: "Home",
+                                    child: HomeScreen(),
+                                  ),
                                 ),
                               );
                             } on ApiClientException catch (e) {
-                              alertBox(context, "Login error", e.toString());
+                              if (!context.mounted) return;
+                              alertBox(
+                                context,
+                                "Login error",
+                                e.toString(),
+                                mode: AlertBoxMode.ok,
+                              );
                             }
                           },
                           label: 'Log in',
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
                         SecondaryButton(
                           onPressed: () {
                             Navigator.push(

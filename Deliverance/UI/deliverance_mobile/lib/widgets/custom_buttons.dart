@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:deliverance_mobile/utils/util_widgets.dart';
 
 class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String label;
   final double? width;
   final double height;
+  final bool isLoading;
 
   const PrimaryButton({
     super.key,
@@ -12,6 +14,7 @@ class PrimaryButton extends StatelessWidget {
     required this.label,
     this.width = 165,
     this.height = 50,
+    this.isLoading = false,
   });
 
   @override
@@ -26,16 +29,21 @@ class PrimaryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
           side: BorderSide(color: Theme.of(context).colorScheme.surface),
         ),
-        onPressed: onPressed,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.surface,
-            ),
-          ),
-        ),
+        onPressed: isLoading ? null : onPressed,
+        child: isLoading
+            ? globalLoadingSpinner(
+                size: height * 0.5,
+                color: Theme.of(context).colorScheme.surface,
+              )
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.surface,
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -46,6 +54,7 @@ class SecondaryButton extends StatelessWidget {
   final String label;
   final double? width;
   final double height;
+  final bool isLoading;
 
   const SecondaryButton({
     super.key,
@@ -53,6 +62,7 @@ class SecondaryButton extends StatelessWidget {
     required this.label,
     this.width = 165,
     this.height = 50,
+    this.isLoading = false,
   });
 
   @override
@@ -67,16 +77,21 @@ class SecondaryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
           side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
-        onPressed: onPressed,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: const Color.fromRGBO(255, 255, 255, 1.00),
-            ),
-          ),
-        ),
+        onPressed: isLoading ? null : onPressed,
+        child: isLoading
+            ? globalLoadingSpinner(
+                size: height * 0.5,
+                color: const Color.fromRGBO(255, 255, 255, 1.00),
+              )
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: const Color.fromRGBO(255, 255, 255, 1.00),
+                  ),
+                ),
+              ),
       ),
     );
   }

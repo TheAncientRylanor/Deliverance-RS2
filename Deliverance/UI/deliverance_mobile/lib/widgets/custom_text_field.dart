@@ -7,35 +7,48 @@ class CustomTextField extends StatelessWidget {
   final String? labelText;
   final TextInputType? keyboardType;
   final VoidCallback? onTap;
+  final Function(String)? onSubmited;
   final bool? readOnly;
   final FormFieldValidator? validator;
   final TextStyle? textStyle;
   final int? minLines;
   final int? maxLines;
   final int? maxLength;
+  final FocusNode? focusNode;
+  final GlobalKey<FormFieldState>? formFieldKey;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
   const CustomTextField({
     super.key,
+    this.focusNode,
+    this.formFieldKey,
     this.controller,
     this.obscureText = false,
     this.hintText,
     this.labelText,
     this.keyboardType,
     this.onTap,
+    this.onSubmited,
     this.readOnly,
     this.validator,
     this.textStyle,
     this.minLines,
     this.maxLines,
     this.maxLength,
+    this.prefixIcon,
+    this.suffixIcon,
   });
 
   @override
   Widget build(BuildContext context) {
     final field = TextFormField(
+      key: formFieldKey,
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      focusNode: focusNode,
       onTap: onTap,
+      onFieldSubmitted: onSubmited,
       validator: validator,
       minLines: minLines,
       maxLines: maxLines ?? 1,
@@ -44,6 +57,8 @@ class CustomTextField extends StatelessWidget {
       style: Theme.of(context).textTheme.labelSmall,
       decoration: InputDecoration(
         hintText: hintText,
+        suffixIcon: suffixIcon,
+        prefixIcon: prefixIcon,
         hintStyle: Theme.of(
           context,
         ).textTheme.labelSmall?.copyWith(color: Colors.white70),

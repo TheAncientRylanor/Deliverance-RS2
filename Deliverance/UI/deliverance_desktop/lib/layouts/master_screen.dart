@@ -1,7 +1,16 @@
-import 'package:deliverance_desktop/layouts/globalLastScreen.dart';
+import 'package:deliverance_desktop/models/user.dart';
+import 'package:deliverance_desktop/providers/selected_report_provider.dart';
+import 'package:deliverance_desktop/providers/user_provider.dart';
 import 'package:deliverance_desktop/screens/home_screen.dart';
+import 'package:deliverance_desktop/screens/my_profile_screen.dart';
 import 'package:deliverance_desktop/screens/offices_screen.dart';
+import 'package:deliverance_desktop/screens/reports_history.dart';
 import 'package:deliverance_desktop/screens/reports_screen.dart';
+import 'package:deliverance_desktop/screens/single_report_screen.dart';
+import 'package:deliverance_desktop/screens/statistics_screen.dart';
+import 'package:deliverance_desktop/screens/user_profiles_sceen.dart';
+import 'package:deliverance_desktop/utils/api_constants.dart';
+import 'package:deliverance_desktop/widgets/image_holder.dart';
 import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,40 +24,76 @@ class MasterScreen extends StatefulWidget {
 }
 
 class _MasterScreenState extends State<MasterScreen> {
-  bool checkTitle(GlobalData globalData, String titleName) {
-    return globalData.lastScreenName == titleName.toLowerCase();
+  bool checkTitle(String activeTitle, String titleName) {
+    return activeTitle.toLowerCase() == titleName.toLowerCase();
   }
 
-  Widget _buildScreenForTitle(GlobalData globalData, String titleName) {
+  Widget _buildScreenForTitle(String titleName) {
     switch (titleName.trim().toLowerCase()) {
       case 'home':
         return const HomeScreen();
       case 'active reports':
-        return const ReportsScreen();
+        return MasterScreen(
+          title: "Active reports",
+          child: const ReportsScreen(),
+        );
       case 'offices':
         return const OfficesScreen();
+      case 'my profile':
+        return MasterScreen(
+          title: "My profile",
+          child: const MyProfileScreen(),
+        );
+      case 'users':
+        return MasterScreen(title: "Users", child: const UserProfilesSceen());
+      case 'single report':
+        final report = context.read<SelectedReportProvider>().report;
+        if (report == null) {
+          return const ReportsScreen();
+        }
+        return MasterScreen(
+          title: "Single report",
+          child: SingleReportScreen(report: report),
+        );
+      case 'statistics':
+        return MasterScreen(title: "Statistics", child: StatisticsScreen());
+      case 'reports history':
+        return MasterScreen(title: "Reports history", child: ReportsHistory());
       default:
         return const HomeScreen();
     }
   }
 
-  Widget _buildButtonClass(String titleName) {
-    final globalData = context.watch<GlobalData>();
-    if (checkTitle(globalData, titleName)) {
+  void _navigateTo(String titleName) {
+    final navigator = Navigator.of(context);
+    if (checkTitle(titleName, "Single report") &&
+        checkTitle(widget.title, "Single device") &&
+        navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => _buildScreenForTitle(titleName)),
+      (route) => false,
+    );
+  }
+
+  Widget _buildButtonClass(
+    String activeTitle,
+    String titleName, {
+    double height = 40,
+    double fontSize = 22,
+    bool isEnabled = true,
+  }) {
+    if (checkTitle(activeTitle, titleName)) {
+      // Already on this screen, so the button is disabled to avoid reloading it.
       return FilledButton(
-        onPressed: () {
-          globalData.updateWidget(titleName.toLowerCase());
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _buildScreenForTitle(globalData, titleName),
-            ),
-          );
-        },
+        onPressed: null,
         style: FilledButton.styleFrom(
           padding: EdgeInsets.all(0.0),
-          fixedSize: Size(double.infinity, 40),
+          fixedSize: Size(double.infinity, height),
           backgroundColor: Theme.of(context).colorScheme.outline,
+          disabledBackgroundColor: Theme.of(context).colorScheme.outline,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadiusGeometry.circular(5),
           ),
@@ -58,7 +103,7 @@ class _MasterScreenState extends State<MasterScreen> {
           titleName,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: Theme.of(context).colorScheme.onPrimary,
-            fontSize: 22,
+            fontSize: fontSize,
             fontWeight: FontWeight(400),
           ),
         ),
@@ -66,18 +111,14 @@ class _MasterScreenState extends State<MasterScreen> {
       // ignore: curly_braces_in_flow_control_structures
     } else {
       return OutlinedButton(
-        onPressed: () {
-          globalData.updateWidget(titleName.toLowerCase());
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _buildScreenForTitle(globalData, titleName),
-            ),
-          );
-        },
+        onPressed: !isEnabled
+            ? null
+            : () {
+                _navigateTo(titleName);
+              },
         style: OutlinedButton.styleFrom(
           padding: EdgeInsets.all(0.0),
-          fixedSize: Size(double.infinity, 40),
+          fixedSize: Size(double.infinity, height),
           backgroundColor: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadiusGeometry.circular(5),
@@ -88,12 +129,158 @@ class _MasterScreenState extends State<MasterScreen> {
           titleName,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 22,
+            fontSize: fontSize,
             fontWeight: FontWeight(400),
           ),
         ),
       );
     }
+  }
+
+  Widget _buildProfileSection(BuildContext context, User? userData, Widget? _) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ProfileAvatar(
+          isEditable: false,
+          onEditTap: () {},
+          width: 200,
+          height: 200,
+          child: buildProfileImage(
+            null,
+            userData?.imagePath ?? "",
+            ApiConstants.baseUrl,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          userData?.username ?? "",
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavButtons(BuildContext context, String activeTitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Home"),
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "My profile"),
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Active reports"),
+        ),
+        if (widget.title == "Single report" || widget.title == "Single device")
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 55,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 44,
+                    child: CustomPaint(
+                      painter: _ElbowConnectorPainter(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildButtonClass(
+                      activeTitle,
+                      "Single report",
+                      height: 34,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (widget.title == "Single device")
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 74,
+                    height: 44,
+                    child: CustomPaint(
+                      painter: _ElbowConnectorPainter(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildButtonClass(
+                      activeTitle,
+                      "Single device",
+                      height: 36,
+                      fontSize: 16,
+                      isEnabled: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Statistics"),
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Offices"),
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Users"),
+        ),
+        if (widget.title == "Single user")
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 74,
+                    height: 42,
+                    child: CustomPaint(
+                      painter: _ElbowConnectorPainter(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildButtonClass(
+                      activeTitle,
+                      "Single user",
+                      height: 36,
+                      fontSize: 16,
+                      isEnabled: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: _buildButtonClass(activeTitle, "Reports history"),
+        ),
+      ],
+    );
   }
 
   @override
@@ -114,53 +301,22 @@ class _MasterScreenState extends State<MasterScreen> {
               ),
             ),
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ProfileAvatar(
-                    isEditable: false,
-                    onEditTap: () {},
-                    child: Icon(Icons.person, size: 140.0, color: Colors.white),
-                    height: 240,
-                    width: 240,
-                    containerHeight: 200,
-                    containerWidth: 200,
-                  ),
-                  Text(
-                    "Admin1",
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 40),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Home"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("My profile"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Active reports"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Statistics"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Offices"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Users"),
-                  ),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: _buildButtonClass("Reports history"),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Selector<UserProvider, User?>(
+                      selector: (_, userProvider) => userProvider.data,
+                      builder: _buildProfileSection,
+                    ),
+                    const SizedBox(height: 40),
+                    // Highlight follows the screen being shown, so it stays
+                    // right after going back or logging in again.
+                    _buildNavButtons(context, widget.title),
+                  ],
+                ),
               ),
             ),
           ),
@@ -169,4 +325,31 @@ class _MasterScreenState extends State<MasterScreen> {
       ),
     );
   }
+}
+
+class _ElbowConnectorPainter extends CustomPainter {
+  final Color color;
+  const _ElbowConnectorPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    final x = size.width / 2;
+    final midY = size.height / 2;
+
+    final path = Path()
+      ..moveTo(x, -10)
+      ..lineTo(x, midY)
+      ..lineTo(size.width, midY);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ElbowConnectorPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

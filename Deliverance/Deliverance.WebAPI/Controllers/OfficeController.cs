@@ -2,6 +2,7 @@
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Deliverance.WebAPI.Controllers
 {
@@ -11,6 +12,13 @@ namespace Deliverance.WebAPI.Controllers
         public OfficeController(IOfficeService officeService) : base(officeService)
         {
 
+        }
+         [HttpGet("FromReport")]
+        public async Task<ActionResult<OfficeResponse>> GetFromReport([FromQuery] int id, [FromQuery] int officeReportId)
+        {
+            var userId = User.GetUserId();
+            var result = await _service.GetFromReport(officeReportId,id, userId, User.IsAdmin());
+            return result;
         }
     }
 }
