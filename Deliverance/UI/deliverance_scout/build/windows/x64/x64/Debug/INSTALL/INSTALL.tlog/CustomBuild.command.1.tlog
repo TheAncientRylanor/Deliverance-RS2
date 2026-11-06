@@ -1,0 +1,10 @@
+^C:\USERS\ABDULAH\DESKTOP\RS2 - DELIVERANCE\DELIVERANCE\UI\DELIVERANCE_SCOUT\BUILD\WINDOWS\X64\CMAKEFILES\54E6E89FB45EB50107AE24374A4DB631\INSTALL_FORCE.RULE
+setlocal
+cd .
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
