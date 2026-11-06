@@ -21,6 +21,8 @@ namespace Deliverance.Model.Responses
 
         public string? ReportClearedBy { get; set; }
 
+        public string? Comment { get; set; }
+
         public ICollection<OfficeReportResponse> OfficeReports { get; set; } = new List<OfficeReportResponse>();
         public ICollection<ReportOccuranceResponse> ReportOccurances { get; set; } = new List<ReportOccuranceResponse>();
     }

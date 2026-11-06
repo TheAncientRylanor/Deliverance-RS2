@@ -31,7 +31,7 @@ public class Device
     public string? SubnetMask {get;set;}
     public string? VlanID {get;set;}
     public string? OS {get;set; }
-    public DateTime CreatedAd { get; set; }
+    public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
     public string? Manufacturer { get; set; }

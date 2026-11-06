@@ -40,4 +40,5 @@ public class User
     public ICollection<Contact> Contacts { get; set; } = new List<Contact>();
     public ICollection<Report> Reports { get; set; } = new List<Report>();
     public ICollection<ChatBotMessage> ChatBotMessages { get; set; } = new List<ChatBotMessage>();
+    public ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
 }

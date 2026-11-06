@@ -15,7 +15,7 @@ Map<String, dynamic> _$OfficeToJson(Office instance) => <String, dynamic>{
 };
 
 Devices _$DevicesFromJson(Map<String, dynamic> json) => Devices(
-  id: json['id'] as int?,
+  id: json['id'] as int,
   name: json['name'] as String?,
   officeName: json['officeName'] as String?,
   officeId: json['officeId'] as int?,
@@ -30,6 +30,10 @@ Devices _$DevicesFromJson(Map<String, dynamic> json) => Devices(
   os: json['os'] as String?,
   manufacturer: json['manufacturer'] as String?,
   isReported: json['isReported'] as bool?,
+  enrollmentId: json['enrollmentId'] as int?,
+  scout: json['scout'] == null
+      ? null
+      : Scout.fromJson(json['scout'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
@@ -48,4 +52,20 @@ Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
   'os': instance.os,
   'manufacturer': instance.manufacturer,
   'isReported': instance.isReported,
+  'enrollmentId': instance.enrollmentId,
+  'scout': instance.scout?.toJson(),
+};
+
+Scout _$ScoutFromJson(Map<String, dynamic> json) => Scout(
+  id: json['id'] as int,
+  createdAt: json['createdAt'] == null
+      ? null
+      : DateTime.parse(json['createdAt'] as String),
+  isDisabled: json['isDisabled'] as bool,
+);
+
+Map<String, dynamic> _$ScoutToJson(Scout instance) => <String, dynamic>{
+  'id': instance.id,
+  'createdAt': instance.createdAt?.toIso8601String(),
+  'isDisabled': instance.isDisabled,
 };

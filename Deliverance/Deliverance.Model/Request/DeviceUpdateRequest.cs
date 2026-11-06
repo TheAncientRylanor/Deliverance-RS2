@@ -21,5 +21,7 @@ namespace Deliverance.Model.Request
         public string? VlanID {get;set;}
         public string? OS {get;set; }    
         public string? Manufacturer { get; set; }
+        // Set when the device is a scout enrolled from the device dialog.
+        public int? EnrollmentId { get; set; }
     }
 }

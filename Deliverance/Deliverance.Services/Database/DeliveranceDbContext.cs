@@ -29,11 +29,14 @@ namespace Deliverance.Services.Database
         public DbSet<ReportQuestion> ReportQuestions { get; set; }
         public DbSet<Occurance> Occurances { get; set; }
         public DbSet<ReportOccurance> ReportOccurances { get; set; }
-        public DbSet<TSK> TSK { get; set; }
         public DbSet<Scout> Scouts { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RefreshTokens> RefreshTokens { get; set; }
         public DbSet<ReportStatistics> ReportStatistics { get; set; }
+        public DbSet<ExecutionCommand> ExecutionCommands { get; set; }
+        public DbSet<ScoutEnrollment> ScoutEnrollments { get; set; }
+        public DbSet<ScoutCommand> ScoutCommands { get; set; }
+        public DbSet<Conversation> Conversations { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

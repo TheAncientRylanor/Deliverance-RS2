@@ -1,4 +1,5 @@
 import 'package:deliverance_desktop/models/report.dart';
+import 'package:deliverance_desktop/models/report_status_filter.dart';
 import 'package:deliverance_desktop/models/search_models/report_search_object.dart';
 import 'package:deliverance_desktop/models/search_result.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
@@ -24,6 +25,7 @@ class _ReportsHistory extends State<ReportsHistory> {
     page: 1,
     pageSize: 4,
     includeTotalCount: true,
+    status: ReportStatusFilter.cleared,
   );
   bool isLoading = true;
   @override

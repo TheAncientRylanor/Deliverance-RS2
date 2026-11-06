@@ -25,6 +25,19 @@ namespace Deliverance.Services.Database
             .HasForeignKey(u => u.RoleId)
             .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<Conversation>()
+            .HasMany(c => c.ChatBotMessages)
+            .WithOne(ch => ch.Conversation)
+            .HasForeignKey(ch => ch.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Conversation>()
+            .HasOne(c => c.User)
+            .WithMany(u => u.Conversations)
+            .HasForeignKey(c => c.UserUUID)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<Device>()
             .HasOne(d => d.Office)
             .WithMany(o => o.Devices)
@@ -42,6 +55,16 @@ namespace Deliverance.Services.Database
             .WithMany(s => s.DeviceLogs)
             .HasForeignKey(dl => dl.ScoutId)
             .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique among non-null values: seeded logs have no key.
+            modelBuilder.Entity<DeviceLog>()
+            .HasIndex(dl => new { dl.ScoutId, dl.EventKey })
+            .IsUnique()
+            .HasFilter("[EventKey] IS NOT NULL");
+
+            // The recommender reads a device's logs by date.
+            modelBuilder.Entity<DeviceLog>()
+            .HasIndex(dl => new { dl.ScoutId, dl.DateLogged });
 
             modelBuilder.Entity<Contact>()
             .HasOne(c => c.User)
@@ -97,7 +120,9 @@ namespace Deliverance.Services.Database
             .WithMany(u => u.ChatBotMessages)
             .HasForeignKey(m => m.UserUUID)
             .HasPrincipalKey(u => u.UUID)
-            .OnDelete(DeleteBehavior.Cascade);
+            // User -> Conversation -> ChatBotMessage already cascades; a second
+            // cascade path from User would be rejected by SQL Server.
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<ReportOccurance>()
             .HasOne(ro => ro.Report)
@@ -122,6 +147,53 @@ namespace Deliverance.Services.Database
             .HasForeignKey(m => m.UserUUID)
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ScoutEnrollment>()
+            .HasIndex(se => se.TokenHash)
+            .IsUnique();
+
+            // Unique among non-null values: unclaimed enrollments have no secret yet.
+            modelBuilder.Entity<ScoutEnrollment>()
+            .HasIndex(se => se.SecretHash)
+            .IsUnique()
+            .HasFilter("[SecretHash] IS NOT NULL");
+
+            modelBuilder.Entity<ScoutEnrollment>()
+            .HasOne(se => se.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(se => se.CreatedByUserUUID)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ScoutEnrollment>()
+            .HasOne(se => se.Scout)
+            .WithMany()
+            .HasForeignKey(se => se.ScoutId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+            // Deleting the device deletes its scout, and with it the command history.
+            modelBuilder.Entity<ScoutCommand>()
+            .HasOne(sc => sc.Scout)
+            .WithMany(s => s.Commands)
+            .HasForeignKey(sc => sc.ScoutId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ScoutCommand>()
+            .HasOne(sc => sc.ExecutionCommand)
+            .WithMany()
+            .HasForeignKey(sc => sc.ExecutionCommandId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ScoutCommand>()
+            .HasOne(sc => sc.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(sc => sc.CreatedByUserUUID)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.SetNull);
+
+            // The device screen lists a scout's latest commands.
+            modelBuilder.Entity<ScoutCommand>()
+            .HasIndex(sc => new { sc.ScoutId, sc.CreatedAt });
 
             modelBuilder.Entity<ReportStatistics>()
             .HasIndex(rs => new { rs.DateReported, rs.OfficeId });

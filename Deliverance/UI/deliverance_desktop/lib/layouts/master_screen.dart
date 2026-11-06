@@ -10,10 +10,14 @@ import 'package:deliverance_desktop/screens/single_report_screen.dart';
 import 'package:deliverance_desktop/screens/statistics_screen.dart';
 import 'package:deliverance_desktop/screens/user_profiles_sceen.dart';
 import 'package:deliverance_desktop/utils/api_constants.dart';
+import 'package:deliverance_desktop/widgets/chat_bot_button.dart';
 import 'package:deliverance_desktop/widgets/image_holder.dart';
 import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+/// Returns whether the user may leave the current screen.
+typedef LeaveGuard = Future<bool> Function();
 
 class MasterScreen extends StatefulWidget {
   const MasterScreen({super.key, required this.child, required this.title});
@@ -21,9 +25,18 @@ class MasterScreen extends StatefulWidget {
   final String title;
   @override
   State<MasterScreen> createState() => _MasterScreenState();
+
+  /// Lets the child screen confirm or cancel sidebar navigation. The child
+  /// lives on the same route as its MasterScreen, so it never has to
+  /// unregister the guard.
+  static void setLeaveGuard(BuildContext context, LeaveGuard? guard) {
+    context.findAncestorStateOfType<_MasterScreenState>()?._leaveGuard = guard;
+  }
 }
 
 class _MasterScreenState extends State<MasterScreen> {
+  LeaveGuard? _leaveGuard;
+
   bool checkTitle(String activeTitle, String titleName) {
     return activeTitle.toLowerCase() == titleName.toLowerCase();
   }
@@ -64,7 +77,10 @@ class _MasterScreenState extends State<MasterScreen> {
     }
   }
 
-  void _navigateTo(String titleName) {
+  Future<void> _navigateTo(String titleName) async {
+    final guard = _leaveGuard;
+    if (guard != null && !await guard()) return;
+    if (!mounted) return;
     final navigator = Navigator.of(context);
     if (checkTitle(titleName, "Single report") &&
         checkTitle(widget.title, "Single device") &&
@@ -155,6 +171,9 @@ class _MasterScreenState extends State<MasterScreen> {
         const SizedBox(height: 10),
         Text(
           userData?.username ?? "",
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineMedium,
         ),
       ],
@@ -238,6 +257,35 @@ class _MasterScreenState extends State<MasterScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           title: _buildButtonClass(activeTitle, "Statistics"),
         ),
+        if (widget.title == "Critical device")
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 74,
+                    height: 42,
+                    child: CustomPaint(
+                      painter: _ElbowConnectorPainter(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildButtonClass(
+                      activeTitle,
+                      "Critical device",
+                      height: 36,
+                      fontSize: 16,
+                      isEnabled: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           title: _buildButtonClass(activeTitle, "Offices"),
@@ -286,41 +334,49 @@ class _MasterScreenState extends State<MasterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Stack(
         children: [
-          Container(
-            width: 260,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                right: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Selector<UserProvider, User?>(
-                      selector: (_, userProvider) => userProvider.data,
-                      builder: _buildProfileSection,
+          Positioned.fill(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 260,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      right: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
                     ),
-                    const SizedBox(height: 40),
-                    // Highlight follows the screen being shown, so it stays
-                    // right after going back or logging in again.
-                    _buildNavButtons(context, widget.title),
-                  ],
+                  ),
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Selector<UserProvider, User?>(
+                            selector: (_, userProvider) => userProvider.data,
+                            builder: _buildProfileSection,
+                          ),
+                          const SizedBox(height: 40),
+                          // Highlight follows the screen being shown, so it
+                          // stays right after going back or logging in again.
+                          _buildNavButtons(context, widget.title),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Expanded(child: widget.child),
+              ],
             ),
           ),
-          Expanded(child: widget.child),
+          // Above the screen's content, so the chat is reachable everywhere.
+          const Positioned(right: 20, bottom: 20, child: ChatBotButton()),
         ],
       ),
     );

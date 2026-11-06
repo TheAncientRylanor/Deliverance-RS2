@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   deliverance-2026:
@@ -26,8 +26,14 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  ollama:
+    build: ./ollama
+    container_name: deliverance-ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 1h # keep the model loaded between questions
+    ports:
+      - "11434:11434"
 
 volumes:
   sqlserver_data:
   rabbitmq_data:
-

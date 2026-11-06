@@ -245,6 +245,8 @@ class ContactCard extends StatelessWidget {
                     const _ContactAvatar(),
                     Text(
                       '${contact.firstName} ${contact.lastName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                     Text(
@@ -252,10 +254,14 @@ class ContactCard extends StatelessWidget {
                               ?.elementAtOrNull(0)
                               ?.phoneNumber ??
                           "",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                     Text(
                       contact.contactEmails?.elementAtOrNull(0)?.email ?? "",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                     const SizedBox(height: 15),

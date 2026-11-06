@@ -25,7 +25,7 @@ namespace Deliverance.Services
             _mapper = mapper;
             _dbContext = dbContext;
         }
-        protected abstract IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, TSearch? search,Guid userId = default, bool isAdmin = false);
+        protected abstract IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, TSearch? search, Guid userId = default, bool isAdmin = false);
 
         /// <summary>
         /// Matches the requested sort column against the entity's mapped columns
@@ -71,17 +71,25 @@ namespace Deliverance.Services
 
             return ordered ?? query;
         }
-        public virtual  IQueryable<TEntity> GetQuery()
+        /// <summary>
+        /// Maps an entity to its response. Override when admins and regular users
+        /// should see a different shape of the same resource.
+        /// </summary>
+        protected virtual TResponse MapToResponse(TEntity entity, bool isAdmin)
+        {
+            return _mapper.Map<TResponse>(entity);
+        }
+        public virtual IQueryable<TEntity> GetQuery()
         {
             return this._dbContext.Set<TEntity>();
         }
-        public virtual async Task<PageResult<TResponse>> GetAllAsync(TSearch? search = null,Guid userId = default, bool isAdmin = false)
+        public virtual async Task<PageResult<TResponse>> GetAllAsync(TSearch? search = null, Guid userId = default, bool isAdmin = false)
         {
             search ??= (TSearch)Activator.CreateInstance(typeof(TSearch))!;
 
             // Lists are read-only, so skip change tracking.
             IQueryable<TEntity> query = GetQuery().AsNoTracking();
-            query = ApplyFilters(query, search,userId, isAdmin);
+            query = ApplyFilters(query, search, userId, isAdmin);
 
             int? totalCount = null;
 
@@ -103,7 +111,7 @@ namespace Deliverance.Services
             }
 
             var entities = await query.ToListAsync();
-            var list = entities.Select(item => _mapper.Map<TResponse>(item)).ToList();
+            var list = entities.Select(item => MapToResponse(item, isAdmin)).ToList();
 
             var pageResult = new PageResult<TResponse>
             {
@@ -117,7 +125,7 @@ namespace Deliverance.Services
             return pageResult;
         }
 
-        public virtual async Task<TResponse> GetByIdAsync(int id,Guid userId, bool isAdmin = false)
+        public virtual async Task<TResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
         {
             var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
             if (entity == null)

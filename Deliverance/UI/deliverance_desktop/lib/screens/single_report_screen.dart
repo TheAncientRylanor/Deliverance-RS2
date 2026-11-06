@@ -5,6 +5,7 @@ import 'package:deliverance_desktop/models/report_state_enum.dart';
 import 'package:deliverance_desktop/models/severity_enum.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
+import 'package:deliverance_desktop/providers/selected_report_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
@@ -17,8 +18,14 @@ import 'package:provider/provider.dart';
 
 class SingleReportScreen extends StatefulWidget {
   final Report report;
+  // For a report opened from another screen, which the sidebar can't return to.
+  final bool showBackButton;
 
-  const SingleReportScreen({super.key, required this.report});
+  const SingleReportScreen({
+    super.key,
+    required this.report,
+    this.showBackButton = false,
+  });
 
   @override
   State<SingleReportScreen> createState() => _SingleReportScreenState();
@@ -26,17 +33,28 @@ class SingleReportScreen extends StatefulWidget {
 
 class _SingleReportScreenState extends State<SingleReportScreen> {
   late final TextEditingController _detailController;
-  final TextEditingController _commentController = TextEditingController();
+  late final TextEditingController _commentController;
   late OfficeProvider _officeProvider;
   late ReportProvider _reportProvider;
   Map<OfficeReport, String> _offices = {};
   Office? _selectedOffice;
   OfficeReport? selectedReport;
   bool isLoadingOffice = false;
+  late bool _isCleared;
+  bool _isClearing = false;
+  // Issue type as saved on the report, and the one the admin picks before clearing.
+  int? _issueType;
+  int? _selectedIssueType;
   @override
   void initState() {
     super.initState();
     _detailController = TextEditingController(text: widget.report.detail ?? '');
+    _commentController = TextEditingController(
+      text: widget.report.comment ?? '',
+    );
+    _isCleared = widget.report.status == ReportStateEnum.cleared.label;
+    _issueType = widget.report.issueType;
+    _selectedIssueType = widget.report.issueType;
     _officeProvider = context.read<OfficeProvider>();
     _reportProvider = context.read<ReportProvider>();
     _offices = Map.fromEntries(
@@ -55,6 +73,36 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
         if (!mounted) return;
         alertBox(context, "Error", e.message);
       }
+    }
+  }
+
+  Future<void> _clearReport() async {
+    final confirmed = await alertBox(
+      context,
+      "Clear report",
+      "Mark this report as cleared?",
+      mode: AlertBoxMode.choice,
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isClearing = true);
+    try {
+      final comment = _commentController.text.trim();
+      final cleared = await _reportProvider.clear(
+        widget.report.id!,
+        comment: comment.isEmpty ? null : comment,
+        issueType: _selectedIssueType,
+      );
+      if (!mounted) return;
+      context.read<SelectedReportProvider>().select(cleared);
+      setState(() {
+        _isCleared = true;
+        _issueType = cleared.issueType;
+      });
+    } on ApiClientException catch (e) {
+      if (mounted) alertBox(context, "Error", e.message);
+    } finally {
+      if (mounted) setState(() => _isClearing = false);
     }
   }
 
@@ -100,7 +148,7 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
   }
 
   String get _issueTypeLabel {
-    final issueType = widget.report.issueType;
+    final issueType = _issueType;
     if (issueType == null) return '-';
     return IssueEnum.fromValue(issueType).label;
   }
@@ -161,6 +209,15 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 30,
         children: [
+          if (widget.showBackButton)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SecondaryButton(
+                onPressed: () => Navigator.pop(context),
+                label: "Back",
+                width: 120,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: Text(
@@ -265,11 +322,14 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          if (widget.report.status == ReportStateEnum.cleared.label) ...[
-            Text("Add comment:", style: theme.textTheme.headlineMedium),
+          if (!_isCleared || _commentController.text.isNotEmpty) ...[
+            Text(
+              _isCleared ? "Admin comment:" : "Add comment:",
+              style: theme.textTheme.headlineMedium,
+            ),
             CustomTextField(
               controller: _commentController,
-              readOnly: false,
+              readOnly: _isCleared,
               maxLines: 30,
               minLines: 10,
               textStyle: theme.textTheme.labelSmall?.copyWith(
@@ -277,14 +337,28 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          if (widget.report.status == ReportStateEnum.cleared.label)
+          if (!_isCleared)
             Row(
               spacing: 10,
-              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                CustomDropDown<int>(
+                  label: "Issue type",
+                  items: {
+                    for (final issue in IssueEnum.values)
+                      issue.value: issue.label,
+                  },
+                  initialValue: _selectedIssueType,
+                  onChanged: (value) =>
+                      setState(() => _selectedIssueType = value),
+                ),
+                const Spacer(),
                 SecondaryButton(onPressed: () {}, label: "False alarm"),
-                PrimaryButton(onPressed: () {}, label: "Issue cleared"),
+                PrimaryButton(
+                  onPressed: _clearReport,
+                  label: "Issue cleared",
+                  isLoading: _isClearing,
+                ),
               ],
             ),
         ],

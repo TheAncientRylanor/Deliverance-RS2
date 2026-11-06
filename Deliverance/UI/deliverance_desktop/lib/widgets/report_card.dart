@@ -10,13 +10,6 @@ import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-const List<String> _reportLabels = [
-  'From:',
-  'Title:',
-  'Date Sent:',
-  'Severity:',
-];
-
 class ReportCard extends StatefulWidget {
   final VoidCallback? onAddPressed;
   final double width;
@@ -54,15 +47,56 @@ class _ReportCardState extends State<ReportCard> {
     return widget.report.status != ReportStateEnum.unseen.label;
   }
 
+  TableRow _buildReportRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+
+    return TableRow(
+      children: [
+        TableCell(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(label, style: labelStyle),
+              ],
+            ),
+          ),
+        ),
+        TableCell(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w100),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reportValues = [
-      widget.report.user?.username ?? '-',
-      widget.report.reportName ?? '-',
-      _formattedDate,
-      _severityLabel,
-    ];
-
     return AnimatedScale(
       scale: _hover ? 1.05 : 1.0,
       duration: const Duration(milliseconds: 600),
@@ -120,43 +154,42 @@ class _ReportCardState extends State<ReportCard> {
                           ),
                         ),
                         Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: _reportLabels
-                                    .map(
-                                      (label) => Text(
-                                        label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                              SizedBox(width: 3),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: reportValues
-                                    .map(
-                                      (value) => Text(
-                                        value,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w100,
-                                            ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                            ],
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Table(
+                              defaultVerticalAlignment:
+                                  TableCellVerticalAlignment.middle,
+                              columnWidths: const {
+                                0: IntrinsicColumnWidth(),
+                                1: IntrinsicColumnWidth(),
+                              },
+                              children: [
+                                _buildReportRow(
+                                  context,
+                                  Icons.location_on_outlined,
+                                  'From:',
+                                  widget.report.user?.username ?? '-',
+                                ),
+                                _buildReportRow(
+                                  context,
+                                  Icons.edit_outlined,
+                                  'Title:',
+                                  widget.report.reportName ?? '-',
+                                ),
+                                _buildReportRow(
+                                  context,
+                                  Icons.calendar_today_outlined,
+                                  'Date:',
+                                  _formattedDate,
+                                ),
+                                _buildReportRow(
+                                  context,
+                                  Icons.warning_amber_rounded,
+                                  'Severity:',
+                                  _severityLabel,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

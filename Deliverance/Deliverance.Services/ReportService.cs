@@ -19,14 +19,17 @@ namespace Deliverance.Services
     {
         private readonly BaseReportState _reportState;
         private readonly IReportEventPublisher _reportEventPublisher;
+        private readonly IValidator<ReportClearRequest> _clearValidator;
 
         public ReportService(DeliveranceDbContext dbContext, IMapper mapper,
             IValidator<ReportInsertRequest> insertValidator, IValidator<ReportUpdateRequest> updateValidator,
+            IValidator<ReportClearRequest> clearValidator,
             BaseReportState reportState, IReportEventPublisher reportEventPublisher)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _reportState = reportState;
             _reportEventPublisher = reportEventPublisher;
+            _clearValidator = clearValidator;
         }
 
         protected override Report MapInsertRequestToEntity(ReportInsertRequest request)
@@ -160,10 +163,10 @@ namespace Deliverance.Services
                     query = query.Where(x => x.OfficeReports.Any(officeReport =>
                         officeReport.DeviceReports.Any(deviceReport => deviceReport.DeviceId == search.DeviceId)));
                 }
-                if(search.UserId != null && Guid.TryParse(search.UserId,out Guid id))
+                if (search.UserId != null && Guid.TryParse(search.UserId, out Guid id))
                 {
-                
-                    query = query.Where(x=>x.UserUUID == id);
+
+                    query = query.Where(x => x.UserUUID == id);
                 }
                 if (search.Status != null)
                 {
@@ -202,7 +205,7 @@ namespace Deliverance.Services
                 .ThenInclude(x => x.Occurance)
                 .Include(x => x.OfficeReports)
                     .ThenInclude(x => x.DeviceReports)
-                    .ThenInclude(x=>x.Device)
+                    .ThenInclude(x => x.Device)
                 .Include(x => x.OfficeReports)
                     .ThenInclude(x => x.Office)
                 .Include(x => x.User)
@@ -243,11 +246,14 @@ namespace Deliverance.Services
             return await state.SeenAsync(id, isAdmin);
         }
 
-        public async Task<ReportResponse> ClearAsync(int id, Guid userId, bool isAdmin = false)
+        public async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid userId, bool isAdmin = false)
         {
+            await _clearValidator.ValidateAndThrowAsync(request);
             var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
             var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
-            return await state.ClearAsync(id, isAdmin);
+            var result = await state.ClearAsync(id, request, isAdmin);
+            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
+            return result;
         }
 
         private async Task<Report> EnsureOwnedEntityAsync(int id, Guid userId, bool isAdmin)

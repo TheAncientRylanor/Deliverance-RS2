@@ -68,16 +68,24 @@ namespace Deliverance.Services.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Content")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool?>("IsFromBot")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("UserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
 
                     b.HasIndex("UserUUID");
 
@@ -160,6 +168,31 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ContactPhoneNumbers");
                 });
 
+            modelBuilder.Entity("Conversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("UserUUID")
+                        .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserUUID");
+
+                    b.ToTable("Conversations");
+                });
+
             modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
                 {
                     b.Property<int>("Id")
@@ -197,7 +230,7 @@ namespace Deliverance.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAd")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("IconName")
@@ -263,6 +296,10 @@ namespace Deliverance.Services.Migrations
                     b.Property<DateTime>("DateLogged")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("EventKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Log")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -272,7 +309,11 @@ namespace Deliverance.Services.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ScoutId");
+                    b.HasIndex("ScoutId", "DateLogged");
+
+                    b.HasIndex("ScoutId", "EventKey")
+                        .IsUnique()
+                        .HasFilter("[EventKey] IS NOT NULL");
 
                     b.ToTable("DeviceLogs");
                 });
@@ -305,6 +346,33 @@ namespace Deliverance.Services.Migrations
                     b.HasIndex("OfficeReportId");
 
                     b.ToTable("DeviceReports");
+                });
+
+            modelBuilder.Entity("ExecutionCommand", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ExecutionCommands");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "CMD"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "PowerShell"
+                        });
                 });
 
             modelBuilder.Entity("Occurance", b =>
@@ -422,6 +490,13 @@ namespace Deliverance.Services.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("DateCleared")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("DateReported")
                         .HasColumnType("datetime2");
@@ -590,6 +665,9 @@ namespace Deliverance.Services.Migrations
                     b.Property<int>("DeviceId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsDisabled")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DeviceId")
@@ -598,7 +676,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Scouts");
                 });
 
-            modelBuilder.Entity("TSK", b =>
+            modelBuilder.Entity("ScoutCommand", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -606,32 +684,123 @@ namespace Deliverance.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CommandText")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
+                    b.Property<Guid?>("CreatedByUserUUID")
+                        .HasColumnType("UNIQUEIDENTIFIER");
 
-                    b.Property<string>("Key")
-                        .IsRequired()
+                    b.Property<int>("ExecutionCommandId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExitCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Output")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("RequestedByUserUUID")
+                    b.Property<int>("ScoutId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserUUID");
+
+                    b.HasIndex("ExecutionCommandId");
+
+                    b.HasIndex("ScoutId", "CreatedAt");
+
+                    b.ToTable("ScoutCommands");
+                });
+
+            modelBuilder.Entity("ScoutEnrollment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserUUID")
                         .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Hostname")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("MacAddress")
+                        .HasMaxLength(17)
+                        .HasColumnType("nvarchar(17)");
+
+                    b.Property<string>("Manufacturer")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OS")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int?>("ScoutId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("SecretHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubnetMask")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("VlanID")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RequestedByUserUUID");
+                    b.HasIndex("CreatedByUserUUID");
 
                     b.HasIndex("ScoutId");
 
-                    b.ToTable("TSK");
+                    b.HasIndex("SecretHash")
+                        .IsUnique()
+                        .HasFilter("[SecretHash] IS NOT NULL");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("ScoutEnrollments");
                 });
 
             modelBuilder.Entity("User", b =>
@@ -729,11 +898,19 @@ namespace Deliverance.Services.Migrations
 
             modelBuilder.Entity("ChatBotMessage", b =>
                 {
+                    b.HasOne("Conversation", "Conversation")
+                        .WithMany("ChatBotMessages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("User", "User")
                         .WithMany("ChatBotMessages")
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Conversation");
 
                     b.Navigation("User");
                 });
@@ -769,6 +946,17 @@ namespace Deliverance.Services.Migrations
                         .IsRequired();
 
                     b.Navigation("Contact");
+                });
+
+            modelBuilder.Entity("Conversation", b =>
+                {
+                    b.HasOne("User", "User")
+                        .WithMany("Conversations")
+                        .HasForeignKey("UserUUID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
@@ -929,19 +1117,46 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Device");
                 });
 
-            modelBuilder.Entity("TSK", b =>
+            modelBuilder.Entity("ScoutCommand", b =>
                 {
-                    b.HasOne("User", "RequestedByUser")
+                    b.HasOne("User", "CreatedByUser")
                         .WithMany()
-                        .HasForeignKey("RequestedByUserUUID")
+                        .HasForeignKey("CreatedByUserUUID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ExecutionCommand", "ExecutionCommand")
+                        .WithMany()
+                        .HasForeignKey("ExecutionCommandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Scout", "Scout")
+                        .WithMany("Commands")
+                        .HasForeignKey("ScoutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ExecutionCommand");
+
+                    b.Navigation("Scout");
+                });
+
+            modelBuilder.Entity("ScoutEnrollment", b =>
+                {
+                    b.HasOne("User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserUUID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Scout", "Scout")
                         .WithMany()
-                        .HasForeignKey("ScoutId");
+                        .HasForeignKey("ScoutId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("RequestedByUser");
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Scout");
                 });
@@ -963,6 +1178,11 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("ContactEmails");
 
                     b.Navigation("ContactPhoneNumbers");
+                });
+
+            modelBuilder.Entity("Conversation", b =>
+                {
+                    b.Navigation("ChatBotMessages");
                 });
 
             modelBuilder.Entity("Device", b =>
@@ -1003,6 +1223,8 @@ namespace Deliverance.Services.Migrations
 
             modelBuilder.Entity("Scout", b =>
                 {
+                    b.Navigation("Commands");
+
                     b.Navigation("DeviceLogs");
                 });
 
@@ -1011,6 +1233,8 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("ChatBotMessages");
 
                     b.Navigation("Contacts");
+
+                    b.Navigation("Conversations");
 
                     b.Navigation("RefreshToken");
 

@@ -118,6 +118,9 @@ class _OfficesScreenState extends State<OfficesScreen> {
                         CustomDropDown(
                           items: _offices,
                           label: "Offices",
+                          // The dropdown is rebuilt after every reload, so
+                          // seed it with the current selection to keep it.
+                          initialValue: selectedKey,
                           onChanged: (value) {
                             selectedKey = value;
                             _getOffice();

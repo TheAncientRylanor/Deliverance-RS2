@@ -5,18 +5,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 namespace Deliverance.Services.Database
 {
     public partial class DeliveranceDbContext : DbContext
     {
+
         private void CreateSeed(ModelBuilder modelBuilder)
         {
             SeedRoles(modelBuilder);
             SeedUsers(modelBuilder);
             SeedOccurances(modelBuilder);
+            SeedExecutionCommands(modelBuilder);
         }
-        private void SeedRoles(ModelBuilder modelBuilder) {
+        private void SeedRoles(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<Role>().HasData(
                 new
                 {
@@ -35,11 +37,12 @@ namespace Deliverance.Services.Database
                  }
                 );
         }
-         private void SeedUsers(ModelBuilder modelBuilder) {
+        private void SeedUsers(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<User>().HasData(
                 new
                 {
-                    UUID =  Guid.Parse("01a0052b-e3cb-705b-8a0c-ddabfee50ed7"),
+                    UUID = Guid.Parse("01a0052b-e3cb-705b-8a0c-ddabfee50ed7"),
                     RoleId = RoleEnum.User,
                     Username = "Abdi",
                     FirstName = "Abdulah",
@@ -51,8 +54,8 @@ namespace Deliverance.Services.Database
                 },
                 new
                 {
-                 
-                    UUID =  Guid.Parse("01a0052b-e4b5-766a-b7c6-d601dbfaef87"),
+
+                    UUID = Guid.Parse("01a0052b-e4b5-766a-b7c6-d601dbfaef87"),
                     RoleId = RoleEnum.Admin,
                     Username = "Admin",
                     FirstName = "Admin",
@@ -64,7 +67,8 @@ namespace Deliverance.Services.Database
                 }
                 );
         }
-        private void SeedOccurances(ModelBuilder modelBuilder) {
+        private void SeedOccurances(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<Occurance>().HasData(
                 new
                 {
@@ -90,6 +94,21 @@ namespace Deliverance.Services.Database
                 {
                     Id = 5,
                     Question = "Has anything changed recently (updates, settings, cables)?",
+                }
+                );
+        }
+        private void SeedExecutionCommands(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ExecutionCommand>().HasData(
+                new
+                {
+                    Id = ExecutionCommandEnum.CMD,
+                    Name = "CMD",
+                },
+                new
+                {
+                    Id = ExecutionCommandEnum.PowerShell,
+                    Name = "PowerShell",
                 }
                 );
         }

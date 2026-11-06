@@ -341,10 +341,12 @@ class _LocationStepState extends State<LocationStep> {
                             });
                           },
                         ),
-                        Text(
-                          "This location does not have a specific affected device",
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(fontWeight: FontWeight(200)),
+                        Expanded(
+                          child: Text(
+                            "This location does not have a specific affected device",
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(fontWeight: FontWeight(200)),
+                          ),
                         ),
                       ],
                     ),
@@ -451,9 +453,15 @@ class _LocationStepState extends State<LocationStep> {
                     ),
                   ),
                 ),
-                Text(
-                  device.name ?? "",
-                  style: Theme.of(context).textTheme.labelSmall,
+                SizedBox(
+                  width: 56,
+                  child: Text(
+                    device.name ?? "",
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
               ],
             ),
