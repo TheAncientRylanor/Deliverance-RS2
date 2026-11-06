@@ -1,0 +1,10 @@
+^C:\USERS\ABDULAH\DESKTOP\RS2 - DELIVERANCE\DELIVERANCE\UI\DELIVERANCE_SCOUT\BUILD\WINDOWS\X64\CMAKEFILES\54E6E89FB45EB50107AE24374A4DB631\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/windows" "-BC:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/build/windows/x64" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/build/windows/x64/deliverance_scout.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

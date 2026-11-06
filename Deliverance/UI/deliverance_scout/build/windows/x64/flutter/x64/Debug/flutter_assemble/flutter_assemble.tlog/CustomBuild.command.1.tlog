@@ -1,0 +1,28 @@
+^C:\USERS\ABDULAH\DESKTOP\RS2 - DELIVERANCE\DELIVERANCE\UI\DELIVERANCE_SCOUT\BUILD\WINDOWS\X64\CMAKEFILES\E7C8DE1EBA6B7F9156EAED34A19D6448\FLUTTER_WINDOWS.DLL.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E env FLUTTER_ROOT=C:\dev\flutter "PROJECT_DIR=C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\UI\deliverance_scout" FLUTTER_ROOT=C:\dev\flutter "FLUTTER_EPHEMERAL_DIR=C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\UI\deliverance_scout\windows\flutter\ephemeral" "PROJECT_DIR=C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\UI\deliverance_scout" FLUTTER_TARGET=lib\main.dart DART_DEFINES=RkxVVFRFUl9CVUlMRF9OQU1FPTEuMC4w,RkxVVFRFUl9CVUlMRF9OVU1CRVI9MQ==,RkxVVFRFUl9WRVJTSU9OPTMuNDcuMQ==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NjY1NTQ4MmVjMA==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NWQ1MzE3ODg2OQ==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMy4x DART_OBFUSCATION=false TRACK_WIDGET_CREATION=true TREE_SHAKE_ICONS=false "PACKAGE_CONFIG=C:\Users\Abdulah\Desktop\RS2 - Deliverance\Deliverance\UI\deliverance_scout\.dart_tool\package_config.json" C:/dev/flutter/packages/flutter_tools/bin/tool_backend.bat windows-x64 Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\ABDULAH\DESKTOP\RS2 - DELIVERANCE\DELIVERANCE\UI\DELIVERANCE_SCOUT\BUILD\WINDOWS\X64\CMAKEFILES\1B9E27D9D49F22919F331C411768523E\FLUTTER_ASSEMBLE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\ABDULAH\DESKTOP\RS2 - DELIVERANCE\DELIVERANCE\UI\DELIVERANCE_SCOUT\WINDOWS\FLUTTER\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/windows" "-BC:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/build/windows/x64" --check-stamp-file "C:/Users/Abdulah/Desktop/RS2 - Deliverance/Deliverance/UI/deliverance_scout/build/windows/x64/flutter/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
