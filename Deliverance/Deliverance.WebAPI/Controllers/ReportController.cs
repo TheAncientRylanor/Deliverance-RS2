@@ -22,10 +22,10 @@ namespace Deliverance.WebAPI.Controllers
         }
 
         [HttpPut("Clear/{id}")]
-        public async Task<ActionResult<ReportResponse>> Clear(int id)
+        public async Task<ActionResult<ReportResponse>> Clear(int id, [FromBody] ReportClearRequest request)
         {
             var userId = User.GetUserId();
-            var result = await _service.ClearAsync(id, userId, User.IsAdmin());
+            var result = await _service.ClearAsync(id, request, userId, User.IsAdmin());
             return result;
         }
     }

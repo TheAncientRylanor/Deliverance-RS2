@@ -8,7 +8,7 @@ namespace Deliverance.Services
         IBaseCRUDService<ReportResponse, ReportSearchObject, ReportInsertRequest, ReportUpdateRequest>
     {
         Task<ReportResponse> SeenAsync(int id, Guid userId, bool isAdmin = false);
-        Task<ReportResponse> ClearAsync(int id, Guid userId, bool isAdmin = false);
+        Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid userId, bool isAdmin = false);
 
     }
 }

@@ -1,9 +1,12 @@
+import 'package:deliverance_desktop/models/device_recommendation.dart';
 import 'package:deliverance_desktop/models/report_statistics.dart';
 import 'package:deliverance_desktop/models/search_models/report_statistics_search_object.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
+import 'package:deliverance_desktop/providers/recommendation_provider.dart';
 import 'package:deliverance_desktop/providers/report_statistics_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
+import 'package:deliverance_desktop/widgets/critical_device_card.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_month_year_picker.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
@@ -20,8 +23,17 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
+  static const _criticalDevicesCount = 5;
+  // A device below this is more likely fine than not, so it isn't critical.
+  static const _criticalMinProbability = 0.5;
+
   late ReportStatisticsProvider _statisticsProvider;
   late OfficeProvider _officeProvider;
+  late RecommendationProvider _recommendationProvider;
+  // Kept here so the Location and Time period filters don't score every device again.
+  List<DeviceRecommendation> _criticalDevices = [];
+  bool _isLoadingCritical = true;
+  String? _criticalError;
   ReportStatistics? _reportStatistics;
   DateTime? _selectedDate;
   TextEditingController dateController = TextEditingController();
@@ -36,7 +48,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     super.initState();
     _statisticsProvider = context.read<ReportStatisticsProvider>();
     _officeProvider = context.read<OfficeProvider>();
+    _recommendationProvider = context.read<RecommendationProvider>();
     initOffices();
+    initCriticalDevices();
+  }
+
+  /// A failure only affects this section, so the statistics stay usable.
+  Future<void> initCriticalDevices() async {
+    try {
+      _criticalDevices = await _recommendationProvider.getCriticalDevices(
+        top: _criticalDevicesCount,
+        minProbability: _criticalMinProbability,
+      );
+    } on ApiClientException catch (e) {
+      _criticalError = e.message;
+    } finally {
+      // ignore: control_flow_in_finally
+      if (!mounted) return;
+      setState(() {
+        _isLoadingCritical = false;
+      });
+    }
   }
 
   Future<void> initOffices() async {
@@ -119,6 +151,26 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  Widget _buildCriticalDevices(ThemeData theme) {
+    if (_isLoadingCritical) return globalLoadingSpinner();
+
+    final message =
+        _criticalError ??
+        (_criticalDevices.isEmpty ? "No critical devices right now." : null);
+    if (message != null) {
+      return Text(message, style: theme.textTheme.labelMedium);
+    }
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 20,
+      runSpacing: 20,
+      children: _criticalDevices
+          .map((device) => CriticalDeviceCard(device: device))
+          .toList(),
+    );
+  }
+
   String _reportCountLabel(int? count) => "Reports: ${count ?? 0}";
 
   /// The API sends DateTime's default (year 1) when there are no reports.
@@ -139,6 +191,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               child: Column(
                 spacing: 20,
                 children: [
+                  Text("Critical devices", style: theme.textTheme.displayLarge),
+                  _buildCriticalDevices(theme),
+                  const SizedBox(height: 40),
                   Text(
                     "Visual representation",
                     style: theme.textTheme.displayLarge,

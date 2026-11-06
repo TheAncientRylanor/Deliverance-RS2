@@ -64,7 +64,15 @@ namespace Deliverance.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            return user == null ? null : _mapper.Map<UserSensitiveResponse>(user);
+            // SQL Server compares with the column's case-insensitive collation, so
+            // "admin" also finds "Admin". Require the exact case here. Uniqueness
+            // stays case-insensitive, so the query can't miss an exact match.
+            if (user == null || !string.Equals(user.Username, username, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return _mapper.Map<UserSensitiveResponse>(user);
         }
         public async Task<UserSensitiveResponse> GetByEmailAsync(string email)
         {

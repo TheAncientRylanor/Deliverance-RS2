@@ -15,6 +15,7 @@ class Report {
   final String? userUUID;
   final User? user;
   final String? reportClearedBy;
+  final String? comment;
   final List<OfficeReport>? officeReports;
   final List<ReportOccurance>? reportOccurances;
 
@@ -29,6 +30,7 @@ class Report {
     this.userUUID,
     this.user,
     this.reportClearedBy,
+    this.comment,
     this.officeReports,
     this.reportOccurances,
   });

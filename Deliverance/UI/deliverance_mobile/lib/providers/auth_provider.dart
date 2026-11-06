@@ -149,7 +149,11 @@ class AuthProvider extends ChangeNotifier {
     var headers = createHeaders();
     var body = jsonEncode({"refreshToken": refreshtoken});
 
-    http.Response response = await http.post(uri, headers: headers, body: body);
+    // Without a timeout an unreachable backend leaves the startup spinner
+    // (tryAutoLogin) hanging indefinitely.
+    http.Response response = await http
+        .post(uri, headers: headers, body: body)
+        .timeout(ApiConstants.authRequestTimeout);
 
     validateResponse(response);
     var data = jsonDecode(response.body);

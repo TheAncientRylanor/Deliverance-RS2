@@ -1,7 +1,13 @@
 import 'package:deliverance_desktop/providers/auth_provider.dart';
+import 'package:deliverance_desktop/providers/chat_bot_provider.dart';
+import 'package:deliverance_desktop/providers/device_provider.dart';
+import 'package:deliverance_desktop/providers/execution_command_provider.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
+import 'package:deliverance_desktop/providers/recommendation_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/report_statistics_provider.dart';
+import 'package:deliverance_desktop/providers/scout_command_provider.dart';
+import 'package:deliverance_desktop/providers/scout_enrollment_provider.dart';
 import 'package:deliverance_desktop/providers/selected_report_provider.dart';
 import 'package:deliverance_desktop/providers/selected_user_provider.dart';
 import 'package:deliverance_desktop/providers/user_provider.dart';
@@ -25,8 +31,14 @@ void main() {
         ChangeNotifierProvider(create: (_) => ReportProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ReportStatisticsProvider()),
+        ChangeNotifierProvider(create: (_) => RecommendationProvider()),
         ChangeNotifierProvider(create: (_) => SelectedReportProvider()),
         ChangeNotifierProvider(create: (_) => SelectedUserProvider()),
+        ChangeNotifierProvider(create: (_) => ExecutionCommandProvider()),
+        ChangeNotifierProvider(create: (_) => ScoutEnrollmentProvider()),
+        ChangeNotifierProvider(create: (_) => DeviceProvider()),
+        ChangeNotifierProvider(create: (_) => ScoutCommandProvider()),
+        ChangeNotifierProvider(create: (_) => ChatBotProvider()),
       ],
 
       child: const MyApp(),

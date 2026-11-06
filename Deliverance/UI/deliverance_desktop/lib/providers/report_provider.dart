@@ -23,11 +23,12 @@ class ReportProvider extends BaseProvider<Report> {
     return parsed;
   }
 
-  Future<Report> clear(int id) async {
+  Future<Report> clear(int id, {String? comment, int? issueType}) async {
     final response = await sendWithRetry(() async {
       var uri = Uri.parse("${BaseProvider.baseUrl}$endpoint/Clear/$id");
       var headers = createHeaders();
-      return await http.put(uri, headers: headers);
+      var body = jsonEncode({'comment': comment, 'issueType': issueType});
+      return await http.put(uri, headers: headers, body: body);
     });
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);

@@ -15,6 +15,7 @@ Report _$ReportFromJson(Map<String, dynamic> json) => Report(
       ? null
       : User.fromJson(json['user'] as Map<String, dynamic>),
   reportClearedBy: json['reportClearedBy'] as String?,
+  comment: json['comment'] as String?,
   officeReports: (json['officeReports'] as List<dynamic>?)
       ?.map((e) => OfficeReport.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -34,6 +35,7 @@ Map<String, dynamic> _$ReportToJson(Report instance) => <String, dynamic>{
   'userUUID': instance.userUUID,
   'user': instance.user?.toJson(),
   'reportClearedBy': instance.reportClearedBy,
+  'comment': instance.comment,
   'officeReports': instance.officeReports?.map((e) => e.toJson()).toList(),
   'reportOccurances': instance.reportOccurances
       ?.map((e) => e.toJson())

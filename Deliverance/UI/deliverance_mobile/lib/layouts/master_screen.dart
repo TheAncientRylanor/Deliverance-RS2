@@ -1,4 +1,5 @@
 import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
+import 'package:deliverance_mobile/screens/chat_bot_screen.dart';
 import 'package:deliverance_mobile/screens/contacts_screen.dart';
 import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/screens/my_profile_screen.dart';
@@ -36,6 +37,8 @@ class _MasterScreenState extends State<MasterScreen> {
         return ReportScreen();
       case 'my reports':
         return MasterScreen(title: "my reports", child: ReportHistoryScreen());
+      case 'chatbot':
+        return MasterScreen(title: "Chatbot", child: ChatBotScreen());
       default:
         return MasterScreen(title: "Home", child: HomeScreen());
     }
@@ -142,7 +145,14 @@ class _MasterScreenState extends State<MasterScreen> {
       ),
       body: Stack(
         children: [
-          Padding(padding: EdgeInsets.only(top: 130), child: widget.child),
+          Padding(
+            padding: EdgeInsets.only(top: 130),
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: widget.child,
+            ),
+          ),
           Positioned.fill(
             child: IgnorePointer(
               ignoring: !_isDrawerOpen,

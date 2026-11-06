@@ -34,7 +34,7 @@ namespace Deliverance.Services.ServiceStateMachine
         {
             throw new InvalidOperationException("Cannot activate a Report in its current state.");
         }
-        public virtual Task<ReportResponse> ClearAsync(int id, bool isAdmin = false)
+        public virtual Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, bool isAdmin = false)
         {
             throw new InvalidOperationException("Cannot activate a Report in its current state.");
         }

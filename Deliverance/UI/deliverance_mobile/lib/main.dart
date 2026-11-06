@@ -1,6 +1,7 @@
 import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
 import 'package:deliverance_mobile/layouts/master_screen.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
+import 'package:deliverance_mobile/providers/chat_bot_provider.dart';
 import 'package:deliverance_mobile/providers/contact_provider.dart';
 import 'package:deliverance_mobile/providers/occurance_provider.dart';
 import 'package:deliverance_mobile/providers/office_provider.dart';
@@ -28,6 +29,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => OfficeProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
         ChangeNotifierProvider(create: (_) => OccuranceProvider()),
+        ChangeNotifierProvider(create: (_) => ChatBotProvider()),
       ],
       child: const MyApp(),
     ),

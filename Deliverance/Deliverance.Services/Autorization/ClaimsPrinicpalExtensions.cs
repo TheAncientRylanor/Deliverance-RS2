@@ -27,3 +27,17 @@ public static class ClaimsPrincipalExtensions
     public static bool IsAdmin(this ClaimsPrincipal user)
         => user.GetUserRole() == RoleEnum.Admin;
 }
+
+public static class ScoutClaimsPrincipalExtensions
+{
+    /// <summary>Id of the scout behind a token issued by ScoutAccessManager.</summary>
+    public static int GetScoutId(this ClaimsPrincipal user)
+    {
+        var idClaim = user.FindFirst(Deliverance.Services.ScoutAuthDefaults.ScoutIdClaim)?.Value;
+
+        if (idClaim is null || !int.TryParse(idClaim, out var scoutId))
+            throw new UnauthorizedAccessException("Scout ID claim is missing or invalid.");
+
+        return scoutId;
+    }
+}

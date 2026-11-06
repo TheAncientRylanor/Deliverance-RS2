@@ -16,6 +16,7 @@ class OfficeCanvas extends StatelessWidget {
     required this.canvasSize,
     required this.isReport,
   });
+
   Column getDevice(BuildContext context, Devices device) {
     if (device.isReported ?? false) {
       return Column(
@@ -56,14 +57,20 @@ class OfficeCanvas extends StatelessWidget {
                   iconForType((device.type as String)),
                   width: 80.0,
                   height: 80.0,
-                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  colorFilter: deviceColorFilter(device.scout, context),
                 ),
               ),
               Positioned(
                 bottom: -6,
-                child: Text(
-                  device.name ?? "",
-                  style: Theme.of(context).textTheme.labelSmall,
+                child: SizedBox(
+                  width: 96,
+                  child: Text(
+                    device.name ?? "",
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
               ),
             ],
@@ -101,14 +108,20 @@ class OfficeCanvas extends StatelessWidget {
                   iconForType((device.type as String)),
                   width: 80.0,
                   height: 80.0,
-                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  colorFilter: deviceColorFilter(device.scout, context),
                 ),
               ),
               Positioned(
                 bottom: -6,
-                child: Text(
-                  device.name ?? "",
-                  style: Theme.of(context).textTheme.labelSmall,
+                child: SizedBox(
+                  width: 96,
+                  child: Text(
+                    device.name ?? "",
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
               ),
             ],

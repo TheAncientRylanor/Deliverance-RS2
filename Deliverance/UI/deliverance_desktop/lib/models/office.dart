@@ -15,7 +15,7 @@ class Office {
 
 @JsonSerializable()
 class Devices {
-  final int? id;
+  final int id;
   final String? name;
   final String? officeName;
   final int? officeId;
@@ -30,8 +30,12 @@ class Devices {
   final String? os;
   final String? manufacturer;
   bool? isReported;
+  // Null when no scout is installed on the device.
+  Scout? scout;
+  // Sent when saving an office: links the device to a claimed scout enrollment.
+  final int? enrollmentId;
   Devices({
-    this.id,
+    required this.id,
     this.name,
     this.officeName,
     this.officeId,
@@ -46,10 +50,24 @@ class Devices {
     this.os,
     this.manufacturer,
     this.isReported = false,
+    this.enrollmentId,
+    this.scout,
   });
 
   factory Devices.fromJson(Map<String, dynamic> json) =>
       _$DevicesFromJson(json);
 
   Map<String, dynamic> toJson() => _$DevicesToJson(this);
+}
+
+@JsonSerializable()
+class Scout {
+  final int id;
+  final DateTime? createdAt;
+  final bool isDisabled;
+  Scout({required this.id, this.createdAt, required this.isDisabled});
+
+  factory Scout.fromJson(Map<String, dynamic> json) => _$ScoutFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ScoutToJson(this);
 }

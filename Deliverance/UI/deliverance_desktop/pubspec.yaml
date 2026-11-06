@@ -47,6 +47,8 @@ dependencies:
   fl_chart: ^1.2.0
   intl: ^0.20.3
   month_year_picker: ^0.5.0+1
+  signalr_netcore: ^1.4.4
+  simple_typing_indicator: ^1.0.1
 
 dev_dependencies:
   flutter_test:

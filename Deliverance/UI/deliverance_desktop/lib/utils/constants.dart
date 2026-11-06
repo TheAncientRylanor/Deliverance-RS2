@@ -1,3 +1,6 @@
+import 'package:deliverance_desktop/models/office.dart';
+import 'package:flutter/material.dart';
+
 String iconForType(String type) {
   switch (type) {
     case "Computer":
@@ -15,4 +18,17 @@ String iconForType(String type) {
     default:
       return 'assets/icons/computer.svg';
   }
+}
+
+/// White for regular devices, the primary color for scouts, and a faded
+/// primary color for disabled scouts.
+ColorFilter deviceColorFilter(Scout? scout, BuildContext context) {
+  final primary = Theme.of(context).colorScheme.primary;
+  if (scout == null) {
+    return const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+  }
+  return ColorFilter.mode(
+    scout.isDisabled ? primary.withAlpha(120) : primary,
+    BlendMode.srcIn,
+  );
 }

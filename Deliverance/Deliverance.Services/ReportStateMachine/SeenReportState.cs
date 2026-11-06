@@ -17,7 +17,7 @@ public class SeenReportState : BaseReportState
         
     }
 
-    public override async Task<ReportResponse> ClearAsync(int id, bool isAdmin = false)
+    public override async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, bool isAdmin = false)
     {
         if (!isAdmin)
         {
@@ -34,7 +34,13 @@ public class SeenReportState : BaseReportState
         {
             throw new ClientException($"Report with {id} not found");
         }
+        entity.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
+        if (request.IssueType != null)
+        {
+            entity.IssueType = request.IssueType;
+        }
         entity.Status = nameof(ClearedReportState);
+        entity.DateCleared = DateTime.Now;
         await DbContext.SaveChangesAsync();
 
         return Mapper.Map<ReportResponse>(entity);
