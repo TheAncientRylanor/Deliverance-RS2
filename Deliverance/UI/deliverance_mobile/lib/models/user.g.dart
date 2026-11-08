@@ -7,9 +7,7 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   email: json['email'] as String?,
   username: json['username'] as String?,
   roleId: json['roleId'] as int?,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
+  createdAt: nullableDateFromJson(json['createdAt'] as String?),
   imagePath: json['imagePath'] as String?,
 );
 

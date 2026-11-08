@@ -58,14 +58,12 @@ Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
 
 Scout _$ScoutFromJson(Map<String, dynamic> json) => Scout(
   id: json['id'] as int,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
+  createdAt: nullableDateFromJson(json['createdAt'] as String?),
   isDisabled: json['isDisabled'] as bool,
 );
 
 Map<String, dynamic> _$ScoutToJson(Scout instance) => <String, dynamic>{
   'id': instance.id,
-  'createdAt': instance.createdAt?.toIso8601String(),
+  'createdAt': nullableDateToJson(instance.createdAt),
   'isDisabled': instance.isDisabled,
 };

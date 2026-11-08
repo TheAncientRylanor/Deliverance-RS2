@@ -1,3 +1,5 @@
+import 'package:deliverance_desktop/utils/date_json.dart';
+
 /// A device the recommender expects to need a fix soon.
 class DeviceRecommendation {
   final int deviceId;
@@ -64,7 +66,7 @@ class DeviceEvidenceLog {
 
   factory DeviceEvidenceLog.fromJson(Map<String, dynamic> json) =>
       DeviceEvidenceLog(
-        dateLogged: DateTime.parse(json['dateLogged'] as String),
+        dateLogged: dateFromJson(json['dateLogged'] as String),
         log: json['log'] as String,
       );
 }
@@ -94,7 +96,7 @@ class DeviceEvidenceReport {
       DeviceEvidenceReport(
         reportId: json['reportId'] as int,
         reportName: json['reportName'] as String,
-        dateReported: DateTime.parse(json['dateReported'] as String),
+        dateReported: dateFromJson(json['dateReported'] as String),
         status: json['status'] as String?,
         severity: json['severity'] as int?,
         issueType: json['issueType'] as int?,

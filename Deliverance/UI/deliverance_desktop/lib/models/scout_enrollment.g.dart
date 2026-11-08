@@ -18,5 +18,5 @@ ScoutEnrollmentToken _$ScoutEnrollmentTokenFromJson(
 ) => ScoutEnrollmentToken(
   enrollmentId: json['enrollmentId'] as int,
   token: json['token'] as String,
-  expiresAt: DateTime.parse(json['expiresAt'] as String),
+  expiresAt: dateFromJson(json['expiresAt'] as String),
 );

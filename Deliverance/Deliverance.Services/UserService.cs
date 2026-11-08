@@ -25,19 +25,22 @@ namespace Deliverance.Services
 
         private readonly IWebHostEnvironment _env;
         private readonly ICryptoService _cryptoService;
+        private readonly INotificationService _notificationService;
 
         public UserService(DeliveranceDbContext dbContext, IMapper mapster,
             ICryptoService cryptoService, IValidator<UserInsertRequest> insertValidator,
-             IValidator<UserUpdateRequest> updateValidator, IWebHostEnvironment env) : base(dbContext, mapster, insertValidator, updateValidator)
+             IValidator<UserUpdateRequest> updateValidator, IWebHostEnvironment env,
+             INotificationService notificationService) : base(dbContext, mapster, insertValidator, updateValidator)
         {
             _cryptoService = cryptoService;
             _env = env;
+            _notificationService = notificationService;
         }
         protected override IQueryable<User> ApplyFilters(IQueryable<User> query, UserSearchObject? search, Guid userId, bool isAdmin = false)
         {
             if (!isAdmin)
             {
-                throw new ClientException("Only admins can view all users.");
+                throw new ForbiddenException("Only admins can view all users.");
             }
             query = query.Where(u => u.RoleId != RoleEnum.Admin);
 
@@ -86,14 +89,14 @@ namespace Deliverance.Services
             {
                 response = _mapper.Map<UserSensitiveResponse>(user);
             }
-            else throw new ClientException($"User with the {email} does not exist");
+            else throw new NotFoundException($"User with the {email} does not exist");
             return response;
         }
         public async Task<bool> IsUsernameUsed(string username)
         {
             if (string.IsNullOrWhiteSpace(username.Trim()))
             {
-                throw new ClientException("Username cannot be empty string");
+                throw new BusinessException("Username cannot be empty string");
             }
             var exists = await _dbContext.Users.AnyAsync(x => x.Username == username);
             return exists;
@@ -113,7 +116,7 @@ namespace Deliverance.Services
             var entity = this._dbContext.Set<User>().FirstOrDefault(x => x.UUID == id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{typeof(User).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(User).Name} with id {id} not found.");
             }
 
             return await Task.FromResult(_mapper.Map<UserResponse>(entity));
@@ -127,7 +130,7 @@ namespace Deliverance.Services
         {
             if (!isAdmin && id != userId)
             {
-                throw new ClientException("You do not have access to this user.");
+                throw new ForbiddenException("You do not have access to this user.");
             }
         }
         public override async Task<UserResponse> InsertAsync(UserInsertRequest request, Guid userId)
@@ -136,12 +139,12 @@ namespace Deliverance.Services
 
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new ClientException($"Email '{request.Email}' is already in use.");
+                throw new BusinessException($"Email '{request.Email}' is already in use.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new ClientException($"Username '{request.Username}' is already in use.");
+                throw new BusinessException($"Username '{request.Username}' is already in use.");
             }
 
             var entity = MapInsertRequestToEntity(request);
@@ -155,7 +158,11 @@ namespace Deliverance.Services
                 entity.ImagePath = imagePath; // store on your entity
             }
             _dbContext.Users.Add(entity);
+            // Saved together with the user, so there's no user without its notifications.
+            var notifications = await _notificationService.AddForAdminsAsync(NotificationTypeEnum.UserRegistered,
+                "New user", $"{entity.Username} has registered.", exceptUserId: userId, relatedUserUUID: entity.UUID);
             await _dbContext.SaveChangesAsync();
+            await _notificationService.PushAsync(notifications);
 
             return _mapper.Map<UserResponse>(entity);
         }
@@ -171,16 +178,16 @@ namespace Deliverance.Services
             var entity = await _dbContext.Users.FirstOrDefaultAsync(x => x.UUID == id);
             if (entity is null)
             {
-                throw new ClientException("Given user does not exist");
+                throw new NotFoundException("Given user does not exist");
             }
             if (entity.Email != request.Email && await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new ClientException($"Email '{request.Email}' is already in use.");
+                throw new BusinessException($"Email '{request.Email}' is already in use.");
             }
 
             if (entity.Username != request.Username && await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new ClientException($"Username '{request.Username}' is already in use.");
+                throw new BusinessException($"Username '{request.Username}' is already in use.");
             }
             MapUpdateRequestToEntity(request, entity);
             if (request.ProfileImage is not null)
@@ -199,7 +206,7 @@ namespace Deliverance.Services
             var entity = await this._dbContext.Set<User>().FirstOrDefaultAsync(x => x.UUID == id);
 
             if (entity == null)
-                throw new ClientException($"{typeof(User).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(User).Name} with id {id} not found.");
             ImageService.DeleteExistingImage(id, id.ToString(), _env.WebRootPath);
             this._dbContext.Set<User>().Remove(entity);
             await this._dbContext.SaveChangesAsync();

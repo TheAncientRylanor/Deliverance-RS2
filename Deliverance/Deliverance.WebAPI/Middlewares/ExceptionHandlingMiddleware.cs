@@ -1,12 +1,27 @@
 // ExceptionHandlingMiddleware.cs
 using System.Text.Json;
 using Deliverance.Model.Exceptions;
+using Deliverance.Model.Responses;
+using FluentValidation;
 
+/// <summary>
+/// The one place exceptions become HTTP responses. Services throw, controllers don't catch:
+/// ValidationException and BusinessException -> 400, UnauthorizedAccessException -> 401,
+/// ForbiddenException -> 403, NotFoundException -> 404, anything else -> 500 (logged).
+/// </summary>
 public class ExceptionHandlingMiddleware
 {
-    private readonly RequestDelegate _next;
+    // camelCase, so the body is { "message": ... } as the apps expect.
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public ExceptionHandlingMiddleware(RequestDelegate next) => _next = next;
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -14,53 +29,45 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
-        catch (FluentValidation.ValidationException ex)
+        catch (ValidationException ex)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-
-            var payload = new
+            await WriteAsync(context, StatusCodes.Status400BadRequest, new ValidationErrorResponse
             {
-                message = ex.Errors.Select(e => e.ErrorMessage).ToList(),
-                errors = ex.Errors
+                Message = ex.Errors.Select(e => e.ErrorMessage).ToList(),
+                Errors = ex.Errors
                     .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToList())
-            };
-
-            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToList()),
+            });
         }
-        catch (ClientException ex)
+        catch (BusinessException ex)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-
-            var payload = new { message = ex.Message };
-
-            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+            await WriteAsync(context, StatusCodes.Status400BadRequest, new ErrorResponse { Message = ex.Message });
         }
-        catch (KeyNotFoundException ex)
+        catch (NotFoundException ex)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-
-            var payload = new { message = ex.Message };
-
-            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+            await WriteAsync(context, StatusCodes.Status404NotFound, new ErrorResponse { Message = ex.Message });
+        }
+        catch (ForbiddenException ex)
+        {
+            await WriteAsync(context, StatusCodes.Status403Forbidden, new ErrorResponse { Message = ex.Message });
         }
         catch (UnauthorizedAccessException)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsync(
-                JsonSerializer.Serialize(new { message = "You are not authorized. Please sign in again." }));
+            await WriteAsync(context, StatusCodes.Status401Unauthorized,
+                new ErrorResponse { Message = "You are not authorized. Please sign in again." });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await context.Response.WriteAsync(
-                JsonSerializer.Serialize(new { message = "Internal server error. Please try again." }));
+            _logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
+            await WriteAsync(context, StatusCodes.Status500InternalServerError,
+                new ErrorResponse { Message = "Internal server error. Please try again." });
         }
+    }
 
+    private static Task WriteAsync<TBody>(HttpContext context, int statusCode, TBody body)
+    {
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsync(JsonSerializer.Serialize(body, JsonOptions));
     }
 }

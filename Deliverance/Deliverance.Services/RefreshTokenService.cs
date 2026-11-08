@@ -24,16 +24,17 @@ namespace Deliverance.Services
             return await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
         }
 
-        public async Task InsertAsync(RefreshTokens refreshToken)
+        // Add and RemoveAllForUserAsync only change the shared DbContext. The caller saves,
+        // so a login, refresh or password change is stored in one SaveChanges.
+        public void Add(RefreshTokens refreshToken)
         {
-            await _context.RefreshTokens.AddAsync(refreshToken);
-            await _context.SaveChangesAsync();
+            _refreshTokens.Add(refreshToken);
         }
 
-        public Task DeleteAllUserRefreshTokensAsync(Guid userId)
+        public async Task RemoveAllForUserAsync(Guid userId)
         {
-            _refreshTokens.RemoveRange(_refreshTokens.Where(rt => rt.UserUUID == userId));
-            return _context.SaveChangesAsync();
+            var tokens = await _refreshTokens.Where(rt => rt.UserUUID == userId).ToListAsync();
+            _refreshTokens.RemoveRange(tokens);
         }
     }
 }

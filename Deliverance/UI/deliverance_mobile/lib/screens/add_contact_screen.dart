@@ -353,7 +353,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                               setState(() => _isSaving = true);
                               try {
                                 await _saveContact();
-                                if (!mounted) return;
+                                if (!context.mounted) return;
                                 showCustomToast(
                                   context,
                                   "Contact successfully saved ",

@@ -10,6 +10,7 @@ import 'package:deliverance_desktop/widgets/critical_device_card.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_month_year_picker.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/dialogs/pdf_report_dialogs.dart';
 import 'package:deliverance_desktop/widgets/statistics_line_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -171,6 +172,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  Widget _buildPdfButton(
+    ThemeData theme, {
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(
+        Icons.picture_as_pdf,
+        size: 40,
+        color: theme.colorScheme.primary,
+      ),
+    );
+  }
+
   String _reportCountLabel(int? count) => "Reports: ${count ?? 0}";
 
   /// The API sends DateTime's default (year 1) when there are no reports.
@@ -192,11 +209,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 spacing: 20,
                 children: [
                   Text("Critical devices", style: theme.textTheme.displayLarge),
+                  _buildPdfButton(
+                    theme,
+                    tooltip: "Device health PDF",
+                    onPressed: () =>
+                        showDeviceHealthPdfDialog(context, _offices),
+                  ),
                   _buildCriticalDevices(theme),
                   const SizedBox(height: 40),
                   Text(
                     "Visual representation",
                     style: theme.textTheme.displayLarge,
+                  ),
+                  _buildPdfButton(
+                    theme,
+                    tooltip: "Report activity PDF",
+                    onPressed: () => showReportActivityPdfDialog(context),
                   ),
                   Row(
                     spacing: 50,

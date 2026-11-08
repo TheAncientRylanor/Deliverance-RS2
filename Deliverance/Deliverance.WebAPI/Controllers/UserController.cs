@@ -25,49 +25,26 @@ namespace Deliverance.WebAPI.Controllers
 
         [NonAction]
         public override Task<IActionResult> Delete(int id) => throw new NotSupportedException();
-        [HttpGet("UUID/{id}")]
-        public async Task<ActionResult<UserResponse>> GetByUUID(string id)
+        // :guid makes a malformed id a 404 instead of a FormatException (500).
+        // A missing user throws NotFoundException, which the middleware turns into 404.
+        [HttpGet("UUID/{id:guid}")]
+        public async Task<ActionResult<UserResponse>> GetByUUID(Guid id)
         {
-            try
-            {
-
-                Guid GuidResult = Guid.Parse(id);
-                var result = await _service.GetByUUID(GuidResult, User.GetUserId(), User.IsAdmin());
-                return Ok(result);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            var result = await _service.GetByUUID(id, User.GetUserId(), User.IsAdmin());
+            return Ok(result);
         }
-        [HttpPut("UpdateUser/{id}")]
-        public async Task<ActionResult<UserResponse>> UpdateUser(string id, [FromForm] UserUpdateRequest request)
+        [HttpPut("UpdateUser/{id:guid}")]
+        public async Task<ActionResult<UserResponse>> UpdateUser(Guid id, [FromForm] UserUpdateRequest request)
         {
-            try
-            {
-
-                Guid GuidResult = Guid.Parse(id);
-                var result = await _service.UpdateUserAsync(GuidResult, request, User.GetUserId(), User.IsAdmin());
-                return Ok(result);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            var result = await _service.UpdateUserAsync(id, request, User.GetUserId(), User.IsAdmin());
+            return Ok(result);
         }
         [AllowAnonymous]
         [HttpPost("InsertUser")]
         public async Task<ActionResult<UserResponse>> InsertUser([FromForm] UserInsertRequest request)
         {
-            try
-            {
-                var result = await _service.InsertAsync(request);
-                return Ok(result);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            var result = await _service.InsertAsync(request);
+            return Ok(result);
         }
         [AllowAnonymous]
         [HttpPost("CheckUsername")]

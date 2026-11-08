@@ -1,4 +1,5 @@
 using Deliverance.Model.Enums;
+using Deliverance.Model.Exceptions;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
@@ -32,7 +33,7 @@ namespace Deliverance.Services
             var entity = await _dbContext.ExecutionCommands.FindAsync((ExecutionCommandEnum)id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{nameof(ExecutionCommand)} with id {id} not found.");
+                throw new NotFoundException($"{nameof(ExecutionCommand)} with id {id} not found.");
             }
 
             return _mapper.Map<ExecutionCommandResponse>(entity);

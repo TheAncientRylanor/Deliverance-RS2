@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
-import 'package:deliverance_mobile/layouts/master_screen.dart';
 import 'package:deliverance_mobile/models/issue_enum.dart';
 import 'package:deliverance_mobile/models/report.dart';
 import 'package:deliverance_mobile/providers/report_provider.dart';
-import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
@@ -37,13 +34,13 @@ class _ReportScreenState extends State<ReportScreen> {
   final _timeKey = GlobalKey<FormState>();
   final _detailsKey = GlobalKey<FormState>();
   List<OfficeReport> _officeReports = [];
-  late GlobalData _globaldata;
   double _severity = 1.0;
   IssueEnum _issueType = IssueEnum.hardware;
   List<ReportOccurance> _selectedOccurances = [];
   int? _reportId;
   bool _isSavingDraft = false;
   bool _isSubmittingReport = false;
+  bool get _isSentReport => widget.report?.status == "UnseenReportState";
   List<EasyStep> stepList() => [
     EasyStep(icon: Icon(Icons.location_on), title: '1. Where?'),
     EasyStep(icon: Icon(Icons.av_timer_outlined), title: '2. When?'),
@@ -61,7 +58,6 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   void initState() {
     super.initState();
-    _globaldata = context.read<GlobalData>();
     if (widget.report != null) {
       _reportId = widget.report!.id;
       initReport(widget.report!);
@@ -88,6 +84,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   void initReport(Report report) {
     _officeReports = report.officeReports ?? [];
+    _dateController.text = report.dateReported.toString();
     _titleController.text = report.reportName ?? "";
     _detailsController.text = report.detail ?? "";
     _selectedOccurances = report.reportOccurances ?? [];
@@ -160,24 +157,19 @@ class _ReportScreenState extends State<ReportScreen> {
                       );
                       if (result != true) return;
                       if (!mounted) return;
-                      _globaldata.updateWidget("home");
-                      Navigator.pushAndRemoveUntil<void>(
-                        // ignore: use_build_context_synchronously
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (BuildContext context) =>
-                              MasterScreen(title: "Home", child: HomeScreen()),
-                        ),
-                        ModalRoute.withName('/'),
-                      );
+                      // ignore: use_build_context_synchronously
+                      Navigator.pop(context);
                     },
                     label: "Cancel",
                   ),
-                  PrimaryButton(
-                    onPressed: _saveDraftToServer,
-                    label: "Save Draft",
-                    isLoading: _isSavingDraft,
-                  ),
+                  // A sent report can't go back to being a draft, and saving
+                  // as one would skip the validation of required fields.
+                  if (!_isSentReport)
+                    PrimaryButton(
+                      onPressed: _saveDraftToServer,
+                      label: "Save Draft",
+                      isLoading: _isSavingDraft,
+                    ),
                 ],
               ),
             ),

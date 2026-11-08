@@ -17,11 +17,16 @@ public class SeenReportState : BaseReportState
         
     }
 
-    public override async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, bool isAdmin = false)
+    public override Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request)
+    {
+        throw new BusinessException("This report has already been seen by an admin and can't be edited.");
+    }
+
+    public override async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid adminId, bool isAdmin = false)
     {
         if (!isAdmin)
         {
-            throw new ClientException("Only an admin can clear a Report.");
+            throw new ForbiddenException("Only an admin can clear a Report.");
         }
         var entity = await DbContext.Reports
             .Include(x => x.OfficeReports)
@@ -32,7 +37,7 @@ public class SeenReportState : BaseReportState
             .FirstOrDefaultAsync(x => x.Id == id);
         if(entity == null)
         {
-            throw new ClientException($"Report with {id} not found");
+            throw new NotFoundException($"Report with {id} not found");
         }
         entity.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
         if (request.IssueType != null)
@@ -40,7 +45,11 @@ public class SeenReportState : BaseReportState
             entity.IssueType = request.IssueType;
         }
         entity.Status = nameof(ClearedReportState);
-        entity.DateCleared = DateTime.Now;
+        entity.DateCleared = DateTime.UtcNow;
+        entity.ReportClearedBy = await DbContext.Users
+            .Where(x => x.UUID == adminId)
+            .Select(x => x.Username)
+            .FirstOrDefaultAsync();
         await DbContext.SaveChangesAsync();
 
         return Mapper.Map<ReportResponse>(entity);

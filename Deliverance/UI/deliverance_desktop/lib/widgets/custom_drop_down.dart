@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 
 class CustomDropDown<T> extends StatefulWidget {
+  /// Lists longer than this can be filtered by typing in the field.
+  static const searchThreshold = 8;
+
   final String label;
   final Map<T, String> items;
   final T? initialValue;
   final ValueChanged<T?>? onChanged;
+
+  /// The open menu grows up to this height, then scrolls.
+  final double menuHeight;
   const CustomDropDown({
     super.key,
     required this.label,
     required this.items,
     this.initialValue,
     this.onChanged,
+    this.menuHeight = 300,
   });
   @override
   State<CustomDropDown<T>> createState() => _CustomDropDownState<T>();
@@ -28,6 +35,7 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
   void selectedKey() {}
   @override
   Widget build(BuildContext context) {
+    final searchable = widget.items.length > CustomDropDown.searchThreshold;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,7 +44,11 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
           Text(widget.label, style: Theme.of(context).textTheme.labelMedium),
           DropdownMenu<T>(
             enableSearch: false,
-            selectOnly: true,
+            // The filter only starts once the user types, so the full list shows on open.
+            enableFilter: searchable,
+            requestFocusOnTap: searchable,
+            selectOnly: !searchable,
+            menuHeight: widget.menuHeight,
             width: 300,
             initialSelection: selectedValue,
             trailingIcon: Icon(

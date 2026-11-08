@@ -1,5 +1,6 @@
 import 'package:deliverance_mobile/models/report.dart';
 import 'package:deliverance_mobile/models/severity_enum.dart';
+import 'package:deliverance_mobile/screens/report_details_screen.dart';
 import 'package:deliverance_mobile/screens/report_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,7 @@ class ReportCard extends StatelessWidget {
   }
 
   bool get _isUnseen => report.status == "UnseenReportState";
+  bool get _isEditable => report.status == "DraftReportState" || _isUnseen;
 
   Widget? _buildStatusIcon(BuildContext context) {
     if (report.status == "DraftReportState") {
@@ -167,16 +169,15 @@ class ReportCard extends StatelessWidget {
                       children: [
                         IconButton(
                           onPressed: () async {
-                            var result = await Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ReportScreen(report: report),
+                                builder: (context) => _isEditable
+                                    ? ReportScreen(report: report)
+                                    : ReportDetailsScreen(report: report),
                               ),
                             );
-                            if (result) {
-                              initFunction;
-                            }
+                            initFunction();
                           },
                           icon: Icon(
                             Icons.arrow_forward_rounded,

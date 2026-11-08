@@ -72,11 +72,11 @@ namespace Deliverance.Services
             .Include(x => x.Devices).ThenInclude(d => d.Scout).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new ClientException("Office does not exist");
+                throw new NotFoundException("Office does not exist");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this office.");
+                throw new ForbiddenException("You do not have access to this office.");
             }
             return entity;
         }
@@ -89,7 +89,7 @@ namespace Deliverance.Services
                 .AnyAsync(x => x.Id == officeReportId && x.OfficeId == id);
             if (!reportBelongsToOffice)
             {
-                throw new ClientException("Report does not belong to this office.");
+                throw new BusinessException("Report does not belong to this office.");
             }
 
             var reportedDeviceIds = await _dbContext.DeviceReports
@@ -177,7 +177,7 @@ namespace Deliverance.Services
                 .AnyAsync(o => o.Name == trimmed && o.Id != excludeOfficeId);
             if (taken)
             {
-                throw new ClientException($"An office named '{trimmed}' already exists.");
+                throw new BusinessException($"An office named '{trimmed}' already exists.");
             }
         }
 
@@ -196,8 +196,9 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new ClientException("Office does not exist");
+                throw new NotFoundException("Office does not exist");
             }
+            await EnsureRemovedDevicesHaveNoReportsAsync(entity, request);
             var enrollments = await _scoutEnrollmentService.GetClaimedForLinkingAsync(
                 request.Devices?.Select(d => d.EnrollmentId) ?? [], userId);
 
@@ -217,14 +218,14 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"Office with id {id} not found.");
+                throw new NotFoundException($"Office with id {id} not found.");
             }
 
             // Offices that appear in reports are kept, so report history stays intact.
             var hasReports = await _dbContext.Set<OfficeReport>().AnyAsync(x => x.OfficeId == id);
             if (hasReports)
             {
-                throw new ClientException("This office has reports and can't be deleted.");
+                throw new BusinessException("This office has reports and can't be deleted.");
             }
 
             // Device -> Office is Restrict in the database, so the devices have to
@@ -234,11 +235,33 @@ namespace Deliverance.Services
             await _dbContext.SaveChangesAsync();
         }
 
+        // A device left out of the request is deleted by SyncCollection, which
+        // must not happen to a device that reports point to.
+        private async Task EnsureRemovedDevicesHaveNoReportsAsync(Office entity, OfficeUpdateRequest request)
+        {
+            if (request.Devices == null) return;
+
+            var keptIds = request.Devices.Select(d => d.Id).ToHashSet();
+            var removed = entity.Devices.Where(d => !keptIds.Contains(d.Id)).ToList();
+            if (removed.Count == 0) return;
+
+            var reportCounts = await DeviceService.CountReportsAsync(_dbContext, removed.Select(d => d.Id).ToList());
+            var blocked = removed
+                .Where(d => reportCounts.ContainsKey(d.Id))
+                .Select(d => $"{d.Name} ({reportCounts[d.Id]} report(s))")
+                .ToList();
+            if (blocked.Count > 0)
+            {
+                throw new BusinessException(
+                    $"These devices appear in reports and can't be removed, so the report history stays intact: {string.Join(", ", blocked)}.");
+            }
+        }
+
         private static void EnsureAdmin(bool isAdmin)
         {
             if (!isAdmin)
             {
-                throw new ClientException("Only admins can manage offices.");
+                throw new ForbiddenException("Only admins can manage offices.");
             }
         }
 

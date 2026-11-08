@@ -1,6 +1,7 @@
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
+using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -10,9 +11,12 @@ namespace Deliverance.Services
 {
     public class ReportStatisticsService : BaseReadService<ReportStatistics, ReportStatisticsResponse, ReportStatisticsSearchObject>, IReportStatisticsService
     {
-        public ReportStatisticsService(IMapper mapper, DeliveranceDbContext dbContext)
+        private readonly DisplayTimeZone _displayTimeZone;
+
+        public ReportStatisticsService(IMapper mapper, DeliveranceDbContext dbContext, DisplayTimeZone displayTimeZone)
             : base(mapper, dbContext)
         {
+            _displayTimeZone = displayTimeZone;
         }
 
         public override IQueryable<ReportStatistics> GetQuery()
@@ -42,11 +46,11 @@ namespace Deliverance.Services
 
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{typeof(ReportStatistics).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(ReportStatistics).Name} with id {id} not found.");
             }
             if (!isAdmin && entity.Report?.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this resource.");
+                throw new ForbiddenException("You do not have access to this resource.");
             }
 
             return _mapper.Map<ReportStatisticsResponse>(entity);
@@ -56,7 +60,7 @@ namespace Deliverance.Services
         {
             if (!isAdmin)
             {
-                throw new ClientException("You do not have access to this resource.");
+                throw new ForbiddenException("You do not have access to this resource.");
             }
 
             var query = this._dbContext.Set<ReportStatistics>().AsNoTracking();
@@ -79,23 +83,35 @@ namespace Deliverance.Services
                 .OrderByDescending(g => g.Count)
                 .FirstOrDefaultAsync();
 
-            var topTimePeriod = await query
-                .GroupBy(x => x.DateReported.Date)
-                .Select(g => new { Date = g.Key, Count = g.Select(x => x.ReportId).Distinct().Count() })
+            // Dates are UTC, but "which day" means a day in the display time zone, which SQL
+            // can't group by here. One row per report (its id and date) is grouped in memory.
+            var reportDates = await query
+                .Select(x => new { x.ReportId, x.DateReported })
+                .Distinct()
+                .ToListAsync();
+            var topTimePeriod = reportDates
+                .GroupBy(x => _displayTimeZone.FromUtc(x.DateReported).Date)
+                .Select(g => new { Date = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
-                .FirstOrDefaultAsync();
+                .FirstOrDefault();
 
-            var targetMonth = search?.ReportDate ?? DateTime.UtcNow;
+            // The month is a calendar month in the display zone, so its bounds are converted to UTC.
+            var targetMonth = search?.ReportDate is DateTime picked
+                ? _displayTimeZone.FromUtc(picked)
+                : _displayTimeZone.Now;
             var monthStart = new DateTime(targetMonth.Year, targetMonth.Month, 1);
-            var monthEnd = monthStart.AddMonths(1);
+            var monthStartUtc = _displayTimeZone.ToUtc(monthStart);
+            var monthEndUtc = _displayTimeZone.ToUtc(monthStart.AddMonths(1));
 
             var officeId = search?.OfficeId;
-            var dayCounts = await query
-            .Where(x => x.DateReported >= monthStart && x.DateReported < monthEnd &&
-            (officeId == null || x.OfficeId == officeId))
-            .GroupBy(x => x.DateReported.Day)
-            .Select(g => new { Day = g.Key, Count = g.Select(x => x.ReportId).Distinct().Count() })
-            .ToDictionaryAsync(x => x.Day, x => x.Count);
+            var dayCounts = (await query
+                .Where(x => x.DateReported >= monthStartUtc && x.DateReported < monthEndUtc &&
+                    (officeId == null || x.OfficeId == officeId))
+                .Select(x => new { x.ReportId, x.DateReported })
+                .Distinct()
+                .ToListAsync())
+                .GroupBy(x => _displayTimeZone.FromUtc(x.DateReported).Day)
+                .ToDictionary(g => g.Key, g => g.Count());
 
             var timeBreakdown = new TimeReportBreakdown
             {

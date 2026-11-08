@@ -93,7 +93,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         if (reports.Count == 0) return rows;
 
         var start = reports.Min(r => r.Date).Date;
-        var end = DateTime.Now.AddDays(-HorizonDays);
+        var end = DateTime.UtcNow.AddDays(-HorizonDays);
 
         for (var t = start.AddDays(7); t <= end; t = t.AddDays(7))
         {
@@ -155,9 +155,11 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         var (reports, logs) = await LoadHistoryAsync();
         var rows = BuildTrainingRows(devices, reports, logs);
 
-        if (rows.Select(r => r.Label).Distinct().Count() < 2)
+        // Without "None" rows the model has never seen a healthy device, so it would score every device 100%.
+        var labels = rows.Select(r => r.Label).Distinct().ToList();
+        if (labels.Count < 2 || !labels.Contains("None"))
         {
-            throw new ClientException("Not enough report history to train the recommendation model.");
+            throw new BusinessException("Not enough report history to train the recommendation model.");
         }
 
         var data = _ml.Data.LoadFromEnumerable(rows);
@@ -205,7 +207,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         var model = await GetModelAsync();
         var devices = await _dbContext.Devices.AsNoTracking().ToListAsync();
         var (reports, logs) = await LoadHistoryAsync();
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
 
         return ScoreDevices(model, devices, now, reports, logs)
             .Where(r => r.ReportsLast30Days >= minReports && r.NeedsFixProbability >= minProbability)
@@ -215,15 +217,25 @@ public class DeviceRecommendationService : IDeviceRecommendationService
             .ToList();
     }
 
+    // Every device's score, without the limit and filters of GetRecommendationsAsync.
+    public async Task<List<DeviceRecommendationResponse>> ScoreAllDevicesAsync(bool isAdmin)
+    {
+        EnsureAdmin(isAdmin);
+        var model = await GetModelAsync();
+        var devices = await _dbContext.Devices.AsNoTracking().ToListAsync();
+        var (reports, logs) = await LoadHistoryAsync();
+        return ScoreDevices(model, devices, DateTime.UtcNow, reports, logs);
+    }
+
     public async Task<DeviceEvidenceResponse> GetDeviceEvidenceAsync(int deviceId, bool isAdmin)
     {
         EnsureAdmin(isAdmin);
         var device = await _dbContext.Devices.AsNoTracking().FirstOrDefaultAsync(d => d.Id == deviceId)
-            ?? throw new KeyNotFoundException($"Device with id {deviceId} not found.");
+            ?? throw new NotFoundException($"Device with id {deviceId} not found.");
 
         var model = await GetModelAsync();
         var (reports, logs) = await LoadHistoryAsync(deviceId);
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var reportsFrom = now.AddDays(-EvidenceReportDays);
 
         return new DeviceEvidenceResponse
@@ -299,7 +311,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
                     DeviceId = device.Id,
                     DeviceName = device.Name,
                     OfficeName = device.OfficeName,
-                    NeedsFixProbability = noneIndex < 0 ? 1f : 1f - scores[noneIndex],
+                    NeedsFixProbability = 1f - scores[noneIndex],
                     LikelyIssue = Enum.Parse<IssueEnum>(likely.label),
                     ReportsLast30Days = (int)inputs[i].ReportsLast30Days,
                 };
@@ -312,7 +324,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
     {
         if (!isAdmin)
         {
-            throw new ClientException("You do not have access to this resource.");
+            throw new ForbiddenException("You do not have access to this resource.");
         }
     }
 }

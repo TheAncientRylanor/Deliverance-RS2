@@ -35,7 +35,7 @@ public class DraftReportState : BaseReportState
             .FirstOrDefaultAsync(x => x.Id == id);
         if(entity == null)
         {
-            throw new ClientException($"Report with {id} does not exist");
+            throw new NotFoundException($"Report with {id} does not exist");
         }
         Mapper.Map(request,entity);
            SyncCollection(
@@ -110,7 +110,7 @@ public class DraftReportState : BaseReportState
     public override async Task DeleteAsync(int id)
     {
         var entity = await DbContext.Reports.FindAsync(id);
-        if(entity == null)throw new ClientException($"Report with {id} does not exist");
+        if(entity == null)throw new NotFoundException($"Report with {id} does not exist");
         DbContext.Reports.Remove(entity);
         await this.DbContext.SaveChangesAsync();
 

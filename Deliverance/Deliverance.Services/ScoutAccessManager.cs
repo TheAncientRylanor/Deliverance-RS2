@@ -1,25 +1,24 @@
 using Deliverance.Model.Enums;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
+using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace Deliverance.Services
 {
     public class ScoutAccessManager : IScoutAccessManager
     {
         private readonly DeliveranceDbContext _dbContext;
-        private readonly IConfiguration _configuration;
+        private readonly AuthSettings _authSettings;
 
-        public ScoutAccessManager(DeliveranceDbContext dbContext, IConfiguration configuration)
+        public ScoutAccessManager(DeliveranceDbContext dbContext, AuthSettings authSettings)
         {
             _dbContext = dbContext;
-            _configuration = configuration;
+            _authSettings = authSettings;
         }
 
         public async Task<ScoutTokenResponse> CreateTokenAsync(ScoutTokenRequest request)
@@ -51,7 +50,7 @@ namespace Deliverance.Services
                 return new ScoutTokenResponse { Status = ScoutTokenStatusEnum.Disabled };
             }
 
-            var expiresAt = DateTime.UtcNow.Add(ScoutAuthDefaults.TokenLifetime);
+            var expiresAt = DateTime.UtcNow.Add(_authSettings.ScoutTokenLifetime);
             return new ScoutTokenResponse
             {
                 Status = ScoutTokenStatusEnum.Active,
@@ -64,7 +63,6 @@ namespace Deliverance.Services
         {
             // Same issuer and signing key as user tokens, but the scout audience,
             // which only the Scout scheme in Program.cs accepts.
-            var secretKey = Encoding.UTF8.GetBytes(_configuration["JwtToken:SecretKey"] ?? string.Empty);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -73,9 +71,9 @@ namespace Deliverance.Services
                     new Claim(ClaimTypes.Role, ((int)RoleEnum.Scout).ToString()),
                 }),
                 Expires = expiresAt,
-                Issuer = _configuration["JwtToken:Issuer"],
+                Issuer = _authSettings.Issuer,
                 Audience = ScoutAuthDefaults.Audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(_authSettings.SigningKey, SecurityAlgorithms.HmacSha256Signature)
             };
             var tokenHandler = new JwtSecurityTokenHandler();
             return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));

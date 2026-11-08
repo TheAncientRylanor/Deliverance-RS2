@@ -2,10 +2,10 @@
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
+using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
@@ -18,18 +18,18 @@ namespace Deliverance.Services
     public class AccessManager : IAccessManager
     {
         private readonly IUserService _userService;
-        private readonly IConfiguration _configuration;
+        private readonly AuthSettings _authSettings;
         private readonly ICryptoService _cryptoService;
         private readonly IRefreshTokenService _refreshTokenService;
         private readonly DeliveranceDbContext _dbContext;
         private readonly IValidator<UserPasswordChangeRequest> _passwordChangeValidator;
 
-        public AccessManager(IUserService userService, IConfiguration configuration, ICryptoService cryptoService,
+        public AccessManager(IUserService userService, AuthSettings authSettings, ICryptoService cryptoService,
             IRefreshTokenService refreshTokenService, DeliveranceDbContext dbContext,
             IValidator<UserPasswordChangeRequest> passwordChangeValidator)
         {
             _userService = userService;
-            _configuration = configuration;
+            _authSettings = authSettings;
             _cryptoService = cryptoService;
             _refreshTokenService = refreshTokenService;
             _dbContext = dbContext;
@@ -43,21 +43,21 @@ namespace Deliverance.Services
             var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.UUID == userId);
             if (user is null)
             {
-                throw new ClientException("User does not exist inside the database");
+                throw new NotFoundException("User does not exist inside the database");
             }
 
             var validPassword = _cryptoService.Verify(user.PasswordHash, user.PasswordSalt, request.OldPassword);
             if (!validPassword)
             {
-                throw new ClientException("Incorrect current password");
+                throw new BusinessException("Incorrect current password");
             }
 
             var salt = _cryptoService.GenerateSlat();
             user.PasswordSalt = salt;
             user.PasswordHash = _cryptoService.GenerateHash(request.NewPassword, salt);
+            // Signs out every device, in the same save as the new password.
+            await _refreshTokenService.RemoveAllForUserAsync(user.UUID);
             await _dbContext.SaveChangesAsync();
-
-            await _refreshTokenService.DeleteAllUserRefreshTokensAsync(user.UUID);
         }
 
         public Task<UserLoginResponse> LoginAsync(UserLoginRequest request)
@@ -70,7 +70,7 @@ namespace Deliverance.Services
         {
             if (string.IsNullOrWhiteSpace(request.Username))
             {
-                throw new ClientException("Username is required");
+                throw new BusinessException("Username is required");
             }
             var user = await _userService.GetByUsernameAsync(request.Username);
 
@@ -78,12 +78,12 @@ namespace Deliverance.Services
             // response doesn't reveal which usernames exist.
             if (user == null || !_cryptoService.Verify(user.PasswordHash, user.PasswordSalt, request.Password))
             {
-                throw new ClientException("Wrong username or password");
+                throw new BusinessException("Wrong username or password");
             }
 
             if (requireAdmin && user.RoleId != (int)RoleEnum.Admin)
             {
-                throw new ClientException("Only admin accounts can access this application.");
+                throw new BusinessException("Only admin accounts can access this application.");
             }
 
             var accessToken = GenerateToken(user);
@@ -93,10 +93,11 @@ namespace Deliverance.Services
             {
                 UserUUID = user.UUID,
                 Token = refreshTokenValue,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.Add(_authSettings.RefreshTokenLifetime)
             };
 
-            await _refreshTokenService.InsertAsync(refreshToken);
+            _refreshTokenService.Add(refreshToken);
+            await _dbContext.SaveChangesAsync();
 
             return new UserLoginResponse
             {
@@ -115,29 +116,30 @@ namespace Deliverance.Services
         {
             if (string.IsNullOrEmpty(request.RefreshToken))
             {
-                throw new ClientException("Refresh token is required");
+                throw new BusinessException("Refresh token is required");
             }
 
             var refreshToken = await _refreshTokenService.GetStoredTokenAsync(request.RefreshToken);
 
             if (refreshToken == null)
             {
-                throw new ClientException("Invalid refresh token");
+                throw new BusinessException("Invalid refresh token");
             }
 
             if (refreshToken.ExpiresAt < DateTime.UtcNow)
             {
-                throw new ClientException("Refresh token has expired");
+                throw new BusinessException("Refresh token has expired");
             }
 
             var user = await _userService.GetByUUID(refreshToken.UserUUID);
 
             if (requireAdmin && user.RoleId != (int)RoleEnum.Admin)
             {
-                throw new ClientException("Only admin accounts can access this application.");
+                throw new BusinessException("Only admin accounts can access this application.");
             }
 
-            await _refreshTokenService.DeleteAllUserRefreshTokensAsync(user.UUID);
+            // Old tokens out and the new one in, in one save: a failure can't leave the user without a token.
+            await _refreshTokenService.RemoveAllForUserAsync(user.UUID);
 
             var accessToken = GenerateToken(user);
             var refreshTokenValue = GenerateRefreshToken();
@@ -146,10 +148,11 @@ namespace Deliverance.Services
             {
                 UserUUID = user.UUID,
                 Token = refreshTokenValue,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.Add(_authSettings.RefreshTokenLifetime)
             };
 
-            await _refreshTokenService.InsertAsync(token);
+            _refreshTokenService.Add(token);
+            await _dbContext.SaveChangesAsync();
 
             return new UserLoginResponse
             {
@@ -161,13 +164,6 @@ namespace Deliverance.Services
 
         private string GenerateToken(UserResponse user)
         {
-            string secretKeyString = _configuration["JwtToken:SecretKey"] ?? string.Empty;
-            var issuer = _configuration["JwtToken:Issuer"];
-            var audience = _configuration["JwtToken:Audience"];
-            var durationInMinutes = int.Parse(_configuration["JwtToken:DurationInMinutes"] ?? "1");
-
-            var secretKey = Encoding.ASCII.GetBytes(secretKeyString);
-
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -178,10 +174,10 @@ namespace Deliverance.Services
                     new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
                     new Claim(ClaimTypes.Role, user.RoleId.ToString() ?? "1"),
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(durationInMinutes),
-                Issuer = issuer,
-                Audience = audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature)
+                Expires = DateTime.UtcNow.Add(_authSettings.AccessTokenLifetime),
+                Issuer = _authSettings.Issuer,
+                Audience = _authSettings.Audience,
+                SigningCredentials = new SigningCredentials(_authSettings.SigningKey, SecurityAlgorithms.HmacSha256Signature)
             };
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);

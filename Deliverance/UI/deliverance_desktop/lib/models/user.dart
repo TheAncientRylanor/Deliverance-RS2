@@ -1,3 +1,4 @@
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'user.g.dart';
@@ -10,6 +11,7 @@ class User {
   final String? email;
   final String? username;
   final int? roleId;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
   final String? imagePath;
 

@@ -23,6 +23,8 @@ namespace Deliverance.Model.Responses
 
         public string? Comment { get; set; }
 
+        public DateTime? DateCleared { get; set; }
+
         public ICollection<OfficeReportResponse> OfficeReports { get; set; } = new List<OfficeReportResponse>();
         public ICollection<ReportOccuranceResponse> ReportOccurances { get; set; } = new List<ReportOccuranceResponse>();
     }

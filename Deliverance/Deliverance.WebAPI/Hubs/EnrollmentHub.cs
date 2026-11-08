@@ -37,7 +37,7 @@ namespace Deliverance.WebAPI.Hubs
                 enrollment = await _scoutEnrollmentService.GetByIdAsync(
                     enrollmentId, Context.User!.GetUserId(), Context.User!.IsAdmin());
             }
-            catch (ClientException ex)
+            catch (Exception ex) when (ex is BusinessException or NotFoundException or ForbiddenException)
             {
                 // Only HubException messages reach the client; others are hidden.
                 throw new HubException(ex.Message);

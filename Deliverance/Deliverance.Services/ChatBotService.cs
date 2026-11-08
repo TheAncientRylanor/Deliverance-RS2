@@ -9,7 +9,7 @@ using Deliverance.Services.Database;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Deliverance.Services.Configuration;
 
 
 namespace Deliverance.Services
@@ -66,12 +66,12 @@ namespace Deliverance.Services
 
         public ChatBotService(DeliveranceDbContext dbContext, IMapper mapper,
             IValidator<ChatBotMessageInsertRequest> insertValidator, IValidator<ChatBotMessageUpdateRequest> updateValidator,
-            HttpClient httpClient, IConfiguration configuration, IDeviceRecommendationService recommendationService)
+            HttpClient httpClient, OllamaSettings ollamaSettings, IDeviceRecommendationService recommendationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             // Base address and timeout are set where the client is registered (Program.cs).
             _httpClient = httpClient;
-            _model = configuration["Ollama:Model"] ?? "llama3.2:3b";
+            _model = ollamaSettings.Model;
             _recommendationService = recommendationService;
         }
 
@@ -99,10 +99,10 @@ namespace Deliverance.Services
             if (request.ConversationId.HasValue)
             {
                 conversation = await _dbContext.Conversations.FindAsync(request.ConversationId.Value)
-                    ?? throw new KeyNotFoundException($"Conversation with id {request.ConversationId} not found.");
+                    ?? throw new NotFoundException($"Conversation with id {request.ConversationId} not found.");
                 if (conversation.UserUUID != userId)
                 {
-                    throw new ClientException("You do not have access to this conversation.");
+                    throw new ForbiddenException("You do not have access to this conversation.");
                 }
 
                 history = await _dbContext.ChatBotMessages
@@ -179,10 +179,10 @@ namespace Deliverance.Services
             var conversation = await _dbContext.Conversations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == conversationId)
-                ?? throw new KeyNotFoundException($"Conversation with id {conversationId} not found.");
+                ?? throw new NotFoundException($"Conversation with id {conversationId} not found.");
             if (conversation.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this conversation.");
+                throw new ForbiddenException("You do not have access to this conversation.");
             }
 
             take = Math.Clamp(take, 1, 50);
@@ -197,7 +197,7 @@ namespace Deliverance.Services
                     .Where(x => x.Id == beforeId.Value && x.ConversationId == conversationId)
                     .Select(x => new { x.CreatedAt, x.Id })
                     .FirstOrDefaultAsync()
-                    ?? throw new KeyNotFoundException($"Message with id {beforeId} not found.");
+                    ?? throw new NotFoundException($"Message with id {beforeId} not found.");
 
                 query = query.Where(x => x.CreatedAt < cursor.CreatedAt
                     || (x.CreatedAt == cursor.CreatedAt && x.Id < cursor.Id));
@@ -216,7 +216,7 @@ namespace Deliverance.Services
         {
             if (entity.IsFromBot == true)
             {
-                throw new ClientException("The assistant's messages can't be edited.");
+                throw new BusinessException("The assistant's messages can't be edited.");
             }
             base.MapUpdateRequestToEntity(request, entity);
         }
@@ -278,14 +278,14 @@ namespace Deliverance.Services
             // Ollama isn't running, the model isn't pulled, or the answer took longer than the timeout.
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                throw new ClientException("The assistant is currently unavailable. Please try again later.");
+                throw new BusinessException("The assistant is currently unavailable. Please try again later.");
             }
 
             var reply = response?.Message?.Content?.Trim();
 
             if (string.IsNullOrEmpty(reply))
             {
-                throw new ClientException("The assistant could not answer this message. Try rephrasing it.");
+                throw new BusinessException("The assistant could not answer this message. Try rephrasing it.");
             }
             return reply;
         }

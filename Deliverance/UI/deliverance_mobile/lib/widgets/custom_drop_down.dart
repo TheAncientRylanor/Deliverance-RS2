@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 enum DropDownMode { single, multi }
 
 class CustomDropDown<T> extends StatefulWidget {
+  /// Lists longer than this get a search: typing in the field (single) or a
+  /// search box in the dialog (multi). Short lists don't open the keyboard.
+  static const searchThreshold = 8;
+
   final String label;
   final Map<T, String> items;
   final DropDownMode mode;
@@ -21,6 +25,9 @@ class CustomDropDown<T> extends StatefulWidget {
 
   final TextStyle? textStyle;
 
+  /// The single-select menu grows up to this height, then scrolls.
+  final double menuHeight;
+
   const CustomDropDown({
     super.key,
     required this.label,
@@ -32,6 +39,7 @@ class CustomDropDown<T> extends StatefulWidget {
     this.onChangedMulti,
     this.onBeforeRemove,
     this.textStyle,
+    this.menuHeight = 300,
   });
   @override
   State<CustomDropDown<T>> createState() => _CustomDropDownState<T>();
@@ -62,14 +70,26 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
     );
   }
 
+  bool get _isSearchable =>
+      widget.items.length > CustomDropDown.searchThreshold;
+
   Future<void> _openMultiSelect(BuildContext context) async {
     final theme = Theme.of(context);
+    final inputTheme = _inputDecorationTheme(context);
     final result = await showDialog<List<T>>(
       context: context,
       builder: (dialogContext) {
         final tempSelected = List<T>.from(selectedValues);
+        // Ticked items stay in tempSelected while the search hides them.
+        var query = '';
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final entries = widget.items.entries
+                .where(
+                  (entry) =>
+                      entry.value.toLowerCase().contains(query.toLowerCase()),
+                )
+                .toList();
             return AlertDialog(
               backgroundColor: theme.colorScheme.surface,
               shape: RoundedRectangleBorder(
@@ -87,40 +107,85 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
               ),
               content: SizedBox(
                 width: 300,
-                child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  // Long lists scroll instead of covering the whole screen.
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: widget.items.entries.map((entry) {
-                      final isChecked = tempSelected.contains(entry.key);
-                      return CheckboxListTile(
-                        value: isChecked,
-                        title: Text(
-                          entry.value,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurface,
+                    children: [
+                      if (_isSearchable)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: TextField(
+                            onChanged: (value) =>
+                                setDialogState(() => query = value),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Search',
+                              isDense: true,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: theme.colorScheme.primary,
+                              ),
+                              enabledBorder: inputTheme.enabledBorder,
+                              focusedBorder: inputTheme.focusedBorder,
+                            ),
                           ),
                         ),
-                        activeColor: theme.colorScheme.primary,
-                        checkColor: theme.colorScheme.onPrimary,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (checked) async {
-                          if (checked == false && widget.onBeforeRemove != null) {
-                            final allowed = await widget.onBeforeRemove!(
-                              context,
-                              entry.key,
+                      if (entries.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'No matches',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: entries.length,
+                          itemBuilder: (context, index) {
+                            final entry = entries[index];
+                            final isChecked = tempSelected.contains(entry.key);
+                            return CheckboxListTile(
+                              value: isChecked,
+                              title: Text(
+                                entry.value,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              activeColor: theme.colorScheme.primary,
+                              checkColor: theme.colorScheme.onPrimary,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              onChanged: (checked) async {
+                                if (checked == false &&
+                                    widget.onBeforeRemove != null) {
+                                  final allowed = await widget.onBeforeRemove!(
+                                    context,
+                                    entry.key,
+                                  );
+                                  if (!allowed) return;
+                                }
+                                setDialogState(() {
+                                  if (checked == true) {
+                                    tempSelected.add(entry.key);
+                                  } else {
+                                    tempSelected.remove(entry.key);
+                                  }
+                                });
+                              },
                             );
-                            if (!allowed) return;
-                          }
-                          setDialogState(() {
-                            if (checked == true) {
-                              tempSelected.add(entry.key);
-                            } else {
-                              tempSelected.remove(entry.key);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -171,7 +236,11 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
   Widget _buildSingleDropDown(BuildContext context) {
     return DropdownMenu<T>(
       enableSearch: false,
-      selectOnly: true,
+      // The filter only starts once the user types, so the full list shows on open.
+      enableFilter: _isSearchable,
+      requestFocusOnTap: _isSearchable,
+      selectOnly: !_isSearchable,
+      menuHeight: widget.menuHeight,
       width: 300,
       initialSelection: selectedValue,
       trailingIcon: Icon(

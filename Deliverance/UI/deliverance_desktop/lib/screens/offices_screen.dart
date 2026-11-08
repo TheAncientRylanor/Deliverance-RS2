@@ -6,6 +6,7 @@ import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
+import 'package:deliverance_desktop/widgets/full_screen_office_map.dart';
 import 'package:deliverance_desktop/widgets/office_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -85,10 +86,11 @@ class _OfficesScreenState extends State<OfficesScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => _FullScreenOfficeMap(
+        builder: (_) => FullScreenOfficeMap(
           office: office,
           backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
           iconColor: Theme.of(context).colorScheme.primary,
+          isReport: false,
         ),
       ),
     );
@@ -239,58 +241,6 @@ class _OfficesScreenState extends State<OfficesScreen> {
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _FullScreenOfficeMap extends StatelessWidget {
-  final Office office;
-  final Color backgroundColor;
-  final Color iconColor;
-
-  const _FullScreenOfficeMap({
-    required this.office,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final canvasSize = Size(
-              constraints.maxWidth,
-              constraints.maxHeight,
-            );
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: OfficeCanvas(
-                    office: office,
-                    canvasSize: canvasSize,
-                    isReport: false,
-                  ),
-                ),
-                Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(
-                      Icons.fullscreen_exit,
-                      color: iconColor,
-                      size: 80,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
     );
   }
 }

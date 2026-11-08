@@ -20,6 +20,10 @@ public class UnseenReportState : BaseReportState
     }
     public override async Task<ReportResponse> SeenAsync(int id, bool isAdmin = false)
     {
+        if (!isAdmin)
+        {
+            throw new ForbiddenException("Only an admin can mark a Report as seen.");
+        }
         var entity = await DbContext.Reports
             .Include(x => x.OfficeReports)
                 .ThenInclude(x => x.DeviceReports)
@@ -29,7 +33,7 @@ public class UnseenReportState : BaseReportState
             .FirstOrDefaultAsync(x => x.Id == id);
         if(entity == null)
         {
-            throw new ClientException($"Report with {id} not found");
+            throw new NotFoundException($"Report with {id} not found");
         }
         entity.Status = nameof(SeenReportState);
         await DbContext.SaveChangesAsync();
@@ -53,7 +57,7 @@ public class UnseenReportState : BaseReportState
             .FirstOrDefaultAsync(x => x.Id == id);
         if(entity == null)
         {
-            throw new ClientException($"Report with {id} does not exist");
+            throw new NotFoundException($"Report with {id} does not exist");
         }
         Mapper.Map(request,entity);
            SyncCollection(

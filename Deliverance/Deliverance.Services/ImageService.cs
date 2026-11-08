@@ -1,3 +1,4 @@
+using Deliverance.Model.Exceptions;
 using Microsoft.AspNetCore.Http;
 
 namespace Deliverance.Services
@@ -21,11 +22,11 @@ namespace Deliverance.Services
             string? subFolder = null)
         {
             if (image is null || image.Length == 0)
-                throw new ArgumentException("No image file was provided.", nameof(image));
+                throw new BusinessException("No image file was provided.");
 
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(extension))
-                throw new ArgumentException($"File extension '{extension}' is not allowed.");
+                throw new BusinessException($"Images must be {string.Join(", ", AllowedExtensions)}; '{extension}' is not allowed.");
 
             var folderPath = BuildFolderPath(webRootPath, baseFolder, subFolder);
             Directory.CreateDirectory(folderPath);

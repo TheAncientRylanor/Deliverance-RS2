@@ -127,11 +127,13 @@ abstract class BaseProvider<T> with ChangeNotifier {
     if (response.statusCode >= 500) {
       throw ApiClientException(
         parsed ?? 'Server error. Please try again later.',
+        statusCode: response.statusCode,
       );
     }
 
     throw ApiClientException(
       parsed ?? 'Request could not be completed. Please try again.',
+      statusCode: response.statusCode,
     );
   }
 
@@ -171,7 +173,8 @@ abstract class BaseProvider<T> with ChangeNotifier {
         }
         query += '$prefix$key=$encoded';
       } else if (value is DateTime) {
-        query += '$prefix$key=${value.toIso8601String()}';
+        // Always UTC, like every other time sent to the API.
+        query += '$prefix$key=${value.toUtc().toIso8601String()}';
       } else if (value is List || value is Map) {
         if (value is List) value = value.asMap();
         value.forEach((k, v) {

@@ -37,15 +37,8 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     [HttpGet("{id}")]
     public virtual async Task<ActionResult<TResponse>> GetById(int id)
     {
-        try
-        {
-            var userId = User.GetUserId();
-            var result = await _service.GetByIdAsync(id,userId,User.IsAdmin());
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        // A missing record throws NotFoundException, which the middleware turns into 404.
+        var result = await _service.GetByIdAsync(id, User.GetUserId(), User.IsAdmin());
+        return Ok(result);
     }
 }

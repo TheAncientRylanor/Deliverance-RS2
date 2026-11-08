@@ -11,6 +11,7 @@ import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/full_screen_office_map.dart';
 import 'package:deliverance_desktop/widgets/occurance_dialog.dart';
 import 'package:deliverance_desktop/widgets/office_canvas.dart';
 import 'package:flutter/material.dart';
@@ -109,6 +110,9 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
   Future<void> _getOffice() async {
     setState(() {
       isLoadingOffice = true;
+      // Drop the previous office so a failed load can't leave it on screen
+      // under a different selection.
+      _selectedOffice = null;
     });
     try {
       if (selectedReport != null) {
@@ -126,6 +130,22 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
         });
       }
     }
+  }
+
+  Future<void> _enterFullScreenMap() async {
+    final office = _selectedOffice;
+    if (office == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => FullScreenOfficeMap(
+          office: office,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          iconColor: Theme.of(context).colorScheme.primary,
+          isReport: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -312,10 +332,12 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
                 Positioned(
                   bottom: 0,
                   right: 0,
-                  child: Icon(
-                    Icons.fullscreen,
+                  child: IconButton(
+                    onPressed: isLoadingOffice || _selectedOffice == null
+                        ? null
+                        : _enterFullScreenMap,
+                    icon: Icon(Icons.fullscreen, size: 80),
                     color: theme.colorScheme.primary,
-                    size: 80,
                   ),
                 ),
               ],
