@@ -14,9 +14,6 @@ import 'package:deliverance_scout/widgets/scout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Shown once the scout is approved. Loading GET Scout/Me proves that the
-/// scout's own credentials work; the hub connection receives admin commands,
-/// and the log reporter sends this PC's faults while the screen is open.
 class ScoutHomeScreen extends StatefulWidget {
   const ScoutHomeScreen({super.key});
 
@@ -96,8 +93,6 @@ class _ScoutHomeScreenState extends State<ScoutHomeScreen> {
     if (mounted) setState(() => _lastCommandStatus = status);
   }
 
-  /// Tells the admin the command is running. A failure here only costs the
-  /// Running indicator, so the command still runs and reports its result.
   Future<void> _reportStarted(ScoutCommand command) async {
     if (mounted) {
       setState(() => _lastCommandStatus = "Command #${command.id}: running");

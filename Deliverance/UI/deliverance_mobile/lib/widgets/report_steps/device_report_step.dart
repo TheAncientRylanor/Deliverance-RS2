@@ -3,6 +3,7 @@ import 'package:deliverance_mobile/models/office.dart';
 import 'package:deliverance_mobile/models/report.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:flutter/material.dart';
 
 class DeviceReportStep extends StatefulWidget {
@@ -38,14 +39,14 @@ class DeviceReportStep extends StatefulWidget {
 
 class _DeviceReportStepState extends State<DeviceReportStep> {
   final TextEditingController _description = TextEditingController();
-  String _selectedOccurance = "";
+  String _selectedOccurrence = "";
   late DeviceReport deviceReport;
 
   @override
   void initState() {
     super.initState();
     _description.text = widget._deviceReport?.detail ?? "";
-    _selectedOccurance = widget._deviceReport?.occurance ?? "";
+    _selectedOccurrence = widget._deviceReport?.occurrence ?? "";
   }
 
   @override
@@ -152,6 +153,8 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
           maxLines: 30,
           labelText: "1. Description",
           controller: _description,
+          maxLength: FieldLimits.deviceDetailMax,
+          validator: maxLength('Description', FieldLimits.deviceDetailMax),
         ),
         Column(
           children: [
@@ -180,12 +183,12 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                         ),
                         const SizedBox(height: 10),
                         RadioGroup<String>(
-                          groupValue: _selectedOccurance.isEmpty
+                          groupValue: _selectedOccurrence.isEmpty
                               ? null
-                              : _selectedOccurance,
+                              : _selectedOccurrence,
                           onChanged: (value) {
                             setState(() {
-                              _selectedOccurance = value ?? '';
+                              _selectedOccurrence = value ?? '';
                             });
                           },
                           child: Column(
@@ -226,7 +229,7 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                     id: widget._deviceReport?.id,
                     detail: _description.text,
                     deviceId: widget._selectedDevice.id,
-                    occurance: _selectedOccurance,
+                    occurrence: _selectedOccurrence,
                     officeReportId: widget._deviceReport?.officeReportId,
                     name: widget._selectedDevice.name,
                   );

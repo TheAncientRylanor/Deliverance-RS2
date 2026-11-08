@@ -19,7 +19,7 @@ class Report {
   final String? reportClearedBy;
   final String? comment;
   final List<OfficeReport>? officeReports;
-  final List<ReportOccurance>? reportOccurances;
+  final List<ReportOccurrence>? reportOccurrences;
 
   Report({
     this.id,
@@ -34,7 +34,7 @@ class Report {
     this.reportClearedBy,
     this.comment,
     this.officeReports,
-    this.reportOccurances,
+    this.reportOccurrences,
   });
 
   factory Report.fromJson(Map<String, dynamic> json) => _$ReportFromJson(json);
@@ -89,14 +89,14 @@ class DeviceReport {
 }
 
 @JsonSerializable()
-class ReportOccurance {
+class ReportOccurrence {
   final String? question;
   final int? answer;
 
-  ReportOccurance({this.question, this.answer});
+  ReportOccurrence({this.question, this.answer});
 
-  factory ReportOccurance.fromJson(Map<String, dynamic> json) =>
-      _$ReportOccuranceFromJson(json);
+  factory ReportOccurrence.fromJson(Map<String, dynamic> json) =>
+      _$ReportOccurrenceFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ReportOccuranceToJson(this);
+  Map<String, dynamic> toJson() => _$ReportOccurrenceToJson(this);
 }

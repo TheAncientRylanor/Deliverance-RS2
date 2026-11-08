@@ -3,11 +3,6 @@ import 'package:deliverance_desktop/widgets/office_editor/placed_device.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
-/// The area devices are dropped onto and dragged around in. It only reports
-/// what the user did; the screen owns the device list and updates it.
-///
-/// Positions passed to the callbacks are fractions of the canvas size, already
-/// clamped so the whole device stays visible.
 class OfficeEditorCanvas extends StatefulWidget {
   final List<PlacedDevice> devices;
   final void Function(String type, Offset position) onDeviceDropped;
@@ -27,15 +22,11 @@ class OfficeEditorCanvas extends StatefulWidget {
 }
 
 class _OfficeEditorCanvasState extends State<OfficeEditorCanvas> {
-  // Size of a placed device: an 80px icon plus the IconButton padding, and
-  // room for the name below it.
   static const double _deviceWidth = 96;
   static const double _deviceHeight = 120;
 
   final GlobalKey _canvasKey = GlobalKey();
 
-  /// Keeps a device's top-left corner (as a fraction of the canvas) inside
-  /// the canvas, so the whole device stays visible.
   Offset _clamp(Offset fraction, Size canvasSize) {
     final maxX = canvasSize.width > _deviceWidth
         ? (canvasSize.width - _deviceWidth) / canvasSize.width
@@ -48,8 +39,6 @@ class _OfficeEditorCanvasState extends State<OfficeEditorCanvas> {
 
   void _handleDrop(DragTargetDetails<String> details) {
     final box = _canvasKey.currentContext!.findRenderObject() as RenderBox;
-    // details.offset is the top-left of the drag preview, which is where the
-    // device should land.
     final local = box.globalToLocal(details.offset);
     final size = box.size;
     widget.onDeviceDropped(
@@ -65,7 +54,6 @@ class _OfficeEditorCanvasState extends State<OfficeEditorCanvas> {
       builder: (context, _, _) => LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
-          // The transparent color makes empty areas accept drops too.
           return Container(
             key: _canvasKey,
             width: double.infinity,

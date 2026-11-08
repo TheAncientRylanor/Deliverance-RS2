@@ -19,13 +19,11 @@ namespace Deliverance.Services.Validators
 
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Name is required")
-                .MaximumLength(50).WithMessage("Name cannot exceed 50 characters")
-                .MinimumLength(2).WithMessage("Name must have at least 2 characters");
+                .Length(2, 50).WithMessage("Name must be 2 to 50 characters long");
 
             RuleFor(x => x.Type)
                 .NotEmpty().WithMessage("Type is required")
-                .MaximumLength(50).WithMessage("Type cannot exceed 50 characters")
-                .MinimumLength(2).WithMessage("Type must have at least 2 characters");
+                .MaximumLength(50).WithMessage("Type cannot exceed 50 characters");
 
             RuleFor(x => x.IconName)
                 .NotEmpty().WithMessage("Icon name is required")

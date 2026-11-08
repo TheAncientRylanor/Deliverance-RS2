@@ -1,11 +1,12 @@
 import 'package:deliverance_mobile/models/contact.dart';
 import 'package:deliverance_mobile/providers/contact_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/dialogs/availability_dialog.dart';
 import 'package:deliverance_mobile/widgets/contact_avatar_picker.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
-import 'package:deliverance_mobile/widgets/custom_textController.dart';
+import 'package:deliverance_mobile/widgets/custom_text_controller.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
 import 'package:deliverance_mobile/widgets/custom_toast.dart';
 import 'package:deliverance_mobile/widgets/dynamic_field_list.dart';
@@ -37,7 +38,6 @@ class _AddContactScreenState extends State<AddContactScreen> {
   @override
   void initState() {
     super.initState();
-    // Add an initial text field on load
     if (widget.isUpdating) {
       setUpdate();
     } else {
@@ -286,23 +286,13 @@ class _AddContactScreenState extends State<AddContactScreen> {
                       CustomTextField(
                         labelText: 'First name',
                         controller: _firstName,
-                        validator: (value) {
-                          if (value == null || value == "") {
-                            return "First name is empty";
-                          }
-                          return null;
-                        },
+                        validator: personName('First name'),
                       ),
                       const SizedBox(height: 15),
                       CustomTextField(
                         labelText: 'Last name',
                         controller: _lastName,
-                        validator: (value) {
-                          if (value == null || value == "") {
-                            return "Last name is empty";
-                          }
-                          return null;
-                        },
+                        validator: personName('Last name'),
                       ),
                       DynamicFieldList(
                         labelText: 'Email',
@@ -310,6 +300,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                         addFunction: _addNewEmail,
                         removeFunction: _removeEmail,
                         hasValidator: true,
+                        validator: email(),
                       ),
                       DynamicFieldList(
                         labelText: 'Phone number',
@@ -317,6 +308,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                         addFunction: _addNewPhoneNumber,
                         removeFunction: _removePhone,
                         hasValidator: true,
+                        validator: phone(),
                       ),
                       DynamicFieldList(
                         labelText: 'Time available',
@@ -347,16 +339,19 @@ class _AddContactScreenState extends State<AddContactScreen> {
                         child: PrimaryButton(
                           isLoading: _isSaving,
                           onPressed: () async {
-                            if (_contactKey.currentState!.validate() ||
-                                _phoneControllers!.isEmpty ||
-                                _emailControllers!.isEmpty) {
+                            if (_contactKey.currentState!.validate()) {
                               setState(() => _isSaving = true);
                               try {
                                 await _saveContact();
                                 if (!context.mounted) return;
+                                final name =
+                                    '${_firstName.text.trim()} ${_lastName.text.trim()}';
                                 showCustomToast(
                                   context,
-                                  "Contact successfully saved ",
+                                  widget.contact == null
+                                      ? "Contact $name added."
+                                      : "Contact $name updated.",
+                                  type: ToastType.success,
                                 );
                                 await Future.delayed(
                                   const Duration(milliseconds: 200),
@@ -365,7 +360,6 @@ class _AddContactScreenState extends State<AddContactScreen> {
                                 Navigator.pop(context, true);
                               } on ApiClientException catch (e) {
                                 if (!mounted) return;
-                                // ignore: use_build_context_synchronously
                                 alertBox(context, 'Error', e.toString());
                               } finally {
                                 if (mounted) setState(() => _isSaving = false);

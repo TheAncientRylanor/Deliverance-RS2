@@ -1,36 +1,38 @@
+using Deliverance.Services.ReportStateMachine;
 using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Responses;
-using Deliverance.Services;
 using Deliverance.Services.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.ML;
 using Microsoft.ML.Data;
+
+namespace Deliverance.Services;
 
 public class DeviceRecommendationService : IDeviceRecommendationService
 {
     private const int HorizonDays = 14;
-    // The log lines the model reads for a device, and the admin sees as evidence.
     private const int RecentLogDays = 7;
     private const int RecentLogsLimit = 20;
     private const int EvidenceReportDays = 90;
     private const int EvidenceReportsLimit = 10;
-    // A fix gets as long to prove itself as the period the model predicts.
     private const int RecentlyFixedDays = HorizonDays;
     private static readonly string ModelPath =
         Path.Combine(AppContext.BaseDirectory, "MLModels", "device-issue-model.zip");
 
-    // Shared across requests so the model is loaded once, not on every call.
+    private const string ModelCacheKey = "recommendation:device-issue-model";
+    private static readonly SemaphoreSlim ModelLock = new(1, 1);
     private static readonly MLContext _ml = new(seed: 1);
-    private static ITransformer? _model;
 
     private readonly DeliveranceDbContext _dbContext;
+    private readonly IMemoryCache _cache;
 
-    public DeviceRecommendationService(DeliveranceDbContext dbContext)
+    public DeviceRecommendationService(DeliveranceDbContext dbContext, IMemoryCache cache)
     {
         _dbContext = dbContext;
+        _cache = cache;
     }
-    // Loads every device's history, or only one device's when deviceId is set.
     public async Task<(List<ReportPoint>, List<LogPoint>)> LoadHistoryAsync(int? deviceId = null)
     {
         var reportQuery = _dbContext.DeviceReports
@@ -111,7 +113,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
                 else
                 {
                     var labelled = upcoming.Where(r => r.IssueType != null).OrderBy(r => r.Date).FirstOrDefault();
-                    if (labelled == null) continue; // reported, but nobody said what kind
+                    if (labelled == null) continue;
                     label = labelled.IssueType!.Value.ToString();
                 }
 
@@ -123,30 +125,31 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         return rows;
     }
     private static IEstimator<ITransformer> BuildPipeline() =>
-    // 1. Turn the text label ("Hardware") into an internal number
     _ml.Transforms.Conversion.MapValueToKey("Label")
-        // 2. Turn log text into numbers (word/character counts)
         .Append(_ml.Transforms.Text.FeaturizeText("LogFeatures", nameof(DeviceIssueInput.RecentLogs)))
-        // 3. Put the numeric features into one vector...
         .Append(_ml.Transforms.Concatenate("NumFeatures",
             nameof(DeviceIssueInput.ReportsLast7Days), nameof(DeviceIssueInput.ReportsLast30Days),
             nameof(DeviceIssueInput.ReportsLast90Days), nameof(DeviceIssueInput.AvgSeverity),
             nameof(DeviceIssueInput.MaxSeverity), nameof(DeviceIssueInput.PastHardwareIssues),
             nameof(DeviceIssueInput.PastSoftwareIssues), nameof(DeviceIssueInput.DaysSinceLastReport),
             nameof(DeviceIssueInput.LogsLast7Days)))
-        // ...and scale them to 0..1 so "365 days" doesn't drown out "severity 4"
         .Append(_ml.Transforms.NormalizeMinMax("NumFeatures"))
-        // 4. Everything the algorithm looks at goes into "Features"
         .Append(_ml.Transforms.Concatenate("Features", "NumFeatures", "LogFeatures"))
-        // 5. The algorithm
         .Append(_ml.MulticlassClassification.Trainers.SdcaMaximumEntropy())
-        // 6. Turn the predicted number back into "Hardware"/"Software"/...
         .Append(_ml.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
 
     public async Task<RecommendationTrainingResponse> TrainAsync(bool isAdmin)
     {
         EnsureAdmin(isAdmin);
-        return await TrainModelAsync();
+        await ModelLock.WaitAsync();
+        try
+        {
+            return await TrainModelAsync();
+        }
+        finally
+        {
+            ModelLock.Release();
+        }
     }
 
     private async Task<RecommendationTrainingResponse> TrainModelAsync()
@@ -155,7 +158,6 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         var (reports, logs) = await LoadHistoryAsync();
         var rows = BuildTrainingRows(devices, reports, logs);
 
-        // Without "None" rows the model has never seen a healthy device, so it would score every device 100%.
         var labels = rows.Select(r => r.Label).Distinct().ToList();
         if (labels.Count < 2 || !labels.Contains("None"))
         {
@@ -165,19 +167,16 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         var data = _ml.Data.LoadFromEnumerable(rows);
         var pipeline = BuildPipeline();
 
-        // Rows are oldest-first, so test on the newest 20%. A random split would put
-        // neighbouring, near-identical weeks of a device on both sides.
         var cut = (int)(rows.Count * 0.8);
         var trainSet = _ml.Data.LoadFromEnumerable(rows.Take(cut));
         var testSet = _ml.Data.LoadFromEnumerable(rows.Skip(cut));
         var metrics = _ml.MulticlassClassification.Evaluate(
             pipeline.Fit(trainSet).Transform(testSet));
 
-        // Then train the real model on all data and save it.
         var model = pipeline.Fit(data);
         Directory.CreateDirectory(Path.GetDirectoryName(ModelPath)!);
         _ml.Model.Save(model, data.Schema, ModelPath);
-        _model = model;
+        CacheModel(model);
 
         return new RecommendationTrainingResponse
         {
@@ -190,15 +189,33 @@ public class DeviceRecommendationService : IDeviceRecommendationService
 
     private async Task<ITransformer> GetModelAsync()
     {
-        if (_model != null) return _model;
-        if (File.Exists(ModelPath))
+        if (_cache.TryGetValue(ModelCacheKey, out ITransformer? cached))
         {
-            _model = _ml.Model.Load(ModelPath, out _);
-            return _model;
+            return cached!;
         }
-        await TrainModelAsync(); // first request ever: train on the spot
-        return _model!;
+
+        await ModelLock.WaitAsync();
+        try
+        {
+            if (_cache.TryGetValue(ModelCacheKey, out cached))
+            {
+                return cached!;
+            }
+            if (File.Exists(ModelPath))
+            {
+                return CacheModel(_ml.Model.Load(ModelPath, out _));
+            }
+            await TrainModelAsync();
+            return _cache.Get<ITransformer>(ModelCacheKey)!;
+        }
+        finally
+        {
+            ModelLock.Release();
+        }
     }
+
+    private ITransformer CacheModel(ITransformer model)
+        => _cache.Set(ModelCacheKey, model, new MemoryCacheEntryOptions { Priority = CacheItemPriority.NeverRemove });
     public async Task<List<DeviceRecommendationResponse>> GetRecommendationsAsync(int top, int minReports,
         float minProbability, bool isAdmin)
     {
@@ -217,7 +234,6 @@ public class DeviceRecommendationService : IDeviceRecommendationService
             .ToList();
     }
 
-    // Every device's score, without the limit and filters of GetRecommendationsAsync.
     public async Task<List<DeviceRecommendationResponse>> ScoreAllDevicesAsync(bool isAdmin)
     {
         EnsureAdmin(isAdmin);
@@ -231,7 +247,7 @@ public class DeviceRecommendationService : IDeviceRecommendationService
     {
         EnsureAdmin(isAdmin);
         var device = await _dbContext.Devices.AsNoTracking().FirstOrDefaultAsync(d => d.Id == deviceId)
-            ?? throw new NotFoundException($"Device with id {deviceId} not found.");
+            ?? throw new NotFoundException($"Device with id {deviceId} was not found.");
 
         var model = await GetModelAsync();
         var (reports, logs) = await LoadHistoryAsync(deviceId);
@@ -260,7 +276,6 @@ public class DeviceRecommendationService : IDeviceRecommendationService
                     Status = dr.OfficeReport.Report.Status,
                     Severity = dr.OfficeReport.Report.Severity,
                     IssueType = dr.OfficeReport.Report.IssueType,
-                    // What was reported about this device, or else about the report as a whole.
                     Detail = dr.Detail ?? dr.OfficeReport.Report.Detail,
                     Comment = dr.OfficeReport.Report.Comment,
                 })
@@ -268,9 +283,6 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         };
     }
 
-    // The score still counts the reports from before the fix, so a repaired device would
-    // stay on top. It is left out until something shows the fix didn't work: an open
-    // report or a new log line. Scouts only send faults, so any new line counts.
     private static bool IsRecentlyFixed(int deviceId, DateTime now, List<ReportPoint> reports, List<LogPoint> logs)
     {
         var deviceReports = reports.Where(r => r.DeviceId == deviceId).ToList();
@@ -285,12 +297,10 @@ public class DeviceRecommendationService : IDeviceRecommendationService
     private static List<DeviceRecommendationResponse> ScoreDevices(ITransformer model, List<Device> devices,
         DateTime now, List<ReportPoint> reports, List<LogPoint> logs)
     {
-        // Every device "as of now", predicted in one batch.
         var inputs = devices.Select(d => BuildFeatures(d.Id, now, reports, logs)).ToList();
         var output = model.Transform(_ml.Data.LoadFromEnumerable(inputs));
         var predictions = _ml.Data.CreateEnumerable<DeviceIssuePrediction>(output, reuseRowObject: false).ToList();
 
-        // Score[i] belongs to labels[i]; the order is decided by ML.NET, so ask it.
         VBuffer<ReadOnlyMemory<char>> slotNames = default;
         output.Schema["Score"].GetSlotNames(ref slotNames);
         var labels = slotNames.DenseValues().Select(x => x.ToString()).ToList();
@@ -319,7 +329,6 @@ public class DeviceRecommendationService : IDeviceRecommendationService
             .ToList();
     }
 
-    // Recommendations cover every office, so they are for admins only.
     private static void EnsureAdmin(bool isAdmin)
     {
         if (!isAdmin)

@@ -25,13 +25,11 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   static const _criticalDevicesCount = 5;
-  // A device below this is more likely fine than not, so it isn't critical.
   static const _criticalMinProbability = 0.5;
 
   late ReportStatisticsProvider _statisticsProvider;
   late OfficeProvider _officeProvider;
   late RecommendationProvider _recommendationProvider;
-  // Kept here so the Location and Time period filters don't score every device again.
   List<DeviceRecommendation> _criticalDevices = [];
   bool _isLoadingCritical = true;
   String? _criticalError;
@@ -54,7 +52,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     initCriticalDevices();
   }
 
-  /// A failure only affects this section, so the statistics stay usable.
   Future<void> initCriticalDevices() async {
     try {
       _criticalDevices = await _recommendationProvider.getCriticalDevices(
@@ -64,11 +61,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     } on ApiClientException catch (e) {
       _criticalError = e.message;
     } finally {
-      // ignore: control_flow_in_finally
-      if (!mounted) return;
-      setState(() {
-        _isLoadingCritical = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingCritical = false;
+        });
+      }
     }
   }
 
@@ -103,11 +100,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         onRetry: initValues,
       );
     } finally {
-      // ignore: control_flow_in_finally
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -190,7 +187,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   String _reportCountLabel(int? count) => "Reports: ${count ?? 0}";
 
-  /// The API sends DateTime's default (year 1) when there are no reports.
   String get _busiestDayLabel {
     final day = _reportStatistics?.timePeriodWithMostRep;
     if (day == null || day.year <= 1) return "-";

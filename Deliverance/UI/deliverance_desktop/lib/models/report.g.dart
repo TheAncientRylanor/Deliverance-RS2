@@ -17,8 +17,8 @@ Report _$ReportFromJson(Map<String, dynamic> json) => Report(
   officeReports: (json['officeReports'] as List<dynamic>?)
       ?.map((e) => OfficeReport.fromJson(e as Map<String, dynamic>))
       .toList(),
-  reportOccurances: (json['reportOccurances'] as List<dynamic>?)
-      ?.map((e) => ReportOccurance.fromJson(e as Map<String, dynamic>))
+  reportOccurrences: (json['reportOccurrences'] as List<dynamic>?)
+      ?.map((e) => ReportOccurrence.fromJson(e as Map<String, dynamic>))
       .toList(),
 );
 
@@ -35,7 +35,7 @@ Map<String, dynamic> _$ReportToJson(Report instance) => <String, dynamic>{
   'reportClearedBy': instance.reportClearedBy,
   'comment': instance.comment,
   'officeReports': instance.officeReports?.map((e) => e.toJson()).toList(),
-  'reportOccurances': instance.reportOccurances
+  'reportOccurrences': instance.reportOccurrences
       ?.map((e) => e.toJson())
       .toList(),
 };
@@ -78,11 +78,11 @@ Map<String, dynamic> _$DeviceReportToJson(DeviceReport instance) =>
       'deviceId': instance.deviceId,
     };
 
-ReportOccurance _$ReportOccuranceFromJson(Map<String, dynamic> json) =>
-    ReportOccurance(
+ReportOccurrence _$ReportOccurrenceFromJson(Map<String, dynamic> json) =>
+    ReportOccurrence(
       question: json['question'] as String?,
       answer: json['answer'] as int?,
     );
 
-Map<String, dynamic> _$ReportOccuranceToJson(ReportOccurance instance) =>
+Map<String, dynamic> _$ReportOccurrenceToJson(ReportOccurrence instance) =>
     <String, dynamic>{'question': instance.question, 'answer': instance.answer};

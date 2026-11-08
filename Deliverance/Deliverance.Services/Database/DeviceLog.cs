@@ -1,6 +1,7 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class DeviceLog
 {
@@ -16,11 +17,9 @@ public class DeviceLog
     [MaxLength(1000)]
     public string? Log { get; set; }
 
-    // Set by the scout, so a resent batch is not saved twice. Null on seeded logs.
     [MaxLength(100)]
     public string? EventKey { get; set; }
 
-    // Navigation
     [ForeignKey("ScoutId")]
     public Scout? Scout { get; set; }
 }

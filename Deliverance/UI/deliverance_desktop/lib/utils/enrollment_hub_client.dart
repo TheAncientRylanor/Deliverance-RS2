@@ -5,10 +5,7 @@ import 'package:deliverance_desktop/utils/api_constants.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 
-/// Listens on the API's EnrollmentHub for one enrollment and reports when the
-/// scout has claimed its token. Server side: Deliverance.WebAPI/Hubs/EnrollmentHub.cs.
 class EnrollmentHubClient {
-  // Names must match EnrollmentHub on the server.
   static const _hubPath = "hubs/enrollment";
   static const _joinMethod = "JoinEnrollment";
   static const _claimedEvent = "EnrollmentClaimed";
@@ -36,12 +33,10 @@ class EnrollmentHubClient {
         _handle(ScoutEnrollment.fromJson(Map<String, dynamic>.from(data)));
       }
     });
-    // A reconnect gets a new connection id, which isn't in the group any more.
     connection.onreconnected(({connectionId}) async {
       try {
         await _join();
       } catch (_) {
-        // Rejoining is best effort; the dialog stays usable without it.
       }
     });
 
@@ -56,8 +51,6 @@ class EnrollmentHubClient {
     await connection?.stop();
   }
 
-  /// Joins the enrollment's group. The server answers with the current state,
-  /// which covers a claim that happened before we joined.
   Future<void> _join() async {
     final result = await _connection?.invoke(_joinMethod, args: [enrollmentId]);
     if (result is Map) {
@@ -66,7 +59,6 @@ class EnrollmentHubClient {
   }
 
   void _handle(ScoutEnrollment enrollment) {
-    // The claim can arrive both as the event and as the join result.
     if (_claimHandled ||
         enrollment.id != enrollmentId ||
         enrollment.status != ScoutEnrollmentStatusEnum.claimed) {
@@ -76,8 +68,6 @@ class EnrollmentHubClient {
     onClaimed(enrollment);
   }
 
-  /// SignalR asks for the token on every (re)connect, so refresh it first if
-  /// it has expired; there is no 401 retry like in BaseProvider here.
   static Future<String> _accessToken() async {
     final token = AuthProvider.accesstoken;
     if (token == null || JwtDecoder.isExpired(token)) {

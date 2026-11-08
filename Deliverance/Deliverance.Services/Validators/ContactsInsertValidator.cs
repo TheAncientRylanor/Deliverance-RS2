@@ -1,47 +1,34 @@
-
-using Deliverance.Model.Request;
-using Deliverance.Model.Responses;
+﻿using Deliverance.Model.Request;
 using FluentValidation;
+
 namespace Deliverance.Services.Validators
 {
     public class ContactsInsertValidator : AbstractValidator<ContactsInsertRequest>
     {
         public ContactsInsertValidator()
         {
-            RuleFor(x => x.FirstName)
-                .NotEmpty().WithMessage("First name is required");
+            RuleFor(x => x.FirstName).PersonName("First name");
+            RuleFor(x => x.LastName).PersonName("Last name");
 
-                RuleFor(x => x.LastName)
-                .NotEmpty().WithMessage("First name is required");
-                
-                RuleFor(x => x.ContactEmails)
-                .NotEmpty().WithMessage("At least one email is required");
+            RuleFor(x => x.ContactEmails)
+                .NotEmpty().WithMessage("Add at least one email address");
+            RuleForEach(x => x.ContactEmails).ChildRules(email =>
+                email.RuleFor(x => x.Email).Email());
 
-                RuleForEach(x => x.ContactEmails)
-                .SetValidator(new EmailValidator());
+            RuleFor(x => x.ContactPhoneNumbers)
+                .NotEmpty().WithMessage("Add at least one phone number");
+            RuleForEach(x => x.ContactPhoneNumbers).ChildRules(phone =>
+                phone.RuleFor(x => x.PhoneNumber).Phone());
 
-                RuleFor(x => x.ContactPhoneNumbers)
-                .NotEmpty().WithMessage("At least one phone number is required");
+            RuleForEach(x => x.Availabilities)
+                .SetValidator(new AvailabilityRules<AvailabilityInsertRequest>(a => a.Day, a => a.FromTime, a => a.ToTime, a => a.Pause));
+            RuleFor(x => x.Availabilities)
+                .NoOverlappingSlots(a => a.Day, a => a.FromTime, a => a.ToTime);
 
-                RuleForEach(x => x.ContactPhoneNumbers)
-                .SetValidator(new PhoneNumberValidator());
-
-        }
-        public class EmailValidator : AbstractValidator<InsertEmail>
-        {
-            public EmailValidator()
-            {
-                 RuleFor(x=>x.Email).NotEmpty().WithMessage("Email is required")
-                .EmailAddress().WithMessage("Email is not in fill");
-            }
-        }
-        public class PhoneNumberValidator : AbstractValidator<InsertPhoneNumber>
-        {
-            public PhoneNumberValidator()
-            {
-                RuleFor(x => x.PhoneNumber).NotEmpty().WithMessage("Phone number is required")
-                .Matches(@"^\+?[0-9\s\-()]{6,20}$").WithMessage("Phone number is not valid");
-            }
+            RuleFor(x => x.ContactEmails)
+                .Distinct(e => e.Email.Trim().ToLowerInvariant(), "The same email address is listed twice");
+            RuleFor(x => x.ContactPhoneNumbers)
+                .Distinct(p => p.PhoneNumber.Trim(), "The same phone number is listed twice");
         }
     }
 }

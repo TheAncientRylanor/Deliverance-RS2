@@ -1,34 +1,57 @@
 ﻿using Deliverance.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Deliverance.Services
 {
     public class RefreshTokenService : IRefreshTokenService
     {
-        private readonly DeliveranceDbContext _context;
         private readonly DbSet<RefreshTokens> _refreshTokens;
 
         public RefreshTokenService(DeliveranceDbContext context)
         {
-            _context = context;
-            _refreshTokens = _context.RefreshTokens;
+            _refreshTokens = context.RefreshTokens;
         }
 
         public async Task<RefreshTokens?> GetStoredTokenAsync(string refreshToken)
         {
-            return await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            var hash = Hash(refreshToken);
+            return await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == hash);
         }
 
-        // Add and RemoveAllForUserAsync only change the shared DbContext. The caller saves,
-        // so a login, refresh or password change is stored in one SaveChanges.
-        public void Add(RefreshTokens refreshToken)
+        public RefreshTokens Add(Guid userId, string refreshToken, DateTime expiresAt)
         {
-            _refreshTokens.Add(refreshToken);
+            var row = new RefreshTokens
+            {
+                UserUUID = userId,
+                Token = Hash(refreshToken),
+                ExpiresAt = expiresAt,
+            };
+            _refreshTokens.Add(row);
+            return row;
+        }
+
+        public void Rotate(RefreshTokens session, string newRefreshToken, DateTime expiresAt)
+        {
+            session.Token = Hash(newRefreshToken);
+            session.ExpiresAt = expiresAt;
+        }
+
+        public async Task RemoveAsync(int sessionId, Guid userId)
+        {
+            var session = await _refreshTokens.FirstOrDefaultAsync(rt => rt.Id == sessionId && rt.UserUUID == userId);
+            if (session != null)
+            {
+                _refreshTokens.Remove(session);
+            }
+        }
+
+        public async Task RemoveExpiredForUserAsync(Guid userId)
+        {
+            var now = DateTime.UtcNow;
+            var expired = await _refreshTokens.Where(rt => rt.UserUUID == userId && rt.ExpiresAt < now).ToListAsync();
+            _refreshTokens.RemoveRange(expired);
         }
 
         public async Task RemoveAllForUserAsync(Guid userId)
@@ -36,5 +59,8 @@ namespace Deliverance.Services
             var tokens = await _refreshTokens.Where(rt => rt.UserUUID == userId).ToListAsync();
             _refreshTokens.RemoveRange(tokens);
         }
+
+        private static string Hash(string refreshToken)
+            => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken)));
     }
 }

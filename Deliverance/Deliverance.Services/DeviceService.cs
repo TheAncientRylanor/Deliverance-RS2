@@ -8,11 +8,6 @@ using Deliverance.Services.Messaging;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Deliverance.Services
 {
@@ -59,7 +54,25 @@ namespace Deliverance.Services
             return query;
         }
 
-        // Its scout, logs and commands go with it (cascade); its reports must not.
+        public override async Task<DeviceResponse> InsertAsync(DeviceInsertRequest request, Guid userId)
+        {
+            var isAdmin = await _dbContext.Users.AnyAsync(u => u.UUID == userId && u.RoleId == RoleEnum.Admin);
+            if (!isAdmin)
+            {
+                throw new ForbiddenException("Only admins can add devices.");
+            }
+            return await base.InsertAsync(request, userId);
+        }
+
+        public override async Task<DeviceResponse> UpdateAsync(int id, DeviceUpdateRequest request, Guid userId, bool isAdmin = false)
+        {
+            if (!isAdmin)
+            {
+                throw new ForbiddenException("Only admins can edit devices.");
+            }
+            return await base.UpdateAsync(id, request, userId, isAdmin);
+        }
+
         public override async Task DeleteAsync(int id, Guid userId, bool isAdmin = false)
         {
             if (!isAdmin)
@@ -67,7 +80,7 @@ namespace Deliverance.Services
                 throw new ForbiddenException("Only admins can delete devices.");
             }
             var device = await _dbContext.Devices.FirstOrDefaultAsync(d => d.Id == id)
-                ?? throw new NotFoundException($"Device with id {id} not found.");
+                ?? throw new NotFoundException($"Device with id {id} was not found.");
 
             var reportCount = await CountReportsAsync(_dbContext, [id]);
             if (reportCount.TryGetValue(id, out var count))
@@ -80,9 +93,6 @@ namespace Deliverance.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// How many reports name each of the given devices. Devices in no report are left out.
-        /// </summary>
         public static async Task<Dictionary<int, int>> CountReportsAsync(DeliveranceDbContext dbContext,
             IReadOnlyCollection<int> deviceIds)
         {
@@ -118,19 +128,18 @@ namespace Deliverance.Services
             var device = await _dbContext.Devices.Include(x => x.Scout).FirstOrDefaultAsync(x => x.Id == command.DeviceId);
             if (device is null)
             {
-                throw new NotFoundException("Device does not exist inside the database");
+                throw new NotFoundException($"Device with id {command.DeviceId} was not found.");
             }
             if (device.Scout is null)
             {
-                throw new BusinessException($"Current device {device.Name} is not a scout");
+                throw new BusinessException($"{device.Name} has no scout installed, so it can't run commands.");
             }
             if (device.Scout.IsDisabled)
             {
-                throw new BusinessException("Scout is disabled and cannot recieve any commands");
+                throw new BusinessException($"The scout on {device.Name} is disabled, so it can't receive commands. Enable it first.");
             }
             await _scoutCommandValidator.ValidateAndThrowAsync(command);
 
-            // Saved first, so the scout gets the Id it reports the result to.
             var entity = new ScoutCommand
             {
                 ScoutId = device.Scout.Id,

@@ -9,7 +9,7 @@ namespace Deliverance.Services
         IBaseCRUDService<ChatBotMessageResponse, ChatBotMessageSearchObject, ChatBotMessageInsertRequest, ChatBotMessageUpdateRequest>
     {
         Task<ChatBotMessageResponse> InsertAsync(ChatBotMessageInsertRequest request, Guid userId, bool isAdmin);
-        Task<List<ConversationResponse>> GetConversationsAsync(Guid userId);
+        Task<PageResult<ConversationResponse>> GetConversationsAsync(Guid userId, int? page, int? pageSize);
         Task<List<ChatBotMessageResponse>> GetConversationMessagesAsync(int conversationId, Guid userId, int? beforeId, int take);
     }
 }

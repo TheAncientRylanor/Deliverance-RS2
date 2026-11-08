@@ -10,6 +10,7 @@ import 'package:deliverance_desktop/providers/execution_command_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/scout_command_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/form_validators.dart';
 import 'package:deliverance_desktop/utils/device_hub_client.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
@@ -45,12 +46,11 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
   SearchResult<Report> reportList = SearchResult();
   List<ExecutionCommand> executionCommands = [];
   int? selectedExecutionCommandId;
+  final GlobalKey<FormState> _commandFormKey = GlobalKey<FormState>();
+  String? _executionModeError;
   bool isLoading = false;
-  // The last command this admin sent, updated by the device hub.
   ScoutCommand? _scoutCommand;
   bool _isSending = false;
-  // Hub updates that arrive while a Send is in flight, by command id: the
-  // scout can start, or even finish, before the POST returns.
   final Map<int, ScoutCommand> _earlyUpdates = {};
   String? _hubError;
   DeviceHubClient? _deviceHubClient;
@@ -136,12 +136,9 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     if (!mounted) return;
     final current = _scoutCommand;
     if (current == null || command.id != current.id) {
-      // Other commands of this device (e.g. sent by another admin) are
-      // ignored, except a possible reply to the Send still in flight.
       if (_isSending) _earlyUpdates[command.id] = command;
       return;
     }
-    // A finished command never goes back to Pending or Running.
     if (current.status.isFinished && !command.status.isFinished) return;
     _showCommand(command);
   }
@@ -156,14 +153,13 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
   Future<void> _sendCommand() async {
     final executionCommandId = selectedExecutionCommandId;
     final commandText = _commandController.text;
-    if (executionCommandId == null || commandText.trim().isEmpty) {
-      await alertBox(
-        context,
-        "Missing input",
-        "Choose an execution mode and enter a command.",
-      );
-      return;
-    }
+    setState(() {
+      _executionModeError = executionCommandId == null
+          ? "Choose an execution mode: CMD or PowerShell"
+          : null;
+    });
+    final isCommandValid = _commandFormKey.currentState!.validate();
+    if (executionCommandId == null || !isCommandValid) return;
 
     setState(() {
       _isSending = true;
@@ -180,7 +176,6 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
         ),
       );
       if (!mounted) return;
-      // Hub updates arrive in order, so the one kept is the newest.
       _showCommand(_earlyUpdates[sent.id] ?? sent);
     } on ApiClientException catch (e) {
       if (mounted) await alertBox(context, "Error", e.message);
@@ -190,8 +185,6 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     }
   }
 
-  /// Asks before leaving while the last command is still being sent, pending
-  /// or running, since its output is only shown on this screen.
   Future<bool> _confirmLeave() async {
     final command = _scoutCommand;
     final inProgress =
@@ -218,9 +211,11 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
 
   Future<void> _initValues() async {
     try {
-      reportList = await _reportProvider.get(filter: searchObject.toJson());
-      final executionCommandResult = await _executionCommandProvider.get();
-      executionCommands = executionCommandResult.items ?? [];
+      final reports = _reportProvider.get(filter: searchObject.toJson());
+      final commands = _executionCommandProvider.get();
+      await Future.wait([reports, commands]);
+      reportList = await reports;
+      executionCommands = (await commands).items ?? [];
     } on ApiClientException catch (e) {
       if (!mounted) return;
       alertBoxMoveBack(context, "Error", e.message, onRetry: _initValues);
@@ -318,20 +313,40 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
                           onChanged: (value) {
                             setState(() {
                               selectedExecutionCommandId = value;
+                              _executionModeError = null;
                             });
                           },
                         ),
-                        CustomTextField(
-                          labelText: "Commands",
-                          controller: _commandController,
-                          readOnly: false,
-                          onSubmited: (_) {
-                            if (!_isSending) _sendCommand();
-                          },
-                          maxLines: 18,
-                          minLines: 18,
-                          textStyle: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w100,
+                        if (_executionModeError != null)
+                          Text(
+                            _executionModeError!,
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        Form(
+                          key: _commandFormKey,
+                          child: CustomTextField(
+                            labelText: "Commands",
+                            controller: _commandController,
+                            readOnly: false,
+                            onSubmited: (_) {
+                              if (!_isSending) _sendCommand();
+                            },
+                            maxLines: 18,
+                            minLines: 18,
+                            maxLength: FieldLimits.commandMax,
+                            validator: maxLength(
+                              'Command',
+                              FieldLimits.commandMax,
+                              required: true,
+                            ),
+                            textStyle: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w100,
+                            ),
                           ),
                         ),
                         Row(

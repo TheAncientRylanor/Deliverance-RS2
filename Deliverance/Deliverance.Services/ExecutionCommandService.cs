@@ -27,13 +27,12 @@ namespace Deliverance.Services
             return query;
         }
 
-        // The key is an enum, so FindAsync needs the enum value rather than the raw int.
         public override async Task<ExecutionCommandResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
         {
             var entity = await _dbContext.ExecutionCommands.FindAsync((ExecutionCommandEnum)id);
             if (entity == null)
             {
-                throw new NotFoundException($"{nameof(ExecutionCommand)} with id {id} not found.");
+                throw new NotFoundException($"{nameof(ExecutionCommand)} with id {id} was not found.");
             }
 
             return _mapper.Map<ExecutionCommandResponse>(entity);

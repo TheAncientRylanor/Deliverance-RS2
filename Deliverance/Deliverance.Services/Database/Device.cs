@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 
 public class Device
@@ -18,9 +18,9 @@ public class Device
     [Required]
     public int OfficeId { get; set; }
 
-    public double PositionX {get;set;}
-    public double PositionY {get;set;}
-    public string IconName {get;set;} = string.Empty;
+    public double PositionX { get; set; }
+    public double PositionY { get; set; }
+    public string IconName { get; set; } = string.Empty;
 
     public string? Type { get; set; }
 
@@ -28,9 +28,9 @@ public class Device
 
     public string? MacAddress { get; set; }
 
-    public string? SubnetMask {get;set;}
-    public string? VlanID {get;set;}
-    public string? OS {get;set; }
+    public string? SubnetMask { get; set; }
+    public string? VlanID { get; set; }
+    public string? OS { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

@@ -36,7 +36,7 @@ class _ReportScreenState extends State<ReportScreen> {
   List<OfficeReport> _officeReports = [];
   double _severity = 1.0;
   IssueEnum _issueType = IssueEnum.hardware;
-  List<ReportOccurance> _selectedOccurances = [];
+  List<ReportOccurrence> _selectedOccurrences = [];
   int? _reportId;
   bool _isSavingDraft = false;
   bool _isSubmittingReport = false;
@@ -82,12 +82,19 @@ class _ReportScreenState extends State<ReportScreen> {
     return isLocationValid && isTimeValid && isDetailsValid;
   }
 
+  int? _firstInvalidStep() {
+    if (!(_locationKey.currentState?.validate() ?? true)) return 0;
+    if (!(_timeKey.currentState?.validate() ?? true)) return 1;
+    if (!(_detailsKey.currentState?.validate() ?? true)) return 2;
+    return null;
+  }
+
   void initReport(Report report) {
     _officeReports = report.officeReports ?? [];
     _dateController.text = report.dateReported.toString();
     _titleController.text = report.reportName ?? "";
     _detailsController.text = report.detail ?? "";
-    _selectedOccurances = report.reportOccurances ?? [];
+    _selectedOccurrences = report.reportOccurrences ?? [];
     _issueType = IssueEnum.fromValue(report.issueType ?? 1);
     _severity = report.severity?.toDouble() ?? 1.0;
     _locationController.text =
@@ -96,9 +103,9 @@ class _ReportScreenState extends State<ReportScreen> {
     _devicesController.text = temp?.map((x) => x.name).join("; ") ?? '';
   }
 
-  void updateTimeStep(List<ReportOccurance> occurance) {
+  void updateTimeStep(List<ReportOccurrence> occurrence) {
     setState(() {
-      _selectedOccurances = occurance;
+      _selectedOccurrences = occurrence;
     });
   }
 
@@ -109,7 +116,7 @@ class _ReportScreenState extends State<ReportScreen> {
       severity: _severity.round(),
       detail: _detailsController.text,
       officeReports: _officeReports,
-      reportOccurances: _selectedOccurances,
+      reportOccurrences: _selectedOccurrences,
       issueType: _issueType.value,
       isDraft: isDraft,
     );
@@ -124,12 +131,16 @@ class _ReportScreenState extends State<ReportScreen> {
           ? await reportProvider.insert(report.toJson())
           : await reportProvider.update(_reportId!, report.toJson());
       _reportId = result.id;
-      if (!context.mounted) return;
-      // ignore: use_build_context_synchronously
-      showCustomToast(context, "Draft saved");
+      if (!mounted) return;
+      showCustomToast(
+        context,
+        report.reportName?.trim().isNotEmpty == true
+            ? "Draft \"${report.reportName!.trim()}\" saved. You can finish it later."
+            : "Draft saved. You can finish it later.",
+        type: ToastType.success,
+      );
     } on ApiClientException catch (e) {
       if (!context.mounted) return;
-      // ignore: use_build_context_synchronously
       alertBox(context, "Error", e.message);
     } finally {
       if (mounted) setState(() => _isSavingDraft = false);
@@ -156,14 +167,11 @@ class _ReportScreenState extends State<ReportScreen> {
                         "Are you sure you want to cancel this report? Your progress will be lost.",
                       );
                       if (result != true) return;
-                      if (!mounted) return;
-                      // ignore: use_build_context_synchronously
+                      if (!context.mounted) return;
                       Navigator.pop(context);
                     },
                     label: "Cancel",
                   ),
-                  // A sent report can't go back to being a draft, and saving
-                  // as one would skip the validation of required fields.
                   if (!_isSentReport)
                     PrimaryButton(
                       onPressed: _saveDraftToServer,
@@ -215,7 +223,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       setState(() => activeStep++);
                     },
                     dateController: _dateController,
-                    selectedOccurance: _selectedOccurances,
+                    selectedOccurrence: _selectedOccurrences,
                     onDataChanged: updateTimeStep,
                     timeKey: _timeKey,
                   ),
@@ -231,6 +239,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     onSeverityChanged: (value) =>
                         setState(() => _severity = value),
                     issueType: _issueType,
+                    onIssueTypeChanged: (value) =>
+                        setState(() => _issueType = value),
                     detailsKey: _detailsKey,
                   ),
                   FinalStep(
@@ -252,7 +262,8 @@ class _ReportScreenState extends State<ReportScreen> {
                           if (!context.mounted) return;
                           showCustomToast(
                             context,
-                            "Office reposrt saved successfully",
+                            "Report \"${report.reportName}\" sent. An admin will review it.",
+                            type: ToastType.success,
                           );
                           await _removeDraft();
                           await Future.delayed(
@@ -274,11 +285,8 @@ class _ReportScreenState extends State<ReportScreen> {
                           }
                         }
                       } else {
-                        alertBox(
-                          context,
-                          "Incomplete form",
-                          "Field not correct",
-                        );
+                        final step = _firstInvalidStep();
+                        if (step != null) setState(() => activeStep = step);
                       }
                     },
                     isSubmitting: _isSubmittingReport,
@@ -287,7 +295,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       text: getDevicesNames(),
                     ),
                     dateController: _dateController,
-                    selectedOccurance: _selectedOccurances,
+                    selectedOccurrence: _selectedOccurrences,
                     titleController: _titleController,
                     descriptionController: _detailsController,
                     severity: _severity,

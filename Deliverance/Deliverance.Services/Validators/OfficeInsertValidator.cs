@@ -7,10 +7,7 @@ namespace Deliverance.Services.Validators
     {
         public OfficeInsertValidator()
         {
-            RuleFor(x=>x.Name)
-            .NotEmpty().WithMessage("Office name is required")
-            .MinimumLength(2).WithMessage("Office name must be at least 2 characters long")
-            .MaximumLength(20).WithMessage("Office name cannot be longer more than 20 characters");
+            RuleFor(x => x.Name).OfficeName();
 
             RuleForEach(x => x.Devices)
                 .SetValidator(new DeviceInsertValidator());

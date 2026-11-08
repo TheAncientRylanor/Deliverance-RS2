@@ -23,8 +23,6 @@ enum ScoutCommandStatus {
       ScoutCommandStatus.values.firstWhere((e) => e.value == value);
 }
 
-/// A command queued for this scout, as pushed by the scout hub. Only the
-/// fields the scout needs; the server's response also carries the result.
 class ScoutCommand {
   final int id;
   final ExecutionCommandType executionCommandId;
@@ -51,9 +49,6 @@ class ScoutCommand {
   );
 }
 
-/// Sent back when a command starts (Running) and once it finished, failed to
-/// start, or timed out. The server accepts Running, Completed, Failed or
-/// TimedOut, and requires [exitCode] when the status is Completed.
 class ScoutCommandResult {
   final ScoutCommandStatus status;
   final String? output;

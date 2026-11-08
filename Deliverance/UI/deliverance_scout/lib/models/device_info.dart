@@ -1,4 +1,3 @@
-/// What the scout reports about the PC it runs on when claiming a token.
 class DeviceInfo {
   final String? ipAddress;
   final String? subnetMask;

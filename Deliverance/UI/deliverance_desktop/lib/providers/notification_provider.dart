@@ -8,13 +8,9 @@ import 'package:deliverance_desktop/providers/base_provider.dart';
 import 'package:deliverance_desktop/utils/notification_hub_client.dart';
 import 'package:http/http.dart' as http;
 
-/// Keeps the logged-in user's latest notifications up to date. It follows
-/// [AuthProvider], so it connects and disconnects with every login and logout.
 class NotificationProvider extends BaseProvider<AppNotification> {
   static const _pageSize = 20;
 
-  /// Automatic reconnect only runs after a first successful connection, and
-  /// gives up after a few tries, so this covers the rest.
   static const _retryInterval = Duration(seconds: 30);
 
   List<AppNotification> items = [];
@@ -52,10 +48,8 @@ class NotificationProvider extends BaseProvider<AppNotification> {
     if (!_hub.isDisconnected) return;
     try {
       await _hub.start();
-      // Logged out while connecting.
       if (!_isActive) await _hub.stop();
     } catch (_) {
-      // The retry timer tries again.
     }
     await load();
   }

@@ -1,9 +1,5 @@
 namespace Deliverance.Model.Request
 {
-    /// <summary>
-    /// Sent by the scout app: the pasted enrollment token plus the device
-    /// information it collected from the PC it runs on.
-    /// </summary>
     public class ScoutEnrollmentClaimRequest
     {
         public string Token { get; set; } = string.Empty;

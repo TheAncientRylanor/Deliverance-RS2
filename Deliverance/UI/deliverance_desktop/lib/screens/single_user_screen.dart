@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 
 class SingleUserScreen extends StatefulWidget {
   final User user;
-  // For a user opened from another screen, which the sidebar can't return to.
   final bool showBackButton;
 
   const SingleUserScreen({

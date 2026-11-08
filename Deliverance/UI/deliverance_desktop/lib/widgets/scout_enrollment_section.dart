@@ -8,8 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-/// "Generate enrollment token" part of the device dialog: creates the token,
-/// shows it for copying, and listens over SignalR until the scout claims it.
 class ScoutEnrollmentSection extends StatefulWidget {
   final bool enabled;
   final void Function(ScoutEnrollment enrollment) onClaimed;
@@ -52,7 +50,6 @@ class _ScoutEnrollmentSectionState extends State<ScoutEnrollmentSection> {
       await _hubClient?.stop();
       _hubClient = null;
       if (previous != null && _claimed == null) {
-        // The old token is replaced, so it shouldn't be claimable any more.
         provider.cancel(previous.enrollmentId).ignore();
       }
 
@@ -82,7 +79,6 @@ class _ScoutEnrollmentSectionState extends State<ScoutEnrollmentSection> {
     if (!mounted) return;
     setState(() => _claimed = enrollment);
     widget.onClaimed(enrollment);
-    // Nothing more will arrive for this enrollment.
     _hubClient?.stop();
     _hubClient = null;
   }

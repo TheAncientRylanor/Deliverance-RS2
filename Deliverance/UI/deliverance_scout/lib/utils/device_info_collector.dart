@@ -4,8 +4,6 @@ import 'dart:math';
 
 import 'package:deliverance_scout/models/device_info.dart';
 
-/// Run with --dart-define=fakeNetwork=true to report a random IP and MAC, so
-/// several scouts can be enrolled from the same PC.
 const bool fakeNetwork = bool.fromEnvironment('fakeNetwork');
 
 abstract class DeviceInfoCollector {
@@ -15,11 +13,7 @@ abstract class DeviceInfoCollector {
       fakeNetwork ? FakeDeviceInfoCollector() : WindowsDeviceInfoCollector();
 }
 
-/// Reads the network and system details from Windows (CIM) in one PowerShell
-/// call. dart:io can't see MAC addresses or subnet masks.
 class WindowsDeviceInfoCollector implements DeviceInfoCollector {
-  // Prefers the adapter with a default gateway, which skips virtual adapters
-  // (Hyper-V, Docker, VPN) that usually have none.
   static const _script = r'''
 $adapters = @(Get-CimInstance Win32_NetworkAdapterConfiguration -Filter 'IPEnabled=true')
 $adapter = $adapters | Where-Object { $_.DefaultIPGateway } | Select-Object -First 1
@@ -40,7 +34,6 @@ $os = Get-CimInstance Win32_OperatingSystem
 } | ConvertTo-Json -Compress
 ''';
 
-  // Same limits as the API's claim validator.
   static const _maxOsLength = 50;
   static const _maxManufacturerLength = 50;
 
@@ -77,7 +70,6 @@ $os = Get-CimInstance Win32_OperatingSystem
       : value.substring(0, maxLength);
 }
 
-/// Real OS, manufacturer and hostname, but a made-up IP and MAC.
 class FakeDeviceInfoCollector implements DeviceInfoCollector {
   final _real = WindowsDeviceInfoCollector();
   final _random = Random.secure();
@@ -97,7 +89,6 @@ class FakeDeviceInfoCollector implements DeviceInfoCollector {
 
   String _randomMac() {
     final bytes = List.generate(6, (_) => _random.nextInt(256));
-    // Locally administered, unicast: never the address of a real network card.
     bytes[0] = (bytes[0] & 0xFC) | 0x02;
     return bytes
         .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())

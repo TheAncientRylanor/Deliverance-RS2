@@ -1,9 +1,9 @@
 using Deliverance.Model.Enums;
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-// A CMD or PowerShell command an admin sent to a scout, and its result.
+namespace Deliverance.Services.Database;
+
 public class ScoutCommand
 {
     [Key]
@@ -23,13 +23,10 @@ public class ScoutCommand
     [Required]
     public ScoutCommandStatusEnum Status { get; set; } = ScoutCommandStatusEnum.Pending;
 
-    // stdout and stderr together; nvarchar(max), since command output has no natural limit.
     public string? Output { get; set; }
 
-    // Null when the process never ran to the end (Failed or TimedOut).
     public int? ExitCode { get; set; }
 
-    // Kept nullable so the command history stays when the admin's account is deleted.
     public Guid? CreatedByUserUUID { get; set; }
 
     [Required]
@@ -37,7 +34,6 @@ public class ScoutCommand
 
     public DateTime? CompletedAt { get; set; }
 
-    // Navigation
     [ForeignKey("ScoutId")]
     public Scout? Scout { get; set; }
 

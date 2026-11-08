@@ -33,24 +33,4 @@ class UserUpdateMultipart {
     }
     return request;
   }
-  /*
-  Map<String, String> _toFormFields() {
-    final fields = <String, String>{};
-    if (firstName != null) fields['firstName'] = firstName!;
-    if (lastName != null) fields['lastName'] = lastName!;
-    if (email != null) fields['email'] = email!;
-    if (username != null) fields['username'] = username!;
-    return fields;
-  }
-
-  Future<List<http.MultipartFile>> _toMultipartFiles() async {
-    final files = <http.MultipartFile>[];
-    if (profileImage != null) {
-      files.add(
-        await http.MultipartFile.fromPath('profileImage', profileImage!.path),
-      );
-    }
-    return files;
-  }
-  */
 }

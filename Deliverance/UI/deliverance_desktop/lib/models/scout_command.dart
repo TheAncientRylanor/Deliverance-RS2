@@ -5,8 +5,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'scout_command.g.dart';
 
-/// A command sent to a device's scout and its result, as shown in the
-/// command history and pushed by the device hub on every status change.
 @JsonSerializable()
 class ScoutCommand {
   final int id;
@@ -41,7 +39,6 @@ class ScoutCommand {
       _$ScoutCommandFromJson(json);
 }
 
-/// Sent by the admin: the command to run on the scout of [deviceId].
 @JsonSerializable()
 class ScoutCommandInsertRequest {
   final int deviceId;

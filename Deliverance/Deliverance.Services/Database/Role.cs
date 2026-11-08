@@ -1,7 +1,8 @@
 using Deliverance.Model.Enums;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class Role
 {
@@ -11,6 +12,5 @@ public class Role
 
     public string? RoleName { get; set; }
 
-    // Navigation
     public ICollection<User> Users { get; set; } = new List<User>();
 }

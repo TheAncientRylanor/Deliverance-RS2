@@ -4,18 +4,13 @@ import 'package:signalr_netcore/http_connection_options.dart';
 import 'package:signalr_netcore/hub_connection.dart';
 import 'package:signalr_netcore/hub_connection_builder.dart';
 
-/// Receives the commands an admin queues for this scout. The server adds the
-/// connection to the scout's group on every (re)connect, so there is nothing
-/// to join from here.
 class ScoutHubClient {
   static const _hubPath = "hubs/scout";
   static const _commandEvent = "CommandQueued";
 
-  /// Usually [ScoutAuthProvider.getAccessToken], which renews expired tokens.
   final Future<String> Function() accessTokenFactory;
   final void Function(ScoutCommand command) onCommandQueued;
 
-  /// Called once automatic reconnecting gave up; [start] has to be called again.
   final void Function()? onClosed;
 
   ScoutHubClient({

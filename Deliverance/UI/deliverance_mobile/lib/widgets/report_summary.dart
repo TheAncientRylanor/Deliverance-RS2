@@ -9,7 +9,7 @@ class ReportSummary extends StatefulWidget {
   final TextEditingController locationController;
   final TextEditingController devicesController;
   final TextEditingController dateController;
-  final List<ReportOccurance> selectedOccurance;
+  final List<ReportOccurrence> selectedOccurrence;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
   final double? severity;
@@ -20,7 +20,7 @@ class ReportSummary extends StatefulWidget {
     required this.locationController,
     required this.devicesController,
     required this.dateController,
-    required this.selectedOccurance,
+    required this.selectedOccurrence,
     required this.titleController,
     required this.descriptionController,
     required this.severity,
@@ -38,7 +38,7 @@ class _ReportSummaryState extends State<ReportSummary> {
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex - 1).clamp(
         0,
-        widget.selectedOccurance.length - 1,
+        widget.selectedOccurrence.length - 1,
       );
     });
   }
@@ -47,7 +47,7 @@ class _ReportSummaryState extends State<ReportSummary> {
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex + 1).clamp(
         0,
-        widget.selectedOccurance.length - 1,
+        widget.selectedOccurrence.length - 1,
       );
     });
   }
@@ -94,7 +94,7 @@ class _ReportSummaryState extends State<ReportSummary> {
               readOnly: true,
               controller: widget.dateController,
             ),
-            _buildOccuranceSlideshow(context, style),
+            _buildOccurrenceSlideshow(context, style),
           ],
         ),
         Column(
@@ -140,14 +140,14 @@ class _ReportSummaryState extends State<ReportSummary> {
     );
   }
 
-  Widget _buildOccuranceSlideshow(BuildContext context, TextStyle? style) {
-    final hasOccurances = widget.selectedOccurance.isNotEmpty;
-    final currentOccurance = hasOccurances
-        ? widget.selectedOccurance[_currentQuestionIndex]
+  Widget _buildOccurrenceSlideshow(BuildContext context, TextStyle? style) {
+    final hasOccurrences = widget.selectedOccurrence.isNotEmpty;
+    final currentOccurrence = hasOccurrences
+        ? widget.selectedOccurrence[_currentQuestionIndex]
         : null;
-    final questionText = currentOccurance?.question ?? '-';
-    final answerText = currentOccurance?.answer != null
-        ? AnswerEnum.fromValue(currentOccurance!.answer!).label
+    final questionText = currentOccurrence?.question ?? '-';
+    final answerText = currentOccurrence?.answer != null
+        ? AnswerEnum.fromValue(currentOccurrence!.answer!).label
         : '-';
 
     return Column(
@@ -162,7 +162,7 @@ class _ReportSummaryState extends State<ReportSummary> {
               child: IconButton(
                 icon: const Icon(Icons.arrow_forward_ios),
                 color: Theme.of(context).colorScheme.primary,
-                onPressed: hasOccurances && _currentQuestionIndex > 0
+                onPressed: hasOccurrences && _currentQuestionIndex > 0
                     ? _goToPreviousQuestion
                     : null,
                 iconSize: 20,
@@ -210,9 +210,9 @@ class _ReportSummaryState extends State<ReportSummary> {
               icon: const Icon(Icons.arrow_forward_ios),
               color: Theme.of(context).colorScheme.primary,
               onPressed:
-                  hasOccurances &&
+                  hasOccurrences &&
                       _currentQuestionIndex <
-                          widget.selectedOccurance.length - 1
+                          widget.selectedOccurrence.length - 1
                   ? _goToNextQuestion
                   : null,
               iconSize: 20,

@@ -26,7 +26,6 @@ namespace Deliverance.WebAPI.Hubs
             }
             catch (Exception ex)
             {
-                // The notification is already saved, so the app still gets it on its next load.
                 _logger.LogWarning(ex, "Could not push notification {NotificationId} to user {UserId}", notification.Id, userId);
             }
         }

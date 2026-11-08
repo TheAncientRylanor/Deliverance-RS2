@@ -14,8 +14,10 @@ import 'package:deliverance_desktop/providers/selected_report_provider.dart';
 import 'package:deliverance_desktop/providers/selected_user_provider.dart';
 import 'package:deliverance_desktop/providers/user_provider.dart';
 import 'package:deliverance_desktop/screens/home_screen.dart';
-import 'package:deliverance_desktop/themes/fontTheme.dart';
+import 'package:deliverance_desktop/themes/font_theme.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/form_validators.dart';
+import 'package:deliverance_desktop/utils/server_field_errors.dart';
 import 'package:deliverance_desktop/utils/navigation_service.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
@@ -136,6 +138,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ServerFieldErrors _serverErrors = ServerFieldErrors();
   bool _isLoggingIn = false;
 
   @override
@@ -147,6 +151,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_isLoggingIn) return;
+    _serverErrors.clear();
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoggingIn = true);
     try {
       await context.read<AuthProvider>().login(
@@ -156,14 +162,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       await context.read<UserProvider>().loadCurrentUser();
       if (!mounted) return;
-      // Replace the login screen so going back can't return to it.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
         (route) => false,
       );
     } on ApiClientException catch (e) {
       if (!mounted) return;
-      alertBox(context, "Login error", e.message);
+      if (e.statusCode != null && e.statusCode! < 500) {
+        _serverErrors.set('Password', e.message, _formKey);
+      } else {
+        alertBox(context, "Login error", e.message);
+      }
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
     }
@@ -193,17 +202,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  CustomTextField(
-                    labelText: "Username",
-                    controller: _usernameController,
-                    onSubmited: (_) => _login(),
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    obscureText: true,
-                    labelText: "Password",
-                    controller: _passwordController,
-                    onSubmited: (_) => _login(),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        CustomTextField(
+                          labelText: "Username",
+                          controller: _usernameController,
+                          onSubmited: (_) => _login(),
+                          validator: requiredField('Username'),
+                        ),
+                        const SizedBox(height: 20),
+                        CustomTextField(
+                          obscureText: true,
+                          labelText: "Password",
+                          controller: _passwordController,
+                          onSubmited: (_) => _login(),
+                          validator: _serverErrors.wrap(
+                            'Password',
+                            requiredField('Password'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 60),
                   PrimaryButton(

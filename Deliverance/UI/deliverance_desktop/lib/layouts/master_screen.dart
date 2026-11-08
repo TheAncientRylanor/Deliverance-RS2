@@ -13,7 +13,7 @@ import 'package:deliverance_desktop/screens/reports_screen.dart';
 import 'package:deliverance_desktop/screens/single_report_screen.dart';
 import 'package:deliverance_desktop/screens/single_user_screen.dart';
 import 'package:deliverance_desktop/screens/statistics_screen.dart';
-import 'package:deliverance_desktop/screens/user_profiles_sceen.dart';
+import 'package:deliverance_desktop/screens/user_profiles_screen.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/api_constants.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
@@ -25,7 +25,6 @@ import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Returns whether the user may leave the current screen.
 typedef LeaveGuard = Future<bool> Function();
 
 class MasterScreen extends StatefulWidget {
@@ -35,9 +34,6 @@ class MasterScreen extends StatefulWidget {
   @override
   State<MasterScreen> createState() => _MasterScreenState();
 
-  /// Lets the child screen confirm or cancel sidebar navigation. The child
-  /// lives on the same route as its MasterScreen, so it never has to
-  /// unregister the guard.
   static void setLeaveGuard(BuildContext context, LeaveGuard? guard) {
     context.findAncestorStateOfType<_MasterScreenState>()?._leaveGuard = guard;
   }
@@ -110,14 +106,12 @@ class _MasterScreenState extends State<MasterScreen> {
     try {
       await context.read<NotificationProvider>().markAsRead(notification.id);
     } catch (_) {
-      // It stays unread, but what it points to can still be opened.
     }
 
     final reportId = notification.reportId;
     final userId = notification.relatedUserUUID;
     if (reportId == null && userId == null) return;
 
-    // Going through a new route skips _navigateTo, so ask here instead.
     final guard = _leaveGuard;
     if (guard != null && !await guard()) return;
 
@@ -197,7 +191,6 @@ class _MasterScreenState extends State<MasterScreen> {
     bool isEnabled = true,
   }) {
     if (checkTitle(activeTitle, titleName)) {
-      // Already on this screen, so the button is disabled to avoid reloading it.
       return FilledButton(
         onPressed: null,
         style: FilledButton.styleFrom(
@@ -219,7 +212,6 @@ class _MasterScreenState extends State<MasterScreen> {
           ),
         ),
       );
-      // ignore: curly_braces_in_flow_control_structures
     } else {
       return OutlinedButton(
         onPressed: !isEnabled
@@ -458,8 +450,6 @@ class _MasterScreenState extends State<MasterScreen> {
                             builder: _buildProfileSection,
                           ),
                           const SizedBox(height: 40),
-                          // Highlight follows the screen being shown, so it
-                          // stays right after going back or logging in again.
                           _buildNavButtons(context, widget.title),
                         ],
                       ),
@@ -470,7 +460,6 @@ class _MasterScreenState extends State<MasterScreen> {
               ],
             ),
           ),
-          // Above the screen's content, so the chat is reachable everywhere.
           const Positioned(right: 20, bottom: 20, child: ChatBotButton()),
           Positioned(
             right: 20,

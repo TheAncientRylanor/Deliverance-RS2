@@ -7,17 +7,17 @@ using Microsoft.AspNetCore.Mvc;
 namespace Deliverance.WebAPI.Controllers
 {
     public class OfficeController : BaseCRUDController<OfficeResponse, OfficeSearchObject,
-        OfficeInsertRequest, OfficeUpdateRequest,IOfficeService>
+        OfficeInsertRequest, OfficeUpdateRequest, IOfficeService>
     {
         public OfficeController(IOfficeService officeService) : base(officeService)
         {
 
         }
-         [HttpGet("FromReport")]
+        [HttpGet("FromReport")]
         public async Task<ActionResult<OfficeResponse>> GetFromReport([FromQuery] int id, [FromQuery] int officeReportId)
         {
             var userId = User.GetUserId();
-            var result = await _service.GetFromReport(officeReportId,id, userId, User.IsAdmin());
+            var result = await _service.GetFromReport(officeReportId, id, userId, User.IsAdmin());
             return result;
         }
     }

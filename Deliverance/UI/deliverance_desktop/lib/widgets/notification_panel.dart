@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-/// Shows the latest notifications under the bell. Returns the one the admin
-/// clicked, so the caller can open what it points to.
 Future<AppNotification?> showNotificationPanel(BuildContext context) {
   context.read<NotificationProvider>().load();
   return showDialog<AppNotification>(

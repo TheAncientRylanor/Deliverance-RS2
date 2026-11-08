@@ -1,7 +1,3 @@
-// The API stores and sends every time as UTC (ending in "Z"). Models turn them into
-// local time when reading, so screens can show them as they are, and back into UTC
-// when sending, so the API always receives the same zone.
-
 DateTime dateFromJson(String value) => DateTime.parse(value).toLocal();
 
 DateTime? nullableDateFromJson(String? value) =>

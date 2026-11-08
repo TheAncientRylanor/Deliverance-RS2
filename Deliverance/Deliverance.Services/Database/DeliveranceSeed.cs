@@ -1,10 +1,5 @@
 ﻿using Deliverance.Model.Enums;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 namespace Deliverance.Services.Database
 {
     public partial class DeliveranceDbContext : DbContext
@@ -14,7 +9,7 @@ namespace Deliverance.Services.Database
         {
             SeedRoles(modelBuilder);
             SeedUsers(modelBuilder);
-            SeedOccurances(modelBuilder);
+            SeedOccurrences(modelBuilder);
             SeedExecutionCommands(modelBuilder);
         }
         private void SeedRoles(ModelBuilder modelBuilder)
@@ -67,9 +62,9 @@ namespace Deliverance.Services.Database
                 }
                 );
         }
-        private void SeedOccurances(ModelBuilder modelBuilder)
+        private void SeedOccurrences(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Occurance>().HasData(
+            modelBuilder.Entity<Occurrence>().HasData(
                 new
                 {
                     Id = 1,

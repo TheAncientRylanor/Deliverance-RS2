@@ -8,10 +8,11 @@ namespace Deliverance.Services.Validators
         public ReportClearValidator()
         {
             RuleFor(x => x.Comment)
-                .MaximumLength(1000).WithMessage("Comment can't be longer than 1000 characters");
+                .MaximumLength(FieldRules.CommentMaxLength)
+                .WithMessage($"Comment can have at most {FieldRules.CommentMaxLength} characters");
 
             RuleFor(x => x.IssueType)
-                .IsInEnum().WithMessage("Unknown issue type")
+                .IsInEnum().WithMessage("Issue type must be Hardware, Software or Both")
                 .When(x => x.IssueType != null);
         }
     }

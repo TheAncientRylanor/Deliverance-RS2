@@ -2,12 +2,9 @@ using Deliverance.Model.Enums;
 
 namespace Deliverance.Model.Responses
 {
-    // What an admin sees after opening a device from the recommendations.
     public class DeviceEvidenceResponse
     {
         public DeviceRecommendationResponse Recommendation { get; set; } = new();
-        // The lines the model read for this device, newest first. The model scores them
-        // together with the reports, so no single line is known to be the cause.
         public List<DeviceEvidenceLogResponse> Logs { get; set; } = new();
         public List<DeviceEvidenceReportResponse> Reports { get; set; } = new();
     }

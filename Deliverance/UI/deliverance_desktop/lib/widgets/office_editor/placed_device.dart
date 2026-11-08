@@ -1,7 +1,6 @@
 import 'package:deliverance_desktop/models/office.dart';
 import 'package:flutter/material.dart';
 
-/// The details of a device that the user fills in through the device dialog.
 class DeviceDetails {
   final String? name;
   final String? ipAddress;
@@ -10,8 +9,6 @@ class DeviceDetails {
   final String? os;
   final String? manufacturer;
   final String? macAddress;
-  // Set once a scout has claimed this device's enrollment token. Sent on save
-  // so the backend links the scout to the device.
   final int? enrollmentId;
 
   const DeviceDetails({
@@ -25,8 +22,6 @@ class DeviceDetails {
     this.enrollmentId,
   });
 
-  /// Trims [value] and turns empty strings into null, so an untouched field
-  /// and a cleared one compare equal and are sent to the API the same way.
   static String? clean(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
@@ -57,16 +52,11 @@ class DeviceDetails {
   );
 }
 
-/// A device placed on the office editor canvas.
 class PlacedDevice {
-  // Null until the office has been saved with this device in it.
   final int? id;
   final String type;
-  // Top-left corner as a fraction (0..1) of the canvas size, so the layout
-  // scales with the window.
   Offset position;
   DeviceDetails details;
-  // Null when no scout is installed on the device.
   Scout? scout;
 
   PlacedDevice({
@@ -93,9 +83,7 @@ class PlacedDevice {
     ),
   );
 
-  /// The device as it is sent to the API when saving [officeName].
   Devices toDevice(String officeName) => Devices(
-    // New devices are sent with id 0.
     id: id ?? 0,
     name: details.name,
     officeName: officeName,

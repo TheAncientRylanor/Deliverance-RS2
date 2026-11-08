@@ -5,9 +5,9 @@ using Deliverance.Model.SearchObjects;
 
 namespace Deliverance.Services
 {
-    public interface IContactsService : 
-        IBaseCRUDService<ContactsResponse,ContactsSearchObject,ContactsInsertRequest,ContactsUpdateRequest>
+    public interface IContactsService :
+        IBaseCRUDService<ContactsResponse, ContactsSearchObject, ContactsInsertRequest, ContactsUpdateRequest>
     {
-        
+
     }
 }

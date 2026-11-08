@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Deliverance.WebAPI.Controllers
 {
-    /// <summary>Admin side of scout enrollment.</summary>
     [Authorize]
     [ApiController]
     [Route("[controller]")]

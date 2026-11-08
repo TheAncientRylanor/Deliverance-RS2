@@ -8,17 +8,124 @@ import 'package:deliverance_desktop/utils/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-abstract class BaseProvider<T> with ChangeNotifier {
+abstract class ApiProvider with ChangeNotifier {
+  final String endpoint;
+
+  ApiProvider(this.endpoint);
+
+  void validateResponse(http.Response response) {
+    if (response.statusCode < 299) {
+      return;
+    }
+    if (response.statusCode == 401) {
+      throw ApiClientException(
+        'Your session has expired. Please sign in again.',
+      );
+    }
+
+    final parsed = ApiErrorParser.messageFromBody(response.body);
+    if (response.statusCode >= 500) {
+      throw ApiClientException(
+        parsed ?? 'Server error. Please try again later.',
+        statusCode: response.statusCode,
+      );
+    }
+
+    throw ApiClientException(
+      parsed ?? 'Request could not be completed. Please try again.',
+      fieldErrors: ApiErrorParser.fieldErrorsFromBody(response.body),
+      statusCode: response.statusCode,
+    );
+  }
+
+  Map<String, String> createHeaders() {
+    String accesstoken = AuthProvider.accesstoken ?? "";
+
+    String basicAuth = "Bearer $accesstoken";
+
+    var headers = {
+      "Content-Type": "application/json",
+      "Authorization": basicAuth,
+    };
+
+    return headers;
+  }
+
+  String getQueryString(
+    Map params, {
+    String prefix = '&',
+    bool inRecursion = false,
+  }) {
+    String query = '';
+    params.forEach((key, value) {
+      if (inRecursion) {
+        if (key is int) {
+          key = '[$key]';
+        } else if (value is List || value is Map) {
+          key = '.$key';
+        } else {
+          key = '.$key';
+        }
+      }
+      if (value is String || value is int || value is double || value is bool) {
+        var encoded = value;
+        if (value is String) {
+          encoded = Uri.encodeComponent(value);
+        }
+        query += '$prefix$key=$encoded';
+      } else if (value is DateTime) {
+        query += '$prefix$key=${value.toUtc().toIso8601String()}';
+      } else if (value is List || value is Map) {
+        if (value is List) value = value.asMap();
+        value.forEach((k, v) {
+          query += getQueryString(
+            {k: v},
+            prefix: '$prefix$key',
+            inRecursion: true,
+          );
+        });
+      }
+    });
+    return query;
+  }
+
+  Future<http.Response> sendWithRetry(
+    Future<http.Response> Function() requestFn,
+  ) async {
+    http.Response response = await requestFn();
+
+    if (response.statusCode == 401) {
+      final success = await AuthProvider.instance.refreshToken();
+
+      if (success) {
+        response = await requestFn();
+      }
+
+      if (response.statusCode == 401) {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+        throw ApiClientException(
+          'Your session has expired. Please sign in again.',
+        );
+      }
+    }
+    validateResponse(response);
+
+    return response;
+  }
+}
+
+abstract class BaseProvider<T> extends ApiProvider {
   static final String _baseUrl = ApiConstants.baseUrl;
 
   static String? get baseUrl => _baseUrl;
   T? _data;
   T? get data => _data;
-  bool get hasData => _data != null;
 
-  final String endpoint;
 
-  BaseProvider(this.endpoint);
+  BaseProvider(super.endpoint);
 
   Future<SearchResult<T>> get({dynamic filter}) async {
     var url = "$_baseUrl$endpoint";
@@ -103,116 +210,5 @@ abstract class BaseProvider<T> with ChangeNotifier {
     notifyListeners();
   }
 
-  void clearData() {
-    _data = null;
-    notifyListeners();
-  }
-
-  // ignore: strict_top_level_inference
-  T fromJson(data) {
-    throw Exception("Method not implemented");
-  }
-
-  void validateResponse(http.Response response) {
-    if (response.statusCode < 299) {
-      return;
-    }
-    if (response.statusCode == 401) {
-      throw ApiClientException(
-        'Your session has expired. Please sign in again.',
-      );
-    }
-
-    final parsed = ApiErrorParser.messageFromBody(response.body);
-    if (response.statusCode >= 500) {
-      throw ApiClientException(
-        parsed ?? 'Server error. Please try again later.',
-        statusCode: response.statusCode,
-      );
-    }
-
-    throw ApiClientException(
-      parsed ?? 'Request could not be completed. Please try again.',
-      statusCode: response.statusCode,
-    );
-  }
-
-  Map<String, String> createHeaders() {
-    String accesstoken = AuthProvider.accesstoken ?? "";
-
-    String basicAuth = "Bearer $accesstoken";
-
-    var headers = {
-      "Content-Type": "application/json",
-      "Authorization": basicAuth,
-    };
-
-    return headers;
-  }
-
-  String getQueryString(
-    Map params, {
-    String prefix = '&',
-    bool inRecursion = false,
-  }) {
-    String query = '';
-    params.forEach((key, value) {
-      if (inRecursion) {
-        if (key is int) {
-          key = '[$key]';
-        } else if (value is List || value is Map) {
-          key = '.$key';
-        } else {
-          key = '.$key';
-        }
-      }
-      if (value is String || value is int || value is double || value is bool) {
-        var encoded = value;
-        if (value is String) {
-          encoded = Uri.encodeComponent(value);
-        }
-        query += '$prefix$key=$encoded';
-      } else if (value is DateTime) {
-        // Always UTC, like every other time sent to the API.
-        query += '$prefix$key=${value.toUtc().toIso8601String()}';
-      } else if (value is List || value is Map) {
-        if (value is List) value = value.asMap();
-        value.forEach((k, v) {
-          query += getQueryString(
-            {k: v},
-            prefix: '$prefix$key',
-            inRecursion: true,
-          );
-        });
-      }
-    });
-    return query;
-  }
-
-  Future<http.Response> sendWithRetry(
-    Future<http.Response> Function() requestFn,
-  ) async {
-    http.Response response = await requestFn();
-
-    if (response.statusCode == 401) {
-      final success = await AuthProvider.instance.refreshToken();
-
-      if (success) {
-        response = await requestFn();
-      }
-
-      if (response.statusCode == 401) {
-        navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          '/login',
-          (route) => false,
-        );
-        throw ApiClientException(
-          'Your session has expired. Please sign in again.',
-        );
-      }
-    }
-    validateResponse(response);
-
-    return response;
-  }
+  T fromJson(dynamic data);
 }

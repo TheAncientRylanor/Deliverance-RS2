@@ -5,13 +5,13 @@ import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/custom_toast.dart';
 import 'package:deliverance_desktop/widgets/office_editor/office_validators.dart';
 import 'package:deliverance_desktop/widgets/office_editor/placed_device.dart';
 import 'package:deliverance_desktop/widgets/scout_enrollment_section.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// What the device dialog returns. Null (cancelled) means nothing changed.
 sealed class DeviceDialogResult {
   const DeviceDialogResult();
 }
@@ -21,20 +21,10 @@ class DeviceSaved extends DeviceDialogResult {
   const DeviceSaved(this.details);
 }
 
-/// The user asked to remove the device from the office.
 class DeviceDeleted extends DeviceDialogResult {
   const DeviceDeleted();
 }
 
-/// Edits [device]'s details and lets a scout enroll on it.
-///
-/// [isNew] is true right after the device was dropped onto the canvas: there
-/// is nothing to delete yet, so the Delete button is hidden.
-/// [otherDevices] are the rest of the office, used to keep names, IP and MAC
-/// addresses unique like the API requires.
-/// Enabling or disabling the scout takes effect on the server immediately,
-/// so it is reported through [onScoutChanged] even if the dialog is
-/// cancelled afterwards.
 Future<DeviceDialogResult?> showDeviceDialog(
   BuildContext context, {
   required PlacedDevice device,
@@ -116,8 +106,6 @@ class _DeviceDialogState extends State<_DeviceDialog> {
 
   bool get _hasUnsavedChanges => _tokenGenerated || _editedDetails != _initial;
 
-  /// Fails when another device in the office already uses [value] for the
-  /// field [pick] reads.
   String? _validateUnique(
     String? value,
     String? Function(DeviceDetails) pick,
@@ -137,7 +125,6 @@ class _DeviceDialogState extends State<_DeviceDialog> {
       if (value != null && value.isNotEmpty) controller.text = value;
     }
 
-    // Keep a name the user already typed; the rest comes from the scout.
     if (_name.text.isEmpty) fill(_name, enrollment.hostname);
     fill(_ipAddress, enrollment.ipAddress);
     fill(_subnetMask, enrollment.subnetMask);
@@ -164,7 +151,16 @@ class _DeviceDialogState extends State<_DeviceDialog> {
         isDisabled: !scout.isDisabled,
       );
       widget.onScoutChanged(updated);
-      if (mounted) setState(() => _scout = updated);
+      if (mounted) {
+        setState(() => _scout = updated);
+        showCustomToast(
+          context,
+          updated.isDisabled
+              ? "Scout on ${widget.device.details.name ?? "this device"} disabled. It won't receive commands."
+              : "Scout on ${widget.device.details.name ?? "this device"} enabled.",
+          type: ToastType.success,
+        );
+      }
     } on ApiClientException catch (e) {
       if (mounted) alertBox(context, "Error", e.message);
     } finally {
@@ -179,7 +175,8 @@ class _DeviceDialogState extends State<_DeviceDialog> {
       widget.device.id == null
           ? "Remove this device from the office?"
           : "Remove this device from the office? "
-                "When you save the office, its report history is deleted too.",
+                "A device that appears in reports can't be removed, so the "
+                "report history stays intact; saving the office will say so.",
       mode: AlertBoxMode.choice,
     );
     if (confirmed != true || !mounted) return;
@@ -191,8 +188,6 @@ class _DeviceDialogState extends State<_DeviceDialog> {
     Navigator.of(context).pop(DeviceSaved(_editedDetails));
   }
 
-  /// Cancel, clicking outside and Esc all end up here; Save and Delete pop
-  /// the dialog directly and skip the confirmation.
   Future<void> _onPopRequested(bool didPop, Object? _) async {
     if (didPop) return;
     if (_hasUnsavedChanges) {
@@ -297,8 +292,16 @@ class _DeviceDialogState extends State<_DeviceDialog> {
             spacing: 15,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _field(_os, "OS and Version", validateMaxLength50),
-              _field(_manufacturer, "Manufacturer", validateMaxLength50),
+              _field(
+                _os,
+                "OS and Version",
+                (value) => validateMaxLength50(value, "OS and Version"),
+              ),
+              _field(
+                _manufacturer,
+                "Manufacturer",
+                (value) => validateMaxLength50(value, "Manufacturer"),
+              ),
               _field(
                 _macAddress,
                 "MAC address",

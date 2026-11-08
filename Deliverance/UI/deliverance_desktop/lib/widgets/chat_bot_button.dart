@@ -2,13 +2,12 @@ import 'package:deliverance_desktop/models/chat_bot_message.dart';
 import 'package:deliverance_desktop/models/conversation.dart';
 import 'package:deliverance_desktop/providers/chat_bot_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/form_validators.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Chat with the helpdesk assistant, shown in the bottom right corner of every
-/// [MasterScreen]. The button opens the chat and minimizes it again.
 class ChatBotButton extends StatefulWidget {
   const ChatBotButton({super.key});
 
@@ -29,13 +28,8 @@ class _ChatBotButtonState extends State<ChatBotButton> {
   bool _showConversations = false;
   static const _pageSize = 10;
   bool _isLoadingMore = false;
-  // Only true for a conversation opened from the history. A new conversation
-  // has nothing older on the server, and its messages added here have id 0,
-  // which can't be used as beforeId.
   bool _hasMore = false;
 
-  // The first page of an opened conversation is loading. Sending now would
-  // mix the new message into the page that is about to arrive.
   bool get _isOpeningConversation => _isLoadingMore && _chatBotList.isEmpty;
 
   bool get _canSend => !_isSending && !_isOpeningConversation;
@@ -59,8 +53,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
       _isOpen = !_isOpen;
     });
     if (_isOpen) {
-      // The message list is built again when the chat opens. Check whether
-      // it fills the panel, in case a page arrived while it was minimized.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadMoreIfNeeded();
       });
@@ -70,15 +62,11 @@ class _ChatBotButtonState extends State<ChatBotButton> {
   void _loadMoreIfNeeded() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    // Near the top of the chat (the end of the reversed list), or the
-    // messages don't fill the panel yet, so there's nothing to scroll.
     if (position.pixels >= position.maxScrollExtent - 200) {
       _loadOlderMessages();
     }
   }
 
-  /// Loads the page of messages older than the oldest one shown, or the
-  /// latest page when the list is empty. [_chatBotList] is newest first.
   Future<void> _loadOlderMessages() async {
     if (_isLoadingMore || !_hasMore || _conversationId == null) return;
     final conversationId = _conversationId!;
@@ -90,7 +78,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
         _pageSize,
       );
       if (!mounted) return;
-      // Skip the page if the user opened another conversation meanwhile.
       if (conversationId == _conversationId) {
         setState(() {
           _chatBotList.addAll(older);
@@ -101,14 +88,11 @@ class _ChatBotButtonState extends State<ChatBotButton> {
       if (!mounted) return;
       if (conversationId == _conversationId) {
         alertBox(context, "Error", e.message, mode: AlertBoxMode.ok);
-        // The user retries by scrolling, instead of failing again in a loop.
         return;
       }
     } finally {
       if (mounted) setState(() => _isLoadingMore = false);
     }
-    // The new messages are laid out after the next frame. If they still don't
-    // fill the panel, or another conversation was opened, load the next page.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadMoreIfNeeded();
     });
@@ -117,7 +101,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      // The list is reversed, so offset 0 is the newest message.
       _scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 250),
@@ -130,7 +113,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
     setState(() {
       _showConversations = !_showConversations;
     });
-    // Reload every time, so a conversation started since then shows up.
     if (_showConversations) _loadConversations();
   }
 
@@ -190,7 +172,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
       isFromBot: true,
       content: "Typing...",
     );
-    // The list is newest first, so new messages go to the front.
     setState(() {
       _isSending = true;
       _chatBotList.insert(0, userMessage);
@@ -232,7 +213,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
 
   @override
   Widget build(BuildContext context) {
-    // Half the width and half the height, so a quarter of the window.
     final windowSize = MediaQuery.sizeOf(context);
     final panelSize = Size(windowSize.width / 2, windowSize.height / 2);
 
@@ -245,8 +225,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
           const SizedBox(height: 12),
         ],
         FloatingActionButton(
-          // Pushed screens have their own MasterScreen, and two buttons with
-          // the default hero tag break the route transition.
           heroTag: null,
           tooltip: _isOpen ? "Minimize chat" : "Chat with the assistant",
           backgroundColor: Theme.of(context).colorScheme.primary,
@@ -310,7 +288,7 @@ class _ChatBotButtonState extends State<ChatBotButton> {
                         controller: _chatBotMessageController,
                         hintText: "Describe your problem...",
                         maxLines: 5,
-                        // Enter sends, Shift+Enter adds a new line.
+                        maxLength: FieldLimits.chatMessageMax,
                         onSubmited: (_) => _send(),
                         suffixIcon: IconButton(
                           onPressed: _canSend ? _send : null,
@@ -349,7 +327,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
       reverse: true,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        // The extra item past the last message, shown at the top.
         if (index == _chatBotList.length) {
           return const Padding(
             padding: EdgeInsets.all(10),
@@ -394,8 +371,6 @@ class _ChatBotButtonState extends State<ChatBotButton> {
               itemBuilder: (context, index) {
                 final conversation = _chatBotConversationList[index];
                 return InkWell(
-                  // A reply still on its way would end up in the
-                  // wrong conversation.
                   onTap: _isSending
                       ? null
                       : () => _openConversation(conversation),
@@ -443,7 +418,6 @@ class _ChatCard extends StatelessWidget {
               color: chatColor,
               borderRadius: BorderRadius.circular(8),
             ),
-            // Lets the user copy steps out of the assistant's answer.
             child: SelectableText(
               content,
               style: Theme.of(

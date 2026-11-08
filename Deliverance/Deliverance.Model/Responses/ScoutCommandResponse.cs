@@ -2,7 +2,6 @@ using Deliverance.Model.Enums;
 
 namespace Deliverance.Model.Responses
 {
-    /// <summary>A command sent to a scout and its result, as shown in the command history.</summary>
     public class ScoutCommandResponse
     {
         public int Id { get; set; }

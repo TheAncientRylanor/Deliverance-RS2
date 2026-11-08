@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 
 Widget buildProfileImage(
@@ -32,6 +33,9 @@ Widget buildProfileImage(
           ),
         );
       }
+      final authHeaders = {
+        'Authorization': 'Bearer ${AuthProvider.accesstoken ?? ''}',
+      };
       if (imagePath == null || imagePath.isEmpty) {
         return Center(
           child: Icon(Icons.person, size: iconSize, color: Colors.grey),
@@ -41,6 +45,7 @@ Widget buildProfileImage(
       return Center(
         child: Image.network(
           '$baseUrl$imagePath',
+          headers: authHeaders,
           fit: BoxFit.cover,
           width: resolvedWidth,
           height: resolvedHeight,

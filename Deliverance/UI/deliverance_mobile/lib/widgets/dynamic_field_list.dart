@@ -1,3 +1,4 @@
+import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 
@@ -9,12 +10,15 @@ class DynamicFieldList extends StatelessWidget {
   final void Function(int index)? onTap;
   final bool readOnly;
   final bool hasValidator;
+
+  final FieldValidator? validator;
   const DynamicFieldList({
     super.key,
     required this.labelText,
     required this.controllers,
     required this.addFunction,
     required this.hasValidator,
+    this.validator,
     this.removeFunction,
     this.onTap,
     this.readOnly = false,
@@ -40,6 +44,7 @@ class DynamicFieldList extends StatelessWidget {
             onTap: onTap == null ? null : () => onTap!(index),
             readOnly: readOnly,
             hasValidator: hasValidator,
+            validator: validator,
           ),
         );
       },
@@ -57,6 +62,7 @@ class LabeledInputWithAddButton extends StatelessWidget {
   final void Function(int index)? removeFunction;
   final bool readOnly;
   final bool hasValidator;
+  final FieldValidator? validator;
 
   const LabeledInputWithAddButton({
     super.key,
@@ -64,6 +70,7 @@ class LabeledInputWithAddButton extends StatelessWidget {
     required this.controller,
     required this.index,
     required this.hasValidator,
+    this.validator,
     required this.length,
     required this.addFunction,
     this.removeFunction,
@@ -83,14 +90,9 @@ class LabeledInputWithAddButton extends StatelessWidget {
           onTap: onTap,
           readOnly: readOnly,
           controller: controller,
-          validator: hasValidator
-              ? (value) {
-                  if (value == null || value == "") {
-                    return "$labelText cannot be an empty field";
-                  }
-                  return null;
-                }
-              : null,
+          validator:
+              validator ??
+              (hasValidator ? requiredField(labelText ?? 'This field') : null),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,

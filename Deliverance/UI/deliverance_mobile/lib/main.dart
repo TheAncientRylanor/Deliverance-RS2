@@ -1,16 +1,18 @@
-import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
+import 'package:deliverance_mobile/layouts/global_last_screen.dart';
 import 'package:deliverance_mobile/layouts/master_screen.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/providers/chat_bot_provider.dart';
 import 'package:deliverance_mobile/providers/contact_provider.dart';
-import 'package:deliverance_mobile/providers/occurance_provider.dart';
+import 'package:deliverance_mobile/providers/occurrence_provider.dart';
 import 'package:deliverance_mobile/providers/office_provider.dart';
 import 'package:deliverance_mobile/providers/report_provider.dart';
 import 'package:deliverance_mobile/providers/user_provider.dart';
 import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/screens/register_screen.dart';
-import 'package:deliverance_mobile/themes/fontTheme.dart';
+import 'package:deliverance_mobile/themes/font_theme.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
+import 'package:deliverance_mobile/utils/server_field_errors.dart';
 import 'package:deliverance_mobile/utils/navigation_service.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
@@ -28,7 +30,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => GlobalData()),
         ChangeNotifierProvider(create: (_) => OfficeProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
-        ChangeNotifierProvider(create: (_) => OccuranceProvider()),
+        ChangeNotifierProvider(create: (_) => OccurrenceProvider()),
         ChangeNotifierProvider(create: (_) => ChatBotProvider()),
       ],
       child: const MyApp(),
@@ -113,6 +115,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ServerFieldErrors _serverErrors = ServerFieldErrors();
   bool _obscurePassword = true;
 
   @override
@@ -122,9 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  bool _isCredentialsError(ApiClientException e) =>
+      e.statusCode != null && e.statusCode! < 500;
+
   @override
   Widget build(BuildContext context) {
-    // Just the plain login form now - no more token-checking here.
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
@@ -147,27 +153,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  CustomTextField(
-                    labelText: "Username",
-                    controller: _usernameController,
-                  ),
-                  const SizedBox(height: 28),
-                  CustomTextField(
-                    obscureText: _obscurePassword,
-                    labelText: "Password",
-                    controller: _passwordController,
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        CustomTextField(
+                          labelText: "Username",
+                          controller: _usernameController,
+                          validator: requiredField('Username'),
+                        ),
+                        const SizedBox(height: 28),
+                        CustomTextField(
+                          obscureText: _obscurePassword,
+                          labelText: "Password",
+                          controller: _passwordController,
+                          validator: _serverErrors.wrap(
+                            'Password',
+                            requiredField('Password'),
+                          ),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(
@@ -182,6 +200,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   context,
                                   listen: false,
                                 );
+                            _serverErrors.clear();
+                            if (!_formKey.currentState!.validate()) return;
                             try {
                               await authProvider.login(
                                 _usernameController.text,
@@ -199,12 +219,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               );
                             } on ApiClientException catch (e) {
                               if (!context.mounted) return;
-                              alertBox(
-                                context,
-                                "Login error",
-                                e.toString(),
-                                mode: AlertBoxMode.ok,
-                              );
+                              if (_isCredentialsError(e)) {
+                                _serverErrors.set(
+                                  'Password',
+                                  e.message,
+                                  _formKey,
+                                );
+                              } else {
+                                alertBox(
+                                  context,
+                                  "Login error",
+                                  e.toString(),
+                                  mode: AlertBoxMode.ok,
+                                );
+                              }
                             }
                           },
                           label: 'Log in',

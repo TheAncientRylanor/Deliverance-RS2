@@ -2,6 +2,7 @@ import 'package:deliverance_mobile/models/chat_bot_message.dart';
 import 'package:deliverance_mobile/models/conversation.dart';
 import 'package:deliverance_mobile/providers/chat_bot_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
@@ -26,13 +27,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _showConversations = false;
   static const _pageSize = 10;
   bool _isLoadingMore = false;
-  // Only true for a conversation opened from the history. A new conversation
-  // has nothing older on the server, and its messages added here have id 0,
-  // which can't be used as beforeId.
   bool _hasMore = false;
 
-  // The first page of an opened conversation is loading. Sending now would
-  // mix the new message into the page that is about to arrive.
   bool get _isOpeningConversation => _isLoadingMore && _chatBotList.isEmpty;
 
   @override
@@ -46,15 +42,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _loadMoreIfNeeded() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    // Near the top of the chat (the end of the reversed list), or the
-    // messages don't fill the screen yet, so there's nothing to scroll.
     if (position.pixels >= position.maxScrollExtent - 200) {
       _loadOlderMessages();
     }
   }
 
-  /// Loads the page of messages older than the oldest one shown, or the
-  /// latest page when the list is empty. [_chatBotList] is newest first.
   Future<void> _loadOlderMessages() async {
     if (_isLoadingMore || !_hasMore || _conversationId == null) return;
     final conversationId = _conversationId!;
@@ -66,7 +58,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         _pageSize,
       );
       if (!mounted) return;
-      // Skip the page if the user opened another conversation meanwhile.
       if (conversationId == _conversationId) {
         setState(() {
           _chatBotList.addAll(older);
@@ -77,14 +68,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       if (!mounted) return;
       if (conversationId == _conversationId) {
         alertBox(context, "Error", e.message, mode: AlertBoxMode.ok);
-        // The user retries by scrolling, instead of failing again in a loop.
         return;
       }
     } finally {
       if (mounted) setState(() => _isLoadingMore = false);
     }
-    // The new messages are laid out after the next frame. If they still don't
-    // fill the screen, or another conversation was opened, load the next page.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadMoreIfNeeded();
     });
@@ -100,7 +88,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      // The list is reversed, so offset 0 is the newest message.
       _scrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 250),
@@ -113,7 +100,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() {
       _showConversations = !_showConversations;
     });
-    // Reload every time, so a conversation started since then shows up.
     if (_showConversations) _loadConversations();
   }
 
@@ -172,7 +158,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       isFromBot: true,
       content: "Typing...",
     );
-    // The list is newest first, so new messages go to the front.
     setState(() {
       _isSending = true;
       _chatBotList.insert(0, userMessage);
@@ -259,7 +244,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   reverse: true,
                   separatorBuilder: (_, _) => const SizedBox(height: 30),
                   itemBuilder: (context, index) {
-                    // The extra item past the last message, shown at the top.
                     if (index == _chatBotList.length) {
                       return const Padding(
                         padding: EdgeInsets.all(10),
@@ -292,6 +276,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 child: CustomTextField(
                   controller: _chatBotMessageController,
                   maxLines: 5,
+                  maxLength: FieldLimits.chatMessageMax,
                   suffixIcon: IconButton(
                     onPressed: _isSending || _isOpeningConversation
                         ? null
@@ -331,8 +316,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       itemBuilder: (context, index) {
                         final conversation = _chatBotConversationList[index];
                         return InkWell(
-                          // A reply still on its way would end up in the
-                          // wrong conversation.
                           onTap: _isSending
                               ? null
                               : () => _openConversation(conversation),
@@ -340,8 +323,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             padding: const EdgeInsets.all(10.0),
                             child: Row(
                               children: [
-                                // Expanded gives the text a width, so the
-                                // ellipsis works instead of overflowing.
                                 Expanded(
                                   child: Text(
                                     conversation.title ?? "Untitled",

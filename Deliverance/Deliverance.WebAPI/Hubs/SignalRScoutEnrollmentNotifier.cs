@@ -26,8 +26,6 @@ namespace Deliverance.WebAPI.Hubs
             }
             catch (Exception ex)
             {
-                // The claim is already saved; the admin's dialog still picks it up when it
-                // (re)joins the group, so a failed push mustn't fail the scout's request.
                 _logger.LogWarning(ex, "Could not push claim of scout enrollment {EnrollmentId}", enrollment.Id);
             }
         }

@@ -1,5 +1,3 @@
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-
 import 'dart:convert';
 
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
@@ -12,13 +10,12 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 enum AuthStatus { authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
-  bool _isAuthenticated = false;
   static String? _accesstoken;
   static String? _refreshtoken;
   static const _storage = FlutterSecureStorage();
   static String? get accesstoken => _accesstoken;
   String? get refreshtoken => _refreshtoken;
-  String _baseUrl = ApiConstants.baseUrl;
+  final String _baseUrl = ApiConstants.baseUrl;
   static final AuthProvider instance = AuthProvider._internal();
   Future<bool>? _refreshFuture;
   factory AuthProvider() {
@@ -26,7 +23,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   AuthProvider._internal();
-  bool get isAuthenticated => _isAuthenticated;
   Future login(String username, String password) async {
     var url = "${_baseUrl}Access/Login";
     var uri = Uri.parse(url);
@@ -41,12 +37,9 @@ class AuthProvider extends ChangeNotifier {
     _accesstoken = data['accesstoken'];
     _refreshtoken = data['refreshtoken'];
     await saveToken();
-    _isAuthenticated = true;
     notifyListeners();
   }
 
-  /// Changes the current user's password. The backend revokes every refresh
-  /// token of the user, so the local session is cleared afterwards.
   Future<void> changePassword(String oldPassword, String newPassword) async {
     var uri = Uri.parse("${_baseUrl}Access/ChangePassword");
     var body = jsonEncode({
@@ -69,11 +62,34 @@ class AuthProvider extends ChangeNotifier {
     }
 
     validateResponse(response);
-    await logout();
+    await _clearSession();
   }
 
   Future<void> logout() async {
-    _isAuthenticated = false;
+    try {
+      var response = await _postLogout();
+      if (response.statusCode == 401 && await refreshToken()) {
+        response = await _postLogout();
+      }
+    } catch (_) {
+    }
+    await _clearSession();
+  }
+
+  Future<http.Response> _postLogout() {
+    final token = _accesstoken;
+    if (token == null || token.isEmpty) {
+      return Future.value(http.Response('', 401));
+    }
+    return http
+        .post(
+          Uri.parse("${_baseUrl}Access/Logout"),
+          headers: {...createHeaders(), "Authorization": "Bearer $token"},
+        )
+        .timeout(const Duration(seconds: 10));
+  }
+
+  Future<void> _clearSession() async {
     _accesstoken = null;
     _refreshtoken = null;
     await deleteToken();
@@ -99,6 +115,8 @@ class AuthProvider extends ChangeNotifier {
 
     throw ApiClientException(
       parsed ?? 'Request could not be completed. Please try again.',
+      fieldErrors: ApiErrorParser.fieldErrorsFromBody(response.body),
+      statusCode: response.statusCode,
     );
   }
 
@@ -106,11 +124,6 @@ class AuthProvider extends ChangeNotifier {
     var headers = {"Content-Type": "application/json"};
 
     return headers;
-  }
-
-  static void setToken(Token tkn) {
-    _accesstoken = tkn.jwtToken;
-    _refreshtoken = tkn.refreshToken;
   }
 
   Future<AuthStatus> tryAutoLogin() async {
@@ -123,7 +136,6 @@ class AuthProvider extends ChangeNotifier {
     if (!checkIfTokenExpired(storedAccess)) {
       _accesstoken = storedAccess;
       _refreshtoken = storedRefresh;
-      _isAuthenticated = true;
       notifyListeners();
       return AuthStatus.authenticated;
     }
@@ -149,8 +161,6 @@ class AuthProvider extends ChangeNotifier {
     var headers = createHeaders();
     var body = jsonEncode({"refreshToken": refreshtoken});
 
-    // Without a timeout an unreachable backend leaves the startup spinner
-    // (tryAutoLogin) hanging indefinitely.
     http.Response response = await http
         .post(uri, headers: headers, body: body)
         .timeout(ApiConstants.authRequestTimeout);
@@ -160,7 +170,6 @@ class AuthProvider extends ChangeNotifier {
     _accesstoken = data['accesstoken'];
     _refreshtoken = data['refreshtoken'];
     await saveToken();
-    _isAuthenticated = true;
     notifyListeners();
     return true;
   }
@@ -183,14 +192,14 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> _executeRefreshProcess() async {
     final storedRefresh = _refreshtoken;
     if (storedRefresh == null || storedRefresh.isEmpty) {
-      await logout();
+      await _clearSession();
       return false;
     }
     try {
       await loginWithRefreshToken();
       return true;
     } catch (_) {
-      await logout();
+      await _clearSession();
       return false;
     }
   }
@@ -211,22 +220,10 @@ class AuthProvider extends ChangeNotifier {
     ]);
   }
 
-  static Future<Token?> getToken() async {
-    Token tkn = Token();
-    tkn.jwtToken = await _storage.read(key: "jwt_token") ?? '';
-    tkn.refreshToken = await _storage.read(key: "refresh_token") ?? '';
-    return tkn;
-  }
-
   Future<void> deleteToken() async {
     await Future.wait([
       _storage.delete(key: "jwt_token"),
       _storage.delete(key: "refresh_token"),
     ]);
   }
-}
-
-class Token {
-  String jwtToken = '';
-  String refreshToken = '';
 }

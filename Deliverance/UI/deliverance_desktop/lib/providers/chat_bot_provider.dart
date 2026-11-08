@@ -12,23 +12,33 @@ class ChatBotProvider extends BaseProvider<ChatBotMessage> {
     return ChatBotMessage.fromJson(data);
   }
 
-  /// Sends the user's message and returns the bot's reply. The reply's
-  /// conversationId is the new conversation when [request] had none.
   Future<ChatBotMessage> sendMessage(ChatBotMessageInsertRequest request) =>
       insert(request);
 
   Future<List<Conversation>> getConversations() async {
-    final response = await sendWithRetry(() async {
-      var uri = Uri.parse("${BaseProvider.baseUrl}$endpoint/Conversations");
-      var headers = createHeaders();
-      return await http.get(uri, headers: headers);
-    });
-    var data = jsonDecode(response.body) as List;
-    return data.map((e) => Conversation.fromJson(e)).toList();
+    const pageSize = 50;
+    final conversations = <Conversation>[];
+    var page = 1;
+    while (true) {
+      final response = await sendWithRetry(() async {
+        var uri = Uri.parse(
+          "${BaseProvider.baseUrl}$endpoint/Conversations",
+        ).replace(queryParameters: {'page': '$page', 'pageSize': '$pageSize'});
+        var headers = createHeaders();
+        return await http.get(uri, headers: headers);
+      });
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final items = (data['items'] as List)
+          .map((e) => Conversation.fromJson(e))
+          .toList();
+      conversations.addAll(items);
+      final total = data['totalCount'] as int? ?? conversations.length;
+      if (items.length < pageSize || conversations.length >= total) break;
+      page++;
+    }
+    return conversations;
   }
 
-  /// Returns up to [take] messages of the conversation, newest first.
-  /// With [beforeId], returns the messages older than that one.
   Future<List<ChatBotMessage>> getConversationMessages(
     int conversationId,
     int? beforeId,

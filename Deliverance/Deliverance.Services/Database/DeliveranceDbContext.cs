@@ -1,9 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Deliverance.Services.Database
 {
@@ -13,7 +8,6 @@ namespace Deliverance.Services.Database
         {
         }
 
-        // DbSets for all entities
         public DbSet<Availability> Availabilities { get; set; }
         public DbSet<ChatBotMessage> ChatBotMessages { get; set; }
         public DbSet<Contact> Contacts { get; set; }
@@ -27,8 +21,8 @@ namespace Deliverance.Services.Database
         public DbSet<Office> Offices { get; set; }
         public DbSet<OfficeReport> OfficeReports { get; set; }
         public DbSet<ReportQuestion> ReportQuestions { get; set; }
-        public DbSet<Occurance> Occurances { get; set; }
-        public DbSet<ReportOccurance> ReportOccurances { get; set; }
+        public DbSet<Occurrence> Occurrences { get; set; }
+        public DbSet<ReportOccurrence> ReportOccurrences { get; set; }
         public DbSet<Scout> Scouts { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RefreshTokens> RefreshTokens { get; set; }
@@ -38,7 +32,6 @@ namespace Deliverance.Services.Database
         public DbSet<ScoutCommand> ScoutCommands { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
         public DbSet<Notification> Notifications { get; set; }
-        // Every DateTime is stored as UTC and read back marked as UTC (see UtcDateTimeConverter).
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();

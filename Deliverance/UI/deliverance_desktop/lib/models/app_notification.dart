@@ -1,7 +1,6 @@
 import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:deliverance_desktop/models/notification_type_enum.dart';
 
-/// Named AppNotification because Flutter already has a Notification class.
 class AppNotification {
   final int id;
   final NotificationTypeEnum type;
@@ -11,7 +10,6 @@ class AppNotification {
   final DateTime createdAt;
   final int? reportId;
 
-  /// The user the notification is about, such as a new registration.
   final String? relatedUserUUID;
 
   AppNotification({

@@ -3,8 +3,6 @@ import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
-/// Collapsible left sidebar of the office editor. Lists the device types that
-/// can be dragged onto the canvas; the drag data is the type's name.
 class DevicePalette extends StatefulWidget {
   const DevicePalette({super.key});
 
@@ -109,10 +107,7 @@ class _PaletteItem extends StatelessWidget {
       children: [
         Draggable<String>(
           data: type,
-          // Same size as the device on the canvas, so it lands where it's
-          // dropped.
           feedback: Material(color: Colors.transparent, child: _icon(80)),
-          // Keeps its size while dragging so the list below doesn't jump.
           childWhenDragging: Opacity(opacity: 0.3, child: _icon(50)),
           child: _icon(50),
         ),

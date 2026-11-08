@@ -4,12 +4,9 @@ import 'dart:math';
 import 'package:deliverance_scout/models/scout_log.dart';
 import 'package:deliverance_scout/utils/api_client_exception.dart';
 
-/// Sends this PC's logs to the server every [interval] while the scout runs.
 class ScoutLogReporter {
   static const interval = Duration(minutes: 15);
-  // The recommender reads the last 7 days, so a new scout is useful right away.
   static const firstRunLookback = Duration(days: 7);
-  // Matches ScoutLogBatchValidator.MaxBatchSize on the server.
   static const batchSize = 100;
 
   final Future<List<ScoutLogEntry>> Function(DateTime since, DateTime until)
@@ -40,8 +37,6 @@ class ScoutLogReporter {
     _timer = null;
   }
 
-  /// The checkpoint only moves once every batch is saved, so a failure means
-  /// the same period is collected again. The server skips what it already has.
   Future<void> report() async {
     if (_reporting) return;
     _reporting = true;

@@ -1,5 +1,3 @@
-/// One line sent to POST Scout/Logs. [count] is how many events were merged
-/// into it, and [eventKey] lets the server skip a line it already saved.
 class ScoutLogEntry {
   final String eventKey;
   final DateTime dateLogged;

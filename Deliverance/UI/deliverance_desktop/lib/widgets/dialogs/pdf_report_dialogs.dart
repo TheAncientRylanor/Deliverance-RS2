@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 final _dateTimeFormat = DateFormat('yyyy-MM-dd HH:mm');
 final _fileDateFormat = DateFormat('yyyy-MM-dd');
 
-/// Both dates are optional. The API then covers the 30 days up to now.
 Future<void> showReportActivityPdfDialog(BuildContext context) {
   final provider = context.read<PdfReportProvider>();
   final fromController = TextEditingController();
@@ -93,7 +92,6 @@ Future<void> showReportActivityPdfDialog(BuildContext context) {
   );
 }
 
-/// [offices] uses -1 for "All", as on the Statistics screen.
 Future<void> showDeviceHealthPdfDialog(
   BuildContext context,
   Map<int?, String> offices,
@@ -117,8 +115,6 @@ Future<void> showDeviceHealthPdfDialog(
   );
 }
 
-/// Asks for the report's options, then opens the generated PDF.
-/// The dialog stays open on an error so the options can be changed.
 Future<void> _showPdfOptionsDialog(
   BuildContext screenContext, {
   required String title,

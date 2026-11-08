@@ -3,7 +3,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'chat_bot_message.g.dart';
 
-/// One message of a chatbot conversation, written by the user or the bot.
 @JsonSerializable()
 class ChatBotMessage {
   final int id;
@@ -27,7 +26,6 @@ class ChatBotMessage {
       _$ChatBotMessageFromJson(json);
 }
 
-/// Sent by the user. A null [conversationId] starts a new conversation.
 @JsonSerializable()
 class ChatBotMessageInsertRequest {
   final int? conversationId;

@@ -1,4 +1,3 @@
-using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Services.Messaging;
 using Microsoft.AspNetCore.SignalR;
@@ -27,8 +26,6 @@ namespace Deliverance.WebAPI.Hubs
             }
             catch (Exception ex)
             {
-                // The command is already saved as Pending, so a failed push mustn't fail
-                // the admin's request.
                 _logger.LogWarning(ex, "Could not push command {CommandId} to scout {ScoutId}", request.Id, request.ScoutId);
             }
         }

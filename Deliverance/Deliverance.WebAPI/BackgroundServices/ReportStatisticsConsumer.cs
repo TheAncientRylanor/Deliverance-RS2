@@ -1,3 +1,5 @@
+using Deliverance.Model.Enums;
+using Deliverance.Model.RabbitMessages;
 using Deliverance.Services.Database;
 using Deliverance.Services.Messaging;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +10,6 @@ using System.Text.Json;
 
 namespace Deliverance.WebAPI.BackgroundServices
 {
-    /// <summary>
-    /// Keeps ReportStatistics in step with reports. A failing message is retried on
-    /// <see cref="RetryBackoff"/>, then moved to the failed queue so it can't loop forever.
-    /// </summary>
     public class ReportStatisticsConsumer : BackgroundService
     {
         private const int MaxLoggedBodyLength = 1000;
@@ -46,7 +44,6 @@ namespace Deliverance.WebAPI.BackgroundServices
             }
             catch (Exception ex)
             {
-                // Caught so the API keeps running, but logged loudly: statistics stop updating.
                 _logger.LogCritical(ex,
                     "Report statistics worker could not start after {MaxAttempts} attempts and has stopped. Report statistics won't update until the API restarts.",
                     RetryBackoff.MaxAttempts);
@@ -55,7 +52,6 @@ namespace Deliverance.WebAPI.BackgroundServices
 
         private async Task StartConsumingAsync(CancellationToken stoppingToken)
         {
-            // A failed earlier attempt may have left a channel behind.
             if (_channel is not null)
             {
                 await _channel.DisposeAsync();
@@ -86,7 +82,6 @@ namespace Deliverance.WebAPI.BackgroundServices
             await channel.QueueDeclareAsync(RabbitMqConstants.ReportStatisticsQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
             await channel.QueueBindAsync(RabbitMqConstants.ReportStatisticsQueue, RabbitMqConstants.ReportEventsExchange, routingKey: string.Empty, cancellationToken: stoppingToken);
             await channel.QueueDeclareAsync(RabbitMqConstants.ReportStatisticsFailedQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-            // Messages are handled one at a time, so there's no point holding many unacked ones.
             await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false, cancellationToken: stoppingToken);
 
             var consumer = new AsyncEventingBasicConsumer(channel);
@@ -98,7 +93,6 @@ namespace Deliverance.WebAPI.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    // HandleAsync deals with its own failures; this is only for the unexpected.
                     _logger.LogError(ex,
                         "Unexpected error handling report statistics message {DeliveryTag}. Body: {Body}",
                         eventArgs.DeliveryTag, BodyForLog(eventArgs.Body));
@@ -121,7 +115,6 @@ namespace Deliverance.WebAPI.BackgroundServices
                 readError = ex;
             }
 
-            // Retrying won't make an unreadable message readable.
             if (message is null)
             {
                 _logger.LogError(readError,
@@ -161,10 +154,6 @@ namespace Deliverance.WebAPI.BackgroundServices
             _logger.LogInformation("Updated statistics for report {ReportId} ({Type})", message.ReportId, message.Type);
         }
 
-        /// <summary>
-        /// Copies the message to the failed queue, then acks the original. If that fails, the
-        /// message goes back on the main queue and is retried again later.
-        /// </summary>
         private async Task MoveToFailedQueueAsync(IChannel channel, BasicDeliverEventArgs eventArgs)
         {
             try
@@ -194,7 +183,6 @@ namespace Deliverance.WebAPI.BackgroundServices
             }
             catch (Exception ex)
             {
-                // RabbitMQ requeues unacked messages itself when the channel closes.
                 _logger.LogWarning(ex,
                     "Could not requeue message {DeliveryTag}; RabbitMQ requeues it when the channel closes",
                     eventArgs.DeliveryTag);

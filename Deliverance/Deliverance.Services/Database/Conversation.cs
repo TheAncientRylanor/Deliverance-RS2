@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class Conversation : IUserOwnedEntity
 {
@@ -16,7 +16,6 @@ public class Conversation : IUserOwnedEntity
 
     public DateTime? CreatedAt { get; set; }
 
-    // Navigation
     [ForeignKey("UserUUID")]
     public User? User { get; set; }
 

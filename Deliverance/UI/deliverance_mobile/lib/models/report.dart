@@ -18,7 +18,7 @@ class Report {
   @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? dateCleared;
   final List<OfficeReport>? officeReports;
-  final List<ReportOccurance>? reportOccurances;
+  final List<ReportOccurrence>? reportOccurrences;
   final int? issueType;
   final bool isDraft;
   Report({
@@ -33,7 +33,7 @@ class Report {
     this.comment,
     this.dateCleared,
     this.officeReports,
-    this.reportOccurances,
+    this.reportOccurrences,
     this.issueType,
     this.isDraft = false,
   });
@@ -69,14 +69,14 @@ class OfficeReport {
 @JsonSerializable()
 class DeviceReport {
   final int? id;
-  final String? occurance;
+  final String? occurrence;
   final String? detail;
   final int? officeReportId;
   final int? deviceId;
   final String? name;
   DeviceReport({
     this.id,
-    this.occurance,
+    this.occurrence,
     this.detail,
     this.officeReportId,
     this.deviceId,
@@ -90,15 +90,15 @@ class DeviceReport {
 }
 
 @JsonSerializable()
-class ReportOccurance {
-  final int? occuranceId;
+class ReportOccurrence {
+  final int? occurrenceId;
   final String? question;
   int? answer;
 
-  ReportOccurance({this.occuranceId, this.question, this.answer});
+  ReportOccurrence({this.occurrenceId, this.question, this.answer});
 
-  factory ReportOccurance.fromJson(Map<String, dynamic> json) =>
-      _$ReportOccuranceFromJson(json);
+  factory ReportOccurrence.fromJson(Map<String, dynamic> json) =>
+      _$ReportOccurrenceFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ReportOccuranceToJson(this);
+  Map<String, dynamic> toJson() => _$ReportOccurrenceToJson(this);
 }

@@ -11,11 +11,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Deliverance.Services
 {
-    /// <summary>
-    /// Enrollment of a scout PC: an admin generates a token, the scout claims it with its
-    /// device information, and saving the office links the enrollment to a new Scout.
-    /// Not a BaseCRUDService: there is no generic insert/update, only these steps.
-    /// </summary>
     public class ScoutEnrollmentService : IScoutEnrollmentService
     {
         private readonly DeliveranceDbContext _dbContext;
@@ -93,8 +88,6 @@ namespace Deliverance.Services
             var manufacturer = Clean(request.Manufacturer);
             var hostname = Clean(request.Hostname);
 
-            // A single conditional UPDATE, so two scouts racing with the same token
-            // can't both claim it: only the first one still sees it as Pending.
             var claimed = await _dbContext.ScoutEnrollments
                 .Where(x => x.TokenHash == tokenHash
                     && x.Status == ScoutEnrollmentStatusEnum.Pending
@@ -119,8 +112,6 @@ namespace Deliverance.Services
                 .FirstAsync(x => x.TokenHash == tokenHash);
             await _notifier.EnrollmentClaimedAsync(_mapper.Map<ScoutEnrollmentResponse>(enrollment));
 
-            // The only time the plain secret leaves the server. It can't be used until
-            // the admin saves the device (see ScoutAccessManager).
             return new ScoutEnrollmentClaimResponse { ScoutSecret = scoutSecret };
         }
 
@@ -145,7 +136,7 @@ namespace Deliverance.Services
             {
                 if (!enrollments.TryGetValue(id, out var enrollment) || enrollment.CreatedByUserUUID != userId)
                 {
-                    throw new BusinessException("Scout enrollment does not exist.");
+                    throw new BusinessException($"Scout enrollment {id} was not found or was created by another admin. Generate a new enrollment token.");
                 }
                 if (enrollment.Status != ScoutEnrollmentStatusEnum.Claimed)
                 {
@@ -177,10 +168,9 @@ namespace Deliverance.Services
         {
             EnsureAdmin(isAdmin);
             var enrollment = await _dbContext.ScoutEnrollments.FirstOrDefaultAsync(x => x.Id == id);
-            // Another admin's enrollment is reported the same as a missing one.
             if (enrollment == null || enrollment.CreatedByUserUUID != userId)
             {
-                throw new NotFoundException("Scout enrollment does not exist.");
+                throw new NotFoundException($"Scout enrollment with id {id} was not found.");
             }
             return enrollment;
         }

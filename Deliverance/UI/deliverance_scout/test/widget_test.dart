@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  // No initialize(): it would read secure storage and call the API.
   Widget app(ScoutState state) => MultiProvider(
     providers: [
       ChangeNotifierProvider(

@@ -9,8 +9,6 @@ class ScoutCommandProvider extends BaseProvider<ScoutCommand> {
     return ScoutCommand.fromJson(data);
   }
 
-  /// Queues the command on the scout of [request]'s device. The returned
-  /// command is Pending; later status changes arrive through the device hub.
   Future<ScoutCommand> sendCommand(ScoutCommandInsertRequest request) =>
       insert(request);
 }

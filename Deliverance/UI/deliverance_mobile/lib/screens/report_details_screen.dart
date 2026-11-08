@@ -6,7 +6,6 @@ import 'package:deliverance_mobile/widgets/report_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Read-only view of a report that has been sent, so no longer a draft.
 class ReportDetailsScreen extends StatefulWidget {
   final Report report;
   const ReportDetailsScreen({super.key, required this.report});
@@ -54,7 +53,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     _titleController = TextEditingController(text: report.reportName ?? "");
     _descriptionController = TextEditingController(text: report.detail ?? "");
     _commentController = TextEditingController(text: report.comment ?? "");
-    // Reports cleared before these were recorded have neither value.
     _dateClearedController = TextEditingController(
       text: dateCleared == null ? '-' : _dateFormat.format(dateCleared),
     );
@@ -100,7 +98,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   locationController: _locationController,
                   devicesController: _devicesController,
                   dateController: _dateController,
-                  selectedOccurance: report.reportOccurances ?? [],
+                  selectedOccurrence: report.reportOccurrences ?? [],
                   titleController: _titleController,
                   descriptionController: _descriptionController,
                   severity: report.severity?.toDouble(),

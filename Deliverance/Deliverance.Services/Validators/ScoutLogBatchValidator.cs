@@ -6,8 +6,6 @@ namespace Deliverance.Services.Validators
     public class ScoutLogBatchValidator : AbstractValidator<ScoutLogBatchRequest>
     {
         public const int MaxBatchSize = 100;
-        // Longer than DeviceLog.Log on purpose: the service cuts the stored line to fit,
-        // so a long message costs some text instead of the whole batch.
         public const int MessageMaxLength = 4000;
 
         public ScoutLogBatchValidator()

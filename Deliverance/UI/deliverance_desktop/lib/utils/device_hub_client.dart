@@ -4,21 +4,17 @@ import 'package:deliverance_desktop/utils/api_constants.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 
-/// Receives the status changes of the commands sent to one device's scout.
-/// Admins only: the server refuses [start] for other users.
 class DeviceHubClient {
   static const _hubPath = "hubs/device";
   static const _joinMethod = "JoinDeviceHub";
   static const _commandEvent = "CommandExecuted";
   final int deviceId;
 
-  /// Called for every command of [deviceId], not only the ones this admin sent.
   final void Function(ScoutCommand command) onStatusChanged;
   DeviceHubClient({required this.deviceId, required this.onStatusChanged});
 
   HubConnection? _connection;
 
-  bool get isConnected => _connection?.state == HubConnectionState.Connected;
 
   Future<void> start() async {
     await stop();
@@ -47,7 +43,6 @@ class DeviceHubClient {
     await _join();
   }
 
-  /// Closing the connection also takes it out of the device's group.
   Future<void> stop() async {
     final connection = _connection;
     _connection = null;

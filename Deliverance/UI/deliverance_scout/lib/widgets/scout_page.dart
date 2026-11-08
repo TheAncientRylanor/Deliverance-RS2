@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Shared layout of the scout screens: the title, the screen's content, and an
-/// optional status or error message underneath.
 class ScoutPage extends StatelessWidget {
   final List<Widget> children;
   final String? message;

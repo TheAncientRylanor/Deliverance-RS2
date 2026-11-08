@@ -11,11 +11,11 @@ namespace Deliverance.Model.Request
         public DateTime DateReported { get; set; }
 
         public SeverityEnum? Severity { get; set; }
-        public IssueEnum? IssueType {get;set;   }
+        public IssueEnum? IssueType { get; set; }
 
         public string? Detail { get; set; }
 
         public ICollection<OfficeReportUpdateRequest> OfficeReports { get; set; } = new List<OfficeReportUpdateRequest>();
-        public ICollection<ReportOccuranceUpdate> ReportOccurances { get; set; } = new List<ReportOccuranceUpdate>();
+        public ICollection<ReportOccurrenceUpdate> ReportOccurrences { get; set; } = new List<ReportOccurrenceUpdate>();
     }
 }

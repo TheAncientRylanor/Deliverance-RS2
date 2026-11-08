@@ -29,15 +29,15 @@ class UserProvider extends BaseProvider<User> {
   }
 
   Future<User> updateUser(String id, UserUpdateMultipart request) async {
-    var baseURL = BaseProvider.baseUrl;
-    var url = "$baseURL$endpoint/UpdateUser/$id";
+    var url = "${BaseProvider.baseUrl}$endpoint/UpdateUser/$id";
     var uri = Uri.parse(url);
-    final multiPartRequest = await request.toMultipartRequest("PUT", uri);
-    multiPartRequest.headers['Authorization'] =
-        'Bearer ${AuthProvider.accesstoken}';
-    final streamedResponse = await multiPartRequest.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    validateResponse(response);
+    final response = await sendWithRetry(() async {
+      final multiPartRequest = await request.toMultipartRequest("PUT", uri);
+      multiPartRequest.headers['Authorization'] =
+          'Bearer ${AuthProvider.accesstoken}';
+      final streamedResponse = await multiPartRequest.send();
+      return http.Response.fromStream(streamedResponse);
+    });
     var data = jsonDecode(response.body);
     final user = fromJson(data);
     setData(user);
@@ -45,12 +45,8 @@ class UserProvider extends BaseProvider<User> {
   }
 
   Future<User> insertUser(UserInsertRequest request) async {
-    var baseURL = BaseProvider.baseUrl;
-    var url = "$baseURL$endpoint/InsertUser";
-    var uri = Uri.parse(url);
+    var uri = Uri.parse("${BaseProvider.baseUrl}Access/Register");
     final multiPartRequest = await request.toMultipartRequest("POST", uri);
-    multiPartRequest.headers['Authorization'] =
-        'Bearer ${AuthProvider.accesstoken}';
     final streamedResponse = await multiPartRequest.send();
     final response = await http.Response.fromStream(streamedResponse);
     validateResponse(response);
@@ -64,10 +60,10 @@ class UserProvider extends BaseProvider<User> {
     final response = await sendWithRetry(() async {
       var baseURL = BaseProvider.baseUrl;
       var url =
-          "$baseURL$endpoint/CheckUsername?request=${Uri.encodeQueryComponent(username)}";
+          "${baseURL}Access/Register/CheckUsername?username=${Uri.encodeQueryComponent(username)}";
       var uri = Uri.parse(url);
       var headers = createHeaders();
-      return await http.post(uri, headers: headers);
+      return await http.get(uri, headers: headers);
     });
     var data = jsonDecode(response.body);
     return data;

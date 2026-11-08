@@ -4,8 +4,6 @@ import 'package:deliverance_scout/widgets/scout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Shown while an admin has the scout disabled. ScoutAuthProvider keeps polling
-/// and switches back to the home screen once the scout is enabled again.
 class ScoutDisabledScreen extends StatefulWidget {
   const ScoutDisabledScreen({super.key});
 
@@ -27,7 +25,6 @@ class _ScoutDisabledScreenState extends State<ScoutDisabledScreen> {
     final auth = context.watch<ScoutAuthProvider>();
     final textTheme = Theme.of(context).textTheme;
     return ScoutPage(
-      // Connection problems while polling.
       message: auth.message,
       isError: true,
       children: [

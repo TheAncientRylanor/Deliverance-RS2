@@ -7,19 +7,20 @@ import 'package:deliverance_desktop/providers/office_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/selected_report_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/form_validators.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/custom_toast.dart';
 import 'package:deliverance_desktop/widgets/full_screen_office_map.dart';
-import 'package:deliverance_desktop/widgets/occurance_dialog.dart';
+import 'package:deliverance_desktop/widgets/occurrence_dialog.dart';
 import 'package:deliverance_desktop/widgets/office_canvas.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SingleReportScreen extends StatefulWidget {
   final Report report;
-  // For a report opened from another screen, which the sidebar can't return to.
   final bool showBackButton;
 
   const SingleReportScreen({
@@ -43,7 +44,7 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
   bool isLoadingOffice = false;
   late bool _isCleared;
   bool _isClearing = false;
-  // Issue type as saved on the report, and the one the admin picks before clearing.
+  final GlobalKey<FormState> _commentFormKey = GlobalKey<FormState>();
   int? _issueType;
   int? _selectedIssueType;
   @override
@@ -78,6 +79,7 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
   }
 
   Future<void> _clearReport() async {
+    if (!(_commentFormKey.currentState?.validate() ?? true)) return;
     final confirmed = await alertBox(
       context,
       "Clear report",
@@ -100,6 +102,11 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
         _isCleared = true;
         _issueType = cleared.issueType;
       });
+      showCustomToast(
+        context,
+        "Report \"${cleared.reportName}\" cleared. Its author has been notified.",
+        type: ToastType.success,
+      );
     } on ApiClientException catch (e) {
       if (mounted) alertBox(context, "Error", e.message);
     } finally {
@@ -110,8 +117,6 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
   Future<void> _getOffice() async {
     setState(() {
       isLoadingOffice = true;
-      // Drop the previous office so a failed load can't leave it on screen
-      // under a different selection.
       _selectedOffice = null;
     });
     try {
@@ -260,14 +265,14 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
               _buildRow(context, 'Location', _locationLabel),
               _buildRow(
                 context,
-                'Occurance',
+                'Occurrence',
                 "-",
                 button: PrimaryButton(
-                  onPressed: () => showOccuranceDialog(
+                  onPressed: () => showOccurrenceDialog(
                     context,
-                    widget.report.reportOccurances ?? [],
+                    widget.report.reportOccurrences ?? [],
                   ),
-                  label: "Occurance",
+                  label: "Occurrence",
                   width: 100,
                   height: 40,
                 ),
@@ -349,13 +354,18 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
               _isCleared ? "Admin comment:" : "Add comment:",
               style: theme.textTheme.headlineMedium,
             ),
-            CustomTextField(
-              controller: _commentController,
-              readOnly: _isCleared,
-              maxLines: 30,
-              minLines: 10,
-              textStyle: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.w100,
+            Form(
+              key: _commentFormKey,
+              child: CustomTextField(
+                controller: _commentController,
+                readOnly: _isCleared,
+                maxLines: 30,
+                minLines: 10,
+                maxLength: _isCleared ? null : FieldLimits.commentMax,
+                validator: maxLength('Comment', FieldLimits.commentMax),
+                textStyle: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w100,
+                ),
               ),
             ),
           ],

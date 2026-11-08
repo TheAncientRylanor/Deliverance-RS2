@@ -1,3 +1,4 @@
+using Deliverance.Services.ReportStateMachine;
 using Deliverance.Model.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,10 +6,8 @@ namespace Deliverance.Services.Database
 {
     public partial class DeliveranceDbContext : DbContext
     {
-        // Seeded offices, devices and reports all start with this, so they are easy to find and delete.
         private const string TestDataPrefix = "TEST ";
 
-        // {0} in a log line is filled with a random percentage or temperature.
         private static readonly string[] MemoryLogs =
         [
             "low memory warning, memory usage at {0}%",
@@ -61,7 +60,6 @@ namespace Deliverance.Services.Database
         private record TestDeviceProfile(int DeviceCount, IssueEnum? Issue, string[] FaultLogs,
             string[] ReportDetails, string[] ClearComments);
 
-        // The device counts add up to 60. Healthy devices have no Issue and only get a few reports.
         private static readonly TestDeviceProfile[] TestDeviceProfiles =
         [
             new(18, null, [],
@@ -87,10 +85,6 @@ namespace Deliverance.Services.Database
                 ["Replaced the disk and reinstalled the operating system."]),
         ];
 
-        /// <summary>
-        /// Adds a year of made-up offices, devices, scouts, logs, reports and statistics for development.
-        /// Returns false, without adding anything, when the test data is already there.
-        /// </summary>
         public async Task<bool> SeedTestDataAsync()
         {
             if (await Offices.AnyAsync(x => x.Name.StartsWith(TestDataPrefix)))
@@ -102,7 +96,6 @@ namespace Deliverance.Services.Database
             var regularUser = await Users.FirstOrDefaultAsync(x => x.RoleId == RoleEnum.User) ?? admin;
 
             var rnd = new Random(42);
-            // Its own generator, so adding clear details didn't change the rest of the data.
             var clearRnd = new Random(43);
             var now = DateTime.UtcNow;
 
@@ -132,7 +125,6 @@ namespace Deliverance.Services.Database
                     var device = CreateTestDevice(office, o, d, index, rnd, now);
                     office.Devices.Add(device);
 
-                    // Every fourth device has no scout, and so no logs.
                     if (index % 4 != 3)
                     {
                         device.Scout = new Scout
@@ -157,13 +149,11 @@ namespace Deliverance.Services.Database
                 reports[i].ReportName = $"{TestDataPrefix}Report {i + 1:D4}";
             }
 
-            // Statistics need the generated ids, so they are saved second, in the same transaction.
             await using var transaction = await Database.BeginTransactionAsync();
             Offices.AddRange(offices);
             Reports.AddRange(reports);
             await SaveChangesAsync();
 
-            // Same rows ReportStatisticsConsumer writes. Reports added here never reach RabbitMQ.
             ReportStatistics.AddRange(
                 from report in reports
                 from officeReport in report.OfficeReports
@@ -194,7 +184,6 @@ namespace Deliverance.Services.Database
                 Name = $"{TestDataPrefix}{type} {index + 1:D2}",
                 OfficeName = office.Name,
                 CreatedAt = now.AddDays(-400),
-                // Positions are fractions of the floor plan: a grid of 4 columns.
                 PositionX = 0.15 + 0.23 * (deviceIndex % 4),
                 PositionY = 0.2 + 0.3 * (deviceIndex / 4),
                 IconName = type.ToLower(),
@@ -208,10 +197,6 @@ namespace Deliverance.Services.Database
             };
         }
 
-        /// <summary>
-        /// Fills in when seeded cleared reports were cleared and by whom, on test data seeded before
-        /// those were recorded. Returns how many reports were changed.
-        /// </summary>
         public async Task<int> FillTestClearDetailsAsync()
         {
             var admin = await Users.FirstOrDefaultAsync(x => x.RoleId == RoleEnum.Admin)
@@ -233,7 +218,6 @@ namespace Deliverance.Services.Database
             return reports.Count;
         }
 
-        // Urgent reports are dealt with within a day, the rest within five.
         private static void SetTestClearDetails(Report report, string adminName, Random rnd, DateTime now)
         {
             var maxHours = report.Severity >= SeverityEnum.Danger ? 24 : 120;
@@ -260,7 +244,6 @@ namespace Deliverance.Services.Database
                     Status = status,
                     DateReported = now.AddDays(-ageInDays),
                     Severity = (SeverityEnum)rnd.Next(isHealthy ? 1 : 3, isHealthy ? 4 : 6),
-                    // Some reporters don't say what kind of issue it was.
                     IssueType = rnd.NextDouble() < 0.05 ? null : profile.Issue ?? (IssueEnum)rnd.Next(1, 4),
                     Detail = detail,
                     UserUUID = rnd.NextDouble() < 0.7 ? regularUserId : admin.UUID,
@@ -286,7 +269,6 @@ namespace Deliverance.Services.Database
             return reports;
         }
 
-        // Old reports have been dealt with; the last month is still a mix.
         private static string PickTestReportStatus(double ageInDays, Random rnd)
         {
             var roll = rnd.NextDouble();
@@ -299,7 +281,6 @@ namespace Deliverance.Services.Database
         {
             string[][] faultPools = [MemoryLogs, DiskLogs, OverheatingLogs, DriverLogs, OsLogs];
 
-            // One line a day. A few are stray warnings, so a single fault line doesn't give the device away.
             for (var day = 0; day < 365; day++)
             {
                 var pool = rnd.NextDouble() < 0.02 ? faultPools[rnd.Next(faultPools.Length)] : RoutineLogs;
@@ -311,7 +292,6 @@ namespace Deliverance.Services.Database
                 return;
             }
 
-            // Faults show up in the logs in the days before they get reported.
             foreach (var report in reports)
             {
                 var lines = rnd.Next(3, 6);
@@ -321,7 +301,6 @@ namespace Deliverance.Services.Database
                 }
             }
 
-            // Most faulty devices are having trouble right now, which is what recommendations read.
             if (rnd.NextDouble() < 0.75)
             {
                 for (var i = 0; i < 6; i++)

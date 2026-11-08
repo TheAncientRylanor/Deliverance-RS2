@@ -9,9 +9,6 @@ import 'package:http/http.dart' as http;
 class ScoutEnrollmentProvider with ChangeNotifier {
   static const String _claimEndpoint = "Scout/Enrollment/Claim";
 
-  /// Claims the token pasted from the admin app and sends this PC's details.
-  /// The endpoint is anonymous: the token itself is the proof. Returns the
-  /// scout's long-term secret, which the server never sends again.
   Future<String> claim(String token, DeviceInfo deviceInfo) async {
     final uri = Uri.parse("${ApiConstants.baseUrl}$_claimEndpoint");
     final body = jsonEncode({'token': token, ...deviceInfo.toJson()});

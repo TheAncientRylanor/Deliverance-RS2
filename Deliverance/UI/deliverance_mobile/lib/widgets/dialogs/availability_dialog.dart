@@ -30,6 +30,7 @@ Future<AvailabilitySelection?> showAvailabilityDialog(
   String selectedDay = initialDay;
   TimeOfDay? pickedTimeFrom;
   TimeOfDay? pickedTimeTo;
+  String? timeError;
 
   return showDialog<AvailabilitySelection>(
     context: context,
@@ -170,6 +171,15 @@ Future<AvailabilitySelection?> showAvailabilityDialog(
                     ),
                   ),
                 ),
+                if (timeError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    timeError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
               ],
             ),
             actions: [
@@ -179,18 +189,27 @@ Future<AvailabilitySelection?> showAvailabilityDialog(
               ),
               FilledButton(
                 onPressed: () {
-                  if (pickedTimeFrom != null && pickedTimeTo != null) {
-                    Navigator.pop(
-                      dialogContext,
-                      AvailabilitySelection(
-                        day: selectedDay,
-                        fromTime: pickedTimeFrom!,
-                        toTime: pickedTimeTo!,
-                      ),
-                    );
-                  } else {
-                    Navigator.pop(dialogContext);
+                  final from = pickedTimeFrom;
+                  final to = pickedTimeTo;
+                  String? error;
+                  if (from == null || to == null) {
+                    error = 'Pick both a start time and an end time';
+                  } else if (to.hour * 60 + to.minute <=
+                      from.hour * 60 + from.minute) {
+                    error = 'End time must be later than the start time';
                   }
+                  if (error != null) {
+                    setDialogState(() => timeError = error);
+                    return;
+                  }
+                  Navigator.pop(
+                    dialogContext,
+                    AvailabilitySelection(
+                      day: selectedDay,
+                      fromTime: from!,
+                      toTime: to!,
+                    ),
+                  );
                 },
                 child: const Text('Save'),
               ),

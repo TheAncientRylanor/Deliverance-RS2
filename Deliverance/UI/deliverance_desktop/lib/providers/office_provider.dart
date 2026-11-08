@@ -12,15 +12,12 @@ class OfficeProvider extends BaseProvider<Office> {
     return Office.fromJson(data);
   }
 
-  /// Fetches every office. The API pages results (10 per page by default),
-  /// so this walks the pages until all offices are loaded.
   Future<List<Office>> getAll() async {
     const pageSize = 100;
     final offices = <Office>[];
     var page = 1;
     while (true) {
       final result = await get(
-        // Sorted so pages don't overlap; the API has no default order.
         filter: BaseSearchObject(
           page: page,
           pageSize: pageSize,

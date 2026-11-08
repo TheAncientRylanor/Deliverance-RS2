@@ -1,3 +1,4 @@
+using Deliverance.Model.RabbitMessages;
 namespace Deliverance.Services.Messaging
 {
     public interface IReportEventPublisher

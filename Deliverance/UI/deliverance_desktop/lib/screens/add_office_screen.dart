@@ -12,17 +12,6 @@ import 'package:deliverance_desktop/widgets/office_editor/placed_device.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Office editor, used both to add a new office and, with [office], to edit
-/// an existing one.
-///
-/// How an office is built:
-/// 1. Drag a device type from the [DevicePalette] onto the
-///    [OfficeEditorCanvas].
-/// 2. The device dialog opens to fill in its details and, optionally, enroll
-///    a scout on it. Cancelling removes the dropped device again.
-/// 3. Devices can be dragged around, or clicked to edit or delete them.
-/// 4. Save in the [OfficeEditorToolbar] asks for the office name and sends
-///    the whole office to the API. Pops with `true` once saved.
 class AddOfficeScreen extends StatefulWidget {
   final Office? office;
 
@@ -69,7 +58,6 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
         device.details = result.details;
         _hasUnsavedChanges = true;
       } else {
-        // Cancelled: don't leave an empty device on the canvas.
         _devices.remove(device);
       }
     });
@@ -104,46 +92,65 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
   Future<void> _save() async {
     if (_isSaving) return;
     final officeProvider = context.read<OfficeProvider>();
-    final name = await showOfficeNameDialog(context, _officeName);
-    if (name == null || !mounted) return;
-    setState(() {
-      _officeName = name;
-      _isSaving = true;
-    });
-
-    final officeJson = Office(
-      name: name,
-      devices: [for (final device in _devices) device.toDevice(name)],
-    ).toJson();
-    try {
-      if (_isEditing) {
-        await officeProvider.update(widget.office!.id!, officeJson);
-      } else {
-        // A new office and its devices don't have ids yet.
-        officeJson.remove('id');
-        for (final device in officeJson['devices'] as List<dynamic>) {
-          (device as Map<String, dynamic>).remove('id');
-        }
-        await officeProvider.insert(officeJson);
-      }
-      if (!mounted) return;
-      showCustomToast(context, "Office saved successfully");
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } on ApiClientException catch (e) {
-      if (!mounted) return;
-      alertBox(
+    String? nameError;
+    while (true) {
+      final name = await showOfficeNameDialog(
         context,
-        _isEditing ? "Update error" : "Insert error",
-        e.message,
+        _officeName,
+        serverError: nameError,
       );
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (name == null || !mounted) return;
+      setState(() {
+        _officeName = name;
+        _isSaving = true;
+      });
+
+      final officeJson = Office(
+        name: name,
+        devices: [for (final device in _devices) device.toDevice(name)],
+      ).toJson();
+      try {
+        if (_isEditing) {
+          await officeProvider.update(widget.office!.id!, officeJson);
+        } else {
+          officeJson.remove('id');
+          for (final device in officeJson['devices'] as List<dynamic>) {
+            (device as Map<String, dynamic>).remove('id');
+          }
+          await officeProvider.insert(officeJson);
+        }
+        if (!mounted) return;
+        showCustomToast(
+          context,
+          _isEditing
+              ? "Office $name updated (${_devices.length} devices)."
+              : "Office $name created with ${_devices.length} devices.",
+          type: ToastType.success,
+        );
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (!mounted) return;
+        Navigator.pop(context, true);
+        return;
+      } on ApiClientException catch (e) {
+        if (!mounted) return;
+        setState(() => _isSaving = false);
+        final error = e.fieldErrors['Name'];
+        if (error != null) {
+          nameError = error;
+          continue;
+        }
+        alertBox(
+          context,
+          _isEditing ? "Update error" : "Insert error",
+          e.message,
+        );
+        return;
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
     }
   }
 
-  /// Cancel goes through here; a successful save pops directly.
   Future<void> _onPopRequested(bool didPop, Object? _) async {
     if (didPop) return;
     final discard = await alertBox(

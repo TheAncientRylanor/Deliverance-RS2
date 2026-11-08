@@ -1,6 +1,6 @@
 import 'package:deliverance_mobile/models/answer_enum.dart';
 import 'package:deliverance_mobile/models/report.dart';
-import 'package:deliverance_mobile/providers/occurance_provider.dart';
+import 'package:deliverance_mobile/providers/occurrence_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_date_time_picker.dart';
@@ -10,21 +10,20 @@ import 'package:provider/provider.dart';
 
 import '../custom_buttons.dart';
 
-// ignore: must_be_immutable
 class TimeStep extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final TextEditingController dateController;
-  final ValueChanged<List<ReportOccurance>> onDataChanged;
-  List<ReportOccurance> selectedOccurance;
+  final ValueChanged<List<ReportOccurrence>> onDataChanged;
+  final List<ReportOccurrence> selectedOccurrence;
   final GlobalKey<FormState> timeKey;
-  TimeStep({
+  const TimeStep({
     required this.timeKey,
     super.key,
     this.onBack,
     this.onNext,
     required this.dateController,
-    required this.selectedOccurance,
+    required this.selectedOccurrence,
     required this.onDataChanged,
   });
 
@@ -37,25 +36,25 @@ class _TimeStepState extends State<TimeStep> {
   bool isChecked = false;
   DateTime? _selectedDate;
   bool isLoading = true;
-  late OccuranceProvider _occuranceProvider;
+  late OccurrenceProvider _occurrenceProvider;
   int _currentQuestionIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _occuranceProvider = context.read<OccuranceProvider>();
+    _occurrenceProvider = context.read<OccurrenceProvider>();
     loadValues();
   }
 
   Future<void> loadValues() async {
     isLoading = true;
     try {
-      var result = await _occuranceProvider.get();
+      var result = await _occurrenceProvider.get();
       if (result.items != null) {
-        mapOccurances(
+        mapOccurrences(
           result.items!
               .map(
-                (x) => ReportOccurance(occuranceId: x.id, question: x.question),
+                (x) => ReportOccurrence(occurrenceId: x.id, question: x.question),
               )
               .toList(),
         );
@@ -71,65 +70,64 @@ class _TimeStepState extends State<TimeStep> {
     }
   }
 
-  void mapOccurances(List<ReportOccurance> occurances) {
-    for (var occ in occurances) {
-      occ.answer = widget.selectedOccurance
+  void mapOccurrences(List<ReportOccurrence> occurrences) {
+    for (var occ in occurrences) {
+      occ.answer = widget.selectedOccurrence
           .firstWhere(
-            (x) => occ.occuranceId != null
-                ? x.occuranceId == occ.occuranceId
+            (x) => occ.occurrenceId != null
+                ? x.occurrenceId == occ.occurrenceId
                 : x.question == occ.question,
-            orElse: () => ReportOccurance(),
+            orElse: () => ReportOccurrence(),
           )
           .answer;
     }
-    widget.onDataChanged(occurances);
+    widget.onDataChanged(occurrences);
   }
 
   void _goToPreviousQuestion() {
-    if (widget.selectedOccurance.isEmpty) return;
+    if (widget.selectedOccurrence.isEmpty) return;
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex - 1).clamp(
         0,
-        widget.selectedOccurance.length - 1,
+        widget.selectedOccurrence.length - 1,
       );
     });
   }
 
   void _goToNextQuestion() {
-    if (widget.selectedOccurance.isEmpty) return;
+    if (widget.selectedOccurrence.isEmpty) return;
     setState(() {
       _currentQuestionIndex = (_currentQuestionIndex + 1).clamp(
         0,
-        widget.selectedOccurance.length - 1,
+        widget.selectedOccurrence.length - 1,
       );
     });
   }
 
+  String? _occurrenceError;
+
   String? _validateDate(dynamic value) {
     if (value == null || (value as String).isEmpty) {
-      return "Please choose a date";
+      return "Choose the date and time the problem happened";
+    }
+    final date = DateTime.tryParse(value);
+    if (date != null &&
+        date.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
+      return "Date and time of the problem can't be in the future";
     }
     return null;
   }
 
   void _handleNext() {
     final isFormValid = widget.timeKey.currentState!.validate();
-    final errors = <String>[];
-    final dateError = _validateDate(widget.dateController.text);
-    if (dateError != null) errors.add(dateError);
-    if (!widget.selectedOccurance.any((o) => o.answer != null)) {
-      errors.add("Please answer at least one occurrence question");
-    }
-
-    if (isFormValid && errors.isEmpty) {
+    final hasAnswer = widget.selectedOccurrence.any((o) => o.answer != null);
+    setState(() {
+      _occurrenceError = hasAnswer
+          ? null
+          : "Answer at least one of the occurrence questions";
+    });
+    if (isFormValid && hasAnswer) {
       widget.onNext?.call();
-    } else {
-      alertBox(
-        context,
-        "Incomplete form",
-        errors.join("\n"),
-        mode: AlertBoxMode.ok,
-      );
     }
   }
 
@@ -159,7 +157,7 @@ class _TimeStepState extends State<TimeStep> {
                     ),
                     const SizedBox(height: 50),
                     Text(
-                      "2. Occurance",
+                      "2. Occurrence",
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     Row(
@@ -195,9 +193,9 @@ class _TimeStepState extends State<TimeStep> {
                                 ),
                                 child: Center(
                                   child: SingleChildScrollView(
-                                    child: widget.selectedOccurance.isEmpty
+                                    child: widget.selectedOccurrence.isEmpty
                                         ? Text(
-                                            "No occurances available",
+                                            "No occurrences available",
                                             textAlign: TextAlign.center,
                                             style: Theme.of(
                                               context,
@@ -212,7 +210,7 @@ class _TimeStepState extends State<TimeStep> {
                                               children: [
                                                 Text(
                                                   widget
-                                                          .selectedOccurance[_currentQuestionIndex]
+                                                          .selectedOccurrence[_currentQuestionIndex]
                                                           .question ??
                                                       "",
                                                   textAlign: TextAlign.center,
@@ -223,12 +221,12 @@ class _TimeStepState extends State<TimeStep> {
                                                 const SizedBox(height: 10),
                                                 RadioGroup<int>(
                                                   groupValue: widget
-                                                      .selectedOccurance[_currentQuestionIndex]
+                                                      .selectedOccurrence[_currentQuestionIndex]
                                                       .answer,
                                                   onChanged: (value) {
                                                     setState(() {
                                                       widget
-                                                              .selectedOccurance[_currentQuestionIndex]
+                                                              .selectedOccurrence[_currentQuestionIndex]
                                                               .answer =
                                                           value;
                                                     });
@@ -274,13 +272,23 @@ class _TimeStepState extends State<TimeStep> {
                           color: Theme.of(context).colorScheme.primary,
                           onPressed:
                               _currentQuestionIndex <
-                                  widget.selectedOccurance.length - 1
+                                  widget.selectedOccurrence.length - 1
                               ? _goToNextQuestion
                               : null,
                           iconSize: 20,
                         ),
                       ],
                     ),
+                    if (_occurrenceError != null)
+                      Text(
+                        _occurrenceError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
 
                     const SizedBox(height: 50),
                     Row(
@@ -305,6 +313,7 @@ class _TimeStepState extends State<TimeStep> {
     final DateTime? pickedDateTime = await pickDateAndTime(
       context,
       initialDate: _selectedDate,
+      lastDate: DateTime.now(),
     );
 
     if (pickedDateTime == null) return;
