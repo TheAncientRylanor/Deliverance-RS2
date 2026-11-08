@@ -255,13 +255,19 @@ class _MyProfileScreen extends State<MyProfileScreen> {
                           controller: _firstNameController,
                           labelText: "First name",
                           readOnly: isReadOnly,
-                          validator: _serverErrors.wrap('FirstName', personName('First name')),
+                          validator: _serverErrors.wrap(
+                            'FirstName',
+                            personName('First name'),
+                          ),
                         ),
                         CustomTextField(
                           controller: _lastNameController,
                           labelText: "Last name",
                           readOnly: isReadOnly,
-                          validator: _serverErrors.wrap('LastName', personName('Last name')),
+                          validator: _serverErrors.wrap(
+                            'LastName',
+                            personName('Last name'),
+                          ),
                         ),
                       ),
                       _buildFormRow(
@@ -271,7 +277,15 @@ class _MyProfileScreen extends State<MyProfileScreen> {
                           formFieldKey: _usernameFieldKey,
                           labelText: "Username",
                           readOnly: isReadOnly,
-                          validator: _serverErrors.wrap('Username', allOf([username(), (_) => _isUsernameUsed ? 'This username is already taken. Choose a different username.' : null])),
+                          validator: _serverErrors.wrap(
+                            'Username',
+                            allOf([
+                              username(),
+                              (_) => _isUsernameUsed
+                                  ? 'This username is already taken. Choose a different username.'
+                                  : null,
+                            ]),
+                          ),
                         ),
                         CustomTextField(
                           controller: _emailController,

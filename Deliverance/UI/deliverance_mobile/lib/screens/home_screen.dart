@@ -114,7 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      "Same issue again? Use these shortcuts here to skip few steps",
+                      (_reportList.items?.isEmpty ?? true)
+                          ? "No reports? Shame... The admin will be bored..."
+                          : "Same issue again? Use these shortcuts here to skip few steps",
                       style: Theme.of(context).textTheme.displayLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight(100),

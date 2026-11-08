@@ -336,7 +336,9 @@ class _ChatBotButtonState extends State<ChatBotButton> {
         final chat = _chatBotList[index];
         final isFromBot = chat.isFromBot == true;
         return _ChatCard(
-          alignment: isFromBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+          alignment: isFromBot
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
           content: chat.content ?? "",
           maxWidth: panelSize.width * 0.75,
           chatColor: isFromBot

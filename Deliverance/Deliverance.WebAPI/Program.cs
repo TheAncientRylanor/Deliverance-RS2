@@ -123,6 +123,7 @@ builder.Services.AddScoped<IValidator<ScoutEnrollmentClaimRequest>, ScoutEnrollm
 builder.Services.AddScoped<IValidator<ScoutCommandInsertRequest>, ScoutCommandInsertValidator>();
 builder.Services.AddScoped<IValidator<ScoutCommandResultRequest>, ScoutCommandResultValidator>();
 builder.Services.AddScoped<IValidator<ScoutLogBatchRequest>, ScoutLogBatchValidator>();
+builder.Services.AddScoped<IValidator<ScoutSystemInfoRequest>, ScoutSystemInfoValidator>();
 builder.Services.AddScoped<IValidator<ChatBotMessageInsertRequest>, ChatBotMessageInsertValidator>();
 builder.Services.AddScoped<IValidator<ChatBotMessageUpdateRequest>, ChatBotMessageUpdateValidator>();
 builder.Services.AddOpenApi();
@@ -224,21 +225,15 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEndpointsApiExplorer();
 var app = builder.Build();
 
-if (args.Contains("--seed-test-data") && app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<DeliveranceDbContext>();
-    var seeded = await dbContext.SeedTestDataAsync();
-    if (seeded)
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await dbContext.Database.MigrateAsync();
+    if (await dbContext.SeedTestDataAsync())
     {
-        Console.WriteLine("Test data added.");
+        startupLogger.LogInformation("The database was empty, so test data was added.");
     }
-    else
-    {
-        var filled = await dbContext.FillTestClearDetailsAsync();
-        Console.WriteLine($"Test data already exists, nothing was added. Filled in clear details on {filled} seeded reports.");
-    }
-    return;
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

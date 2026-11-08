@@ -21,6 +21,8 @@ Devices _$DevicesFromJson(Map<String, dynamic> json) => Devices(
   positionY: (json['positionY'] as num?)?.toDouble(),
   type: json['type'] as String?,
   manufacturer: json['manufacturer'] as String?,
+  timesReported: (json['timesReported'] as num?)?.toInt(),
+  hasOpenReport: json['hasOpenReport'] as bool?,
 );
 
 Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
@@ -30,4 +32,6 @@ Map<String, dynamic> _$DevicesToJson(Devices instance) => <String, dynamic>{
   'positionY': instance.positionY,
   'type': instance.type,
   'manufacturer': instance.manufacturer,
+  'timesReported': instance.timesReported,
+  'hasOpenReport': instance.hasOpenReport,
 };

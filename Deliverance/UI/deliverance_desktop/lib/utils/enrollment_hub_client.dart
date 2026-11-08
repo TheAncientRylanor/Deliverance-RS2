@@ -36,8 +36,7 @@ class EnrollmentHubClient {
     connection.onreconnected(({connectionId}) async {
       try {
         await _join();
-      } catch (_) {
-      }
+      } catch (_) {}
     });
 
     _connection = connection;

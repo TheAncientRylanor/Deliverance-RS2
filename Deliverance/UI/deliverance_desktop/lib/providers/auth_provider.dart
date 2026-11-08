@@ -91,8 +91,7 @@ class AuthProvider extends ChangeNotifier {
       if (response.statusCode == 401 && await refreshToken()) {
         response = await _postLogout();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     await _clearSession();
   }
 

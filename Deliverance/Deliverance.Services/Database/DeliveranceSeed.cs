@@ -39,12 +39,12 @@ namespace Deliverance.Services.Database
                 {
                     UUID = Guid.Parse("01a0052b-e3cb-705b-8a0c-ddabfee50ed7"),
                     RoleId = RoleEnum.User,
-                    Username = "Abdi",
-                    FirstName = "Abdulah",
-                    LastName = "Gavran",
-                    Email = "abdi@gmail.com",
-                    PasswordHash = "RAIXbMb2/r260dX5FUyrdjWQD/Y=",
-                    PasswordSalt = "MaguMBrUKFKhR2pJTHh6hQ==",
+                    Username = "mobile",
+                    FirstName = "Mobile",
+                    LastName = "User",
+                    Email = "mobile@deliverance.com",
+                    PasswordHash = "pbkdf2-sha256$600000$jBl4IUJ9RgcaWQU6lyeljCkr6K2D/oXtwP38q0PLDeg=",
+                    PasswordSalt = "Ies/D2F0M/FmsJ1dOaHmzg==",
                     CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 },
                 new
@@ -52,12 +52,12 @@ namespace Deliverance.Services.Database
 
                     UUID = Guid.Parse("01a0052b-e4b5-766a-b7c6-d601dbfaef87"),
                     RoleId = RoleEnum.Admin,
-                    Username = "Admin",
-                    FirstName = "Admin",
+                    Username = "desktop",
+                    FirstName = "Desktop",
                     LastName = "Admin",
-                    Email = "admin@gmail.com",
-                    PasswordHash = "FtGuYztT2jlsiedsnAooX7e85Uk=",
-                    PasswordSalt = "3+dabjBBHJqaMD7TU5/z9w==",
+                    Email = "desktop@deliverance.com",
+                    PasswordHash = "pbkdf2-sha256$600000$UPhzXj+DI+68beIrDPvxEMFkPWIn7q+bpXoGogYSPj0=",
+                    PasswordSalt = "fU/wbIMst4WNAlKkvPNLuA==",
                     CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 }
                 );

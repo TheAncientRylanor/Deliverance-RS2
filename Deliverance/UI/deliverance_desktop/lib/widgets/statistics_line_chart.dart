@@ -14,6 +14,11 @@ class StatisticsLineChart extends StatelessWidget {
     required this.fullMonthName,
   });
 
+  List<FlSpot> get _dailySpots => [
+    for (var day = 1; day <= maxX; day++)
+      FlSpot(day.toDouble(), (reportsByDay?[day] ?? 0).toDouble()),
+  ];
+
   @override
   Widget build(BuildContext context) {
     var theme = Theme.of(context);
@@ -25,6 +30,7 @@ class StatisticsLineChart extends StatelessWidget {
       padding: EdgeInsets.all(20.0),
       height: 500,
       child: LineChart(
+        key: ValueKey(maxX),
         LineChartData(
           backgroundColor: theme.colorScheme.surfaceContainer,
           borderData: FlBorderData(show: false),
@@ -74,16 +80,7 @@ class StatisticsLineChart extends StatelessWidget {
                 ),
               ),
               color: theme.colorScheme.primary,
-              spots:
-                  reportsByDay?.entries
-                      .map(
-                        (entry) => FlSpot(
-                          entry.key.toDouble(),
-                          entry.value.toDouble(),
-                        ),
-                      )
-                      .toList() ??
-                  [],
+              spots: _dailySpots,
             ),
           ],
         ),

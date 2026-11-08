@@ -1,7 +1,5 @@
-
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
-
 
 Widget globalLoadingSpinner({double size = 36, Color? color}) {
   return Center(
@@ -148,7 +146,6 @@ void alertBoxMoveBack(
     ),
   );
 }
-
 
 const String mField = "This filed is mandatory";
 

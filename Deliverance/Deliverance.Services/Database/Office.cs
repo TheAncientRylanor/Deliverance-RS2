@@ -21,7 +21,7 @@ public class Office : IUserOwnedEntity
     public Guid UserUUID { get; set; }
 
     [ForeignKey("UserUUID")]
-    public User User { get; set; }
+    public User? User { get; set; }
     public ICollection<Device> Devices { get; set; } = new List<Device>();
     public ICollection<OfficeReport> OfficeReports { get; set; } = new List<OfficeReport>();
 }

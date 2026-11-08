@@ -22,7 +22,7 @@ namespace Deliverance.Services.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Availability", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Availability", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -62,7 +62,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Availabilities");
                 });
 
-            modelBuilder.Entity("ChatBotMessage", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ChatBotMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -95,7 +95,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ChatBotMessages");
                 });
 
-            modelBuilder.Entity("Contact", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Contact", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -127,7 +127,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Contacts");
                 });
 
-            modelBuilder.Entity("ContactEmail", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ContactEmail", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -149,7 +149,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ContactEmails");
                 });
 
-            modelBuilder.Entity("ContactPhoneNumber", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ContactPhoneNumber", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -171,7 +171,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ContactPhoneNumbers");
                 });
 
-            modelBuilder.Entity("Conversation", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Conversation", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -196,78 +196,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Conversations");
                 });
 
-            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("RelatedUserUUID")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("ReportId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("UserUUID")
-                        .HasColumnType("UNIQUEIDENTIFIER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserUUID", "CreatedAt");
-
-                    b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("UserUUID")
-                        .HasColumnType("UNIQUEIDENTIFIER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.HasIndex("UserUUID");
-
-                    b.ToTable("RefreshTokens");
-                });
-
-            modelBuilder.Entity("Device", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Device", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -284,6 +213,9 @@ namespace Deliverance.Services.Migrations
 
                     b.Property<string>("IpAddress")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastOsUpdate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("MacAddress")
                         .HasColumnType("nvarchar(max)");
@@ -330,7 +262,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Devices");
                 });
 
-            modelBuilder.Entity("DeviceLog", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.DeviceLog", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -363,7 +295,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("DeviceLogs");
                 });
 
-            modelBuilder.Entity("DeviceReport", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.DeviceReport", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -394,7 +326,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("DeviceReports");
                 });
 
-            modelBuilder.Entity("ExecutionCommand", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ExecutionCommand", b =>
                 {
                     b.Property<int>("Id")
                         .HasColumnType("int");
@@ -421,7 +353,49 @@ namespace Deliverance.Services.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Occurrence", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("RelatedUserUUID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserUUID")
+                        .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserUUID", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Deliverance.Services.Database.Occurrence", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -465,7 +439,7 @@ namespace Deliverance.Services.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Office", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Office", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -503,7 +477,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Offices");
                 });
 
-            modelBuilder.Entity("OfficeReport", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.OfficeReport", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -530,7 +504,36 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("OfficeReports");
                 });
 
-            modelBuilder.Entity("Report", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("UserUUID")
+                        .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserUUID");
+
+                    b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Deliverance.Services.Database.Report", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -582,7 +585,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Reports");
                 });
 
-            modelBuilder.Entity("ReportOccurrence", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ReportOccurrence", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -609,7 +612,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ReportOccurrences");
                 });
 
-            modelBuilder.Entity("ReportQuestion", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ReportQuestion", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -625,7 +628,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ReportQuestions");
                 });
 
-            modelBuilder.Entity("ReportStatistics", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ReportStatistics", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -666,7 +669,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ReportStatistics");
                 });
 
-            modelBuilder.Entity("Role", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Role", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -699,7 +702,7 @@ namespace Deliverance.Services.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Scout", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Scout", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -724,7 +727,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Scouts");
                 });
 
-            modelBuilder.Entity("ScoutCommand", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ScoutCommand", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -772,7 +775,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ScoutCommands");
                 });
 
-            modelBuilder.Entity("ScoutEnrollment", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ScoutEnrollment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -851,7 +854,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("ScoutEnrollments");
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.User", b =>
                 {
                     b.Property<Guid>("UUID")
                         .ValueGeneratedOnAdd()
@@ -911,31 +914,31 @@ namespace Deliverance.Services.Migrations
                         {
                             UUID = new Guid("01a0052b-e3cb-705b-8a0c-ddabfee50ed7"),
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "abdi@gmail.com",
-                            FirstName = "Abdulah",
-                            LastName = "Gavran",
-                            PasswordHash = "RAIXbMb2/r260dX5FUyrdjWQD/Y=",
-                            PasswordSalt = "MaguMBrUKFKhR2pJTHh6hQ==",
+                            Email = "mobile@deliverance.com",
+                            FirstName = "Mobile",
+                            LastName = "User",
+                            PasswordHash = "pbkdf2-sha256$600000$jBl4IUJ9RgcaWQU6lyeljCkr6K2D/oXtwP38q0PLDeg=",
+                            PasswordSalt = "Ies/D2F0M/FmsJ1dOaHmzg==",
                             RoleId = 1,
-                            Username = "Abdi"
+                            Username = "mobile"
                         },
                         new
                         {
                             UUID = new Guid("01a0052b-e4b5-766a-b7c6-d601dbfaef87"),
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "admin@gmail.com",
-                            FirstName = "Admin",
+                            Email = "desktop@deliverance.com",
+                            FirstName = "Desktop",
                             LastName = "Admin",
-                            PasswordHash = "FtGuYztT2jlsiedsnAooX7e85Uk=",
-                            PasswordSalt = "3+dabjBBHJqaMD7TU5/z9w==",
+                            PasswordHash = "pbkdf2-sha256$600000$UPhzXj+DI+68beIrDPvxEMFkPWIn7q+bpXoGogYSPj0=",
+                            PasswordSalt = "fU/wbIMst4WNAlKkvPNLuA==",
                             RoleId = 2,
-                            Username = "Admin"
+                            Username = "desktop"
                         });
                 });
 
-            modelBuilder.Entity("Availability", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Availability", b =>
                 {
-                    b.HasOne("Contact", "Contact")
+                    b.HasOne("Deliverance.Services.Database.Contact", "Contact")
                         .WithMany("Availabilities")
                         .HasForeignKey("ContactId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -944,15 +947,15 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Contact");
                 });
 
-            modelBuilder.Entity("ChatBotMessage", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ChatBotMessage", b =>
                 {
-                    b.HasOne("Conversation", "Conversation")
+                    b.HasOne("Deliverance.Services.Database.Conversation", "Conversation")
                         .WithMany("ChatBotMessages")
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany("ChatBotMessages")
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -963,9 +966,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Contact", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Contact", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany("Contacts")
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -974,9 +977,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ContactEmail", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ContactEmail", b =>
                 {
-                    b.HasOne("Contact", "Contact")
+                    b.HasOne("Deliverance.Services.Database.Contact", "Contact")
                         .WithMany("ContactEmails")
                         .HasForeignKey("ContactId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -985,9 +988,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Contact");
                 });
 
-            modelBuilder.Entity("ContactPhoneNumber", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ContactPhoneNumber", b =>
                 {
-                    b.HasOne("Contact", "Contact")
+                    b.HasOne("Deliverance.Services.Database.Contact", "Contact")
                         .WithMany("ContactPhoneNumbers")
                         .HasForeignKey("ContactId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -996,9 +999,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Contact");
                 });
 
-            modelBuilder.Entity("Conversation", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Conversation", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany("Conversations")
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1007,31 +1010,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Device", b =>
                 {
-                    b.HasOne("User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
-                {
-                    b.HasOne("User", "User")
-                        .WithMany("RefreshToken")
-                        .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Device", b =>
-                {
-                    b.HasOne("Office", "Office")
+                    b.HasOne("Deliverance.Services.Database.Office", "Office")
                         .WithMany("Devices")
                         .HasForeignKey("OfficeId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1040,9 +1021,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Office");
                 });
 
-            modelBuilder.Entity("DeviceLog", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.DeviceLog", b =>
                 {
-                    b.HasOne("Scout", "Scout")
+                    b.HasOne("Deliverance.Services.Database.Scout", "Scout")
                         .WithMany("DeviceLogs")
                         .HasForeignKey("ScoutId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1051,15 +1032,15 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Scout");
                 });
 
-            modelBuilder.Entity("DeviceReport", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.DeviceReport", b =>
                 {
-                    b.HasOne("Device", "Device")
+                    b.HasOne("Deliverance.Services.Database.Device", "Device")
                         .WithMany("DeviceReports")
                         .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("OfficeReport", "OfficeReport")
+                    b.HasOne("Deliverance.Services.Database.OfficeReport", "OfficeReport")
                         .WithMany("DeviceReports")
                         .HasForeignKey("OfficeReportId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1070,9 +1051,20 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("OfficeReport");
                 });
 
-            modelBuilder.Entity("Office", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserUUID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Deliverance.Services.Database.Office", b =>
+                {
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany()
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1081,15 +1073,15 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("OfficeReport", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.OfficeReport", b =>
                 {
-                    b.HasOne("Office", "Office")
+                    b.HasOne("Deliverance.Services.Database.Office", "Office")
                         .WithMany("OfficeReports")
                         .HasForeignKey("OfficeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Report", "Report")
+                    b.HasOne("Deliverance.Services.Database.Report", "Report")
                         .WithMany("OfficeReports")
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1100,9 +1092,20 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Report");
                 });
 
-            modelBuilder.Entity("Report", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
                 {
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
+                        .WithMany("RefreshToken")
+                        .HasForeignKey("UserUUID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Deliverance.Services.Database.Report", b =>
+                {
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany("Reports")
                         .HasForeignKey("UserUUID")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1111,15 +1114,15 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ReportOccurrence", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ReportOccurrence", b =>
                 {
-                    b.HasOne("Occurrence", "Occurrence")
+                    b.HasOne("Deliverance.Services.Database.Occurrence", "Occurrence")
                         .WithMany("ReportOccurrences")
                         .HasForeignKey("OccurrenceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Report", "Report")
+                    b.HasOne("Deliverance.Services.Database.Report", "Report")
                         .WithMany("ReportOccurrences")
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1130,27 +1133,27 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Report");
                 });
 
-            modelBuilder.Entity("ReportStatistics", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ReportStatistics", b =>
                 {
-                    b.HasOne("Device", "Device")
+                    b.HasOne("Deliverance.Services.Database.Device", "Device")
                         .WithMany()
                         .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Office", "Office")
+                    b.HasOne("Deliverance.Services.Database.Office", "Office")
                         .WithMany()
                         .HasForeignKey("OfficeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Report", "Report")
+                    b.HasOne("Deliverance.Services.Database.Report", "Report")
                         .WithMany()
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("User", "User")
+                    b.HasOne("Deliverance.Services.Database.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1165,31 +1168,31 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Scout", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Scout", b =>
                 {
-                    b.HasOne("Device", "Device")
+                    b.HasOne("Deliverance.Services.Database.Device", "Device")
                         .WithOne("Scout")
-                        .HasForeignKey("Scout", "DeviceId")
+                        .HasForeignKey("Deliverance.Services.Database.Scout", "DeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Device");
                 });
 
-            modelBuilder.Entity("ScoutCommand", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ScoutCommand", b =>
                 {
-                    b.HasOne("User", "CreatedByUser")
+                    b.HasOne("Deliverance.Services.Database.User", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserUUID")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("ExecutionCommand", "ExecutionCommand")
+                    b.HasOne("Deliverance.Services.Database.ExecutionCommand", "ExecutionCommand")
                         .WithMany()
                         .HasForeignKey("ExecutionCommandId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Scout", "Scout")
+                    b.HasOne("Deliverance.Services.Database.Scout", "Scout")
                         .WithMany("Commands")
                         .HasForeignKey("ScoutId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1202,15 +1205,15 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Scout");
                 });
 
-            modelBuilder.Entity("ScoutEnrollment", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.ScoutEnrollment", b =>
                 {
-                    b.HasOne("User", "CreatedByUser")
+                    b.HasOne("Deliverance.Services.Database.User", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserUUID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Scout", "Scout")
+                    b.HasOne("Deliverance.Services.Database.Scout", "Scout")
                         .WithMany()
                         .HasForeignKey("ScoutId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1220,9 +1223,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Scout");
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.User", b =>
                 {
-                    b.HasOne("Role", "Role")
+                    b.HasOne("Deliverance.Services.Database.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1230,7 +1233,7 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("Contact", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Contact", b =>
                 {
                     b.Navigation("Availabilities");
 
@@ -1239,55 +1242,55 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("ContactPhoneNumbers");
                 });
 
-            modelBuilder.Entity("Conversation", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Conversation", b =>
                 {
                     b.Navigation("ChatBotMessages");
                 });
 
-            modelBuilder.Entity("Device", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Device", b =>
                 {
                     b.Navigation("DeviceReports");
 
                     b.Navigation("Scout");
                 });
 
-            modelBuilder.Entity("Occurrence", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Occurrence", b =>
                 {
                     b.Navigation("ReportOccurrences");
                 });
 
-            modelBuilder.Entity("Office", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Office", b =>
                 {
                     b.Navigation("Devices");
 
                     b.Navigation("OfficeReports");
                 });
 
-            modelBuilder.Entity("OfficeReport", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.OfficeReport", b =>
                 {
                     b.Navigation("DeviceReports");
                 });
 
-            modelBuilder.Entity("Report", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Report", b =>
                 {
                     b.Navigation("OfficeReports");
 
                     b.Navigation("ReportOccurrences");
                 });
 
-            modelBuilder.Entity("Role", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Role", b =>
                 {
                     b.Navigation("Users");
                 });
 
-            modelBuilder.Entity("Scout", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.Scout", b =>
                 {
                     b.Navigation("Commands");
 
                     b.Navigation("DeviceLogs");
                 });
 
-            modelBuilder.Entity("User", b =>
+            modelBuilder.Entity("Deliverance.Services.Database.User", b =>
                 {
                     b.Navigation("ChatBotMessages");
 

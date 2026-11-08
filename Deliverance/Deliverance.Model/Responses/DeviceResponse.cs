@@ -9,6 +9,7 @@ namespace Deliverance.Model.Responses
         public string IconName { get; set; } = string.Empty;
         public string? VlanID { get; set; }
         public string? OS { get; set; }
+        public DateTime? LastOsUpdate { get; set; }
         public bool? IsReported { get; set; }
         public DeviceScoutResponse? Scout { get; set; }
         public DateTime CreatedAt { get; set; }

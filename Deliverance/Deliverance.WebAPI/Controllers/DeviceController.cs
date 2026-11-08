@@ -28,6 +28,18 @@ namespace Deliverance.WebAPI.Controllers
             return NoContent();
         }
 
+        [HttpGet("{id}/Logs")]
+        public async Task<PageResult<DeviceEvidenceLogResponse>> GetRecentLogs(int id)
+        {
+            return await _service.GetRecentLogsAsync(id, User.IsAdmin());
+        }
+
+        [HttpPost("{id}/Ping")]
+        public async Task<DevicePingResponse> Ping(int id)
+        {
+            return await _service.PingAsync(id, User.IsAdmin());
+        }
+
         [HttpPost("ScoutCommand")]
         public async Task<ScoutCommandResponse> CommandInsert(ScoutCommandInsertRequest command)
         {

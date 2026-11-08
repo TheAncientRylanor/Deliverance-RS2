@@ -29,7 +29,7 @@ namespace Deliverance.Services
         {
             if (!isAdmin)
             {
-                query = query.Where(x => x.Report.UserUUID == userId);
+                query = query.Where(x => x.UserId == userId);
             }
 
 

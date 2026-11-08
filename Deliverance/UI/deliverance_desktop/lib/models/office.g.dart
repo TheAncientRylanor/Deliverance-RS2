@@ -28,6 +28,7 @@ Devices _$DevicesFromJson(Map<String, dynamic> json) => Devices(
   subnetMask: json['subnetMask'] as String?,
   vlanID: json['vlanID'] as String?,
   os: json['os'] as String?,
+  lastOsUpdate: nullableDateFromJson(json['lastOsUpdate'] as String?),
   manufacturer: json['manufacturer'] as String?,
   isReported: json['isReported'] as bool?,
   enrollmentId: json['enrollmentId'] as int?,

@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Deliverance.Model.Responses
 {
@@ -11,5 +11,7 @@ namespace Deliverance.Model.Responses
         public double PositionX { get; set; }
         public double PositionY { get; set; }
         public string? Manufacturer { get; set; }
+        public int? TimesReported { get; set; }
+        public bool? HasOpenReport { get; set; }
     }
 }

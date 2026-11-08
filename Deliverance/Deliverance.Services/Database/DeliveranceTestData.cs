@@ -6,8 +6,6 @@ namespace Deliverance.Services.Database
 {
     public partial class DeliveranceDbContext : DbContext
     {
-        private const string TestDataPrefix = "TEST ";
-
         private static readonly string[] MemoryLogs =
         [
             "low memory warning, memory usage at {0}%",
@@ -57,37 +55,70 @@ namespace Deliverance.Services.Database
             "scheduled cleanup completed",
         ];
 
+        private record TestProblem(string Title, string Detail);
+
         private record TestDeviceProfile(int DeviceCount, IssueEnum? Issue, string[] FaultLogs,
-            string[] ReportDetails, string[] ClearComments);
+            TestProblem[] Problems, string[] ClearComments);
 
         private static readonly TestDeviceProfile[] TestDeviceProfiles =
         [
             new(18, null, [],
-                ["Keyboard key stuck", "Asked for a new mouse", "Monitor cable was loose", "Slow login this morning"],
+                [
+                    new("Stuck keyboard key", "The E key on my keyboard keeps sticking."),
+                    new("Need a new mouse", "My mouse stopped clicking properly, could I get a new one?"),
+                    new("Monitor goes blank", "The monitor keeps going blank for a few seconds."),
+                    new("Slow login", "Logging in took a long time this morning."),
+                ],
                 ["Fixed on site.", "No fault found."]),
             new(9, IssueEnum.Hardware, MemoryLogs,
-                ["Very slow with several apps open", "Apps close by themselves", "Freezes when opening large files"],
+                [
+                    new("Very slow with many apps", "Everything gets very slow when I have several apps open."),
+                    new("Apps close by themselves", "Programs close on their own without any error."),
+                    new("Freezes on large files", "The computer freezes when I open large files."),
+                ],
                 ["Memory was full, upgraded the RAM.", "Added another RAM module."]),
             new(8, IssueEnum.Hardware, DiskLogs,
-                ["Files take very long to open", "Clicking noise from the computer", "Could not save a document"],
+                [
+                    new("Files open very slowly", "Files take a very long time to open."),
+                    new("Clicking noise", "There is a clicking noise coming from the computer."),
+                    new("Can't save documents", "I could not save a document, it says there is a disk error."),
+                ],
                 ["Replaced the failing disk.", "Disk had bad sectors, cloned to a new one."]),
             new(8, IssueEnum.Hardware, OverheatingLogs,
-                ["Fan is very loud", "Shuts down under load", "Case is hot to the touch"],
+                [
+                    new("Very loud fan", "The fan is very loud all the time."),
+                    new("Shuts down under load", "The computer shuts down when I run heavy programs."),
+                    new("Case is very hot", "The case is hot to the touch."),
+                ],
                 ["Cleaned the fan and replaced the thermal paste.", "Replaced the broken fan."]),
             new(7, IssueEnum.Software, DriverLogs,
-                ["Screen flickers and goes black", "Network keeps disconnecting", "No sound after restart"],
+                [
+                    new("Screen flickers", "The screen flickers and sometimes goes black."),
+                    new("Network keeps dropping", "The network keeps disconnecting during the day."),
+                    new("No sound after restart", "There is no sound after I restarted the computer."),
+                ],
                 ["Reinstalled the driver.", "Rolled the driver back to the previous version."]),
             new(6, IssueEnum.Software, OsLogs,
-                ["Updates keep failing", "Takes minutes to start", "Could not log in to my profile"],
+                [
+                    new("Updates keep failing", "Windows updates keep failing to install."),
+                    new("Very slow startup", "It takes several minutes to start."),
+                    new("Can't log in to profile", "I could not log in to my profile this morning."),
+                ],
                 ["Repaired the system files.", "Reinstalled the operating system."]),
             new(4, IssueEnum.Both, [.. DiskLogs, .. OsLogs],
-                ["Crashes and will not start normally", "Files are missing and updates fail"],
+                [
+                    new("Won't start normally", "The computer crashes and will not start normally."),
+                    new("Missing files, failed updates", "Some files are missing and updates fail."),
+                ],
                 ["Replaced the disk and reinstalled the operating system."]),
         ];
 
+        private static readonly string[] TestOfficeNames =
+            ["Reception", "Accounting Office", "IT Room", "Conference Room", "Server Room"];
+
         public async Task<bool> SeedTestDataAsync()
         {
-            if (await Offices.AnyAsync(x => x.Name.StartsWith(TestDataPrefix)))
+            if (await Offices.AnyAsync())
             {
                 return false;
             }
@@ -104,16 +135,15 @@ namespace Deliverance.Services.Database
                 .ToArray();
             rnd.Shuffle(profiles);
 
-            string[] officeNames = ["Sarajevo", "Mostar", "Tuzla", "Zenica", "Banja Luka"];
-            var devicesPerOffice = profiles.Length / officeNames.Length;
+            var devicesPerOffice = profiles.Length / TestOfficeNames.Length;
             var offices = new List<Office>();
             var reports = new List<Report>();
 
-            for (var o = 0; o < officeNames.Length; o++)
+            for (var o = 0; o < TestOfficeNames.Length; o++)
             {
                 var office = new Office
                 {
-                    Name = TestDataPrefix + officeNames[o],
+                    Name = TestOfficeNames[o],
                     CreatedAt = now.AddDays(-400),
                     UserUUID = admin.UUID,
                 };
@@ -144,14 +174,10 @@ namespace Deliverance.Services.Database
                 office.NumOfDevices = office.Devices.Count;
                 office.NumOfScouts = office.Devices.Count(x => x.Scout != null);
             }
-            for (var i = 0; i < reports.Count; i++)
-            {
-                reports[i].ReportName = $"{TestDataPrefix}Report {i + 1:D4}";
-            }
-
             await using var transaction = await Database.BeginTransactionAsync();
             Offices.AddRange(offices);
             Reports.AddRange(reports);
+            Contacts.AddRange(CreateTestContacts(regularUser.UUID, now));
             await SaveChangesAsync();
 
             ReportStatistics.AddRange(
@@ -181,7 +207,7 @@ namespace Deliverance.Services.Database
 
             return new Device
             {
-                Name = $"{TestDataPrefix}{type} {index + 1:D2}",
+                Name = $"{type} {index + 1:D2}",
                 OfficeName = office.Name,
                 CreatedAt = now.AddDays(-400),
                 PositionX = 0.15 + 0.23 * (deviceIndex % 4),
@@ -195,27 +221,6 @@ namespace Deliverance.Services.Database
                 OS = systems[rnd.Next(systems.Length)],
                 Manufacturer = manufacturers[rnd.Next(manufacturers.Length)],
             };
-        }
-
-        public async Task<int> FillTestClearDetailsAsync()
-        {
-            var admin = await Users.FirstOrDefaultAsync(x => x.RoleId == RoleEnum.Admin)
-                ?? throw new InvalidOperationException("Test data needs an admin user.");
-            var reports = await Reports
-                .Where(x => x.ReportName.StartsWith(TestDataPrefix)
-                    && x.Status == nameof(ClearedReportState)
-                    && x.DateCleared == null)
-                .OrderBy(x => x.Id)
-                .ToListAsync();
-
-            var rnd = new Random(43);
-            var now = DateTime.UtcNow;
-            foreach (var report in reports)
-            {
-                SetTestClearDetails(report, admin.Username, rnd, now);
-            }
-            await SaveChangesAsync();
-            return reports.Count;
         }
 
         private static void SetTestClearDetails(Report report, string adminName, Random rnd, DateTime now)
@@ -236,16 +241,17 @@ namespace Deliverance.Services.Database
             for (var i = 0; i < count; i++)
             {
                 var ageInDays = rnd.NextDouble() * 365;
-                var detail = profile.ReportDetails[rnd.Next(profile.ReportDetails.Length)];
+                var problem = profile.Problems[rnd.Next(profile.Problems.Length)];
                 var status = PickTestReportStatus(ageInDays, rnd);
 
                 var report = new Report
                 {
+                    ReportName = problem.Title,
                     Status = status,
                     DateReported = now.AddDays(-ageInDays),
                     Severity = (SeverityEnum)rnd.Next(isHealthy ? 1 : 3, isHealthy ? 4 : 6),
                     IssueType = rnd.NextDouble() < 0.05 ? null : profile.Issue ?? (IssueEnum)rnd.Next(1, 4),
-                    Detail = detail,
+                    Detail = problem.Detail,
                     UserUUID = rnd.NextDouble() < 0.7 ? regularUserId : admin.UUID,
                     Comment = status == nameof(ClearedReportState)
                         ? profile.ClearComments[rnd.Next(profile.ClearComments.Length)]
@@ -256,7 +262,7 @@ namespace Deliverance.Services.Database
                         {
                             Office = office,
                             NumReportedDevices = 1,
-                            DeviceReports = { new DeviceReport { Device = device, Detail = detail } },
+                            DeviceReports = { new DeviceReport { Device = device, Detail = problem.Detail } },
                         },
                     },
                 };
@@ -267,6 +273,41 @@ namespace Deliverance.Services.Database
                 reports.Add(report);
             }
             return reports;
+        }
+
+        private static List<Contact> CreateTestContacts(Guid userId, DateTime now)
+        {
+            string[] workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+            Contact Create(string firstName, string lastName, string email, string phone,
+                TimeOnly from, TimeOnly to, TimeOnly? pause) => new()
+            {
+                UserUUID = userId,
+                FirstName = firstName,
+                LastName = lastName,
+                CreatedAt = now,
+                ContactEmails = { new ContactEmail { Email = email } },
+                ContactPhoneNumbers = { new ContactPhoneNumber { PhoneNumber = phone } },
+                Availabilities = workDays
+                    .Select(day => new Availability
+                    {
+                        Day = day,
+                        FromTime = from,
+                        ToTime = to,
+                        Pause = pause,
+                        CreatedAt = now,
+                    })
+                    .ToList(),
+            };
+
+            return
+            [
+                Create("Amar", "Hodzic", "amar.hodzic@deliverance.com", "+387 61 111 222",
+                    new TimeOnly(8, 0), new TimeOnly(16, 0), new TimeOnly(12, 0)),
+                Create("Lejla", "Kovac", "lejla.kovac@deliverance.com", "+387 62 333 444",
+                    new TimeOnly(9, 0), new TimeOnly(17, 0), new TimeOnly(13, 0)),
+                Create("Emir", "Begic", "emir.begic@deliverance.com", "+387 63 555 666",
+                    new TimeOnly(7, 0), new TimeOnly(15, 0), null),
+            ];
         }
 
         private static string PickTestReportStatus(double ageInDays, Random rnd)

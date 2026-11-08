@@ -7,9 +7,11 @@ import 'package:deliverance_desktop/providers/report_statistics_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/critical_device_card.dart';
+import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_month_year_picker.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/custom_toast.dart';
 import 'package:deliverance_desktop/widgets/dialogs/pdf_report_dialogs.dart';
 import 'package:deliverance_desktop/widgets/statistics_line_chart.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +35,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   List<DeviceRecommendation> _criticalDevices = [];
   bool _isLoadingCritical = true;
   String? _criticalError;
+  RecommendationTraining? _training;
+  bool _isTraining = false;
   ReportStatistics? _reportStatistics;
   DateTime? _selectedDate;
   TextEditingController dateController = TextEditingController();
@@ -54,10 +58,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Future<void> initCriticalDevices() async {
     try {
-      _criticalDevices = await _recommendationProvider.getCriticalDevices(
+      final devices = _recommendationProvider.getCriticalDevices(
         top: _criticalDevicesCount,
         minProbability: _criticalMinProbability,
       );
+      final training = _recommendationProvider.getTrainingInfo();
+      await Future.wait([devices, training]);
+      _criticalDevices = await devices;
+      _training = await training;
+      _criticalError = null;
     } on ApiClientException catch (e) {
       _criticalError = e.message;
     } finally {
@@ -149,6 +158,68 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  Future<void> _retrain() async {
+    setState(() => _isTraining = true);
+    try {
+      final training = await _recommendationProvider.train();
+      if (!mounted) return;
+      showCustomToast(
+        context,
+        "Recommendation model retrained on ${training.rows ?? 0} rows"
+        "${_accuracyText(training)}.",
+        type: ToastType.success,
+      );
+      setState(() => _isLoadingCritical = true);
+      await initCriticalDevices();
+    } on ApiClientException catch (e) {
+      if (mounted) alertBox(context, "Training error", e.message);
+    } finally {
+      if (mounted) setState(() => _isTraining = false);
+    }
+  }
+
+  String _accuracyText(RecommendationTraining training) {
+    final accuracy = training.accuracy;
+    return accuracy == null
+        ? ""
+        : ", accuracy ${(accuracy * 100).toStringAsFixed(0)}%";
+  }
+
+  String _trainedAgo(DateTime trainedAt) {
+    final age = DateTime.now().difference(trainedAt);
+    if (age.inMinutes < 1) return "just now";
+    if (age.inHours < 1) return "${age.inMinutes} min ago";
+    if (age.inDays < 1) return "${age.inHours} h ago";
+    return "${age.inDays} ${age.inDays == 1 ? 'day' : 'days'} ago";
+  }
+
+  String get _trainingLabel {
+    final training = _training;
+    final trainedAt = training?.trainedAt;
+    if (training == null || trainedAt == null) return "Model not trained yet";
+    return "Model trained ${_trainedAgo(trainedAt)}${_accuracyText(training)}";
+  }
+
+  Widget _buildTrainingInfo(ThemeData theme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      spacing: 20,
+      children: [
+        Tooltip(
+          message: _training?.trainedAt == null
+              ? ""
+              : DateFormat('dd.MM.yyyy HH:mm').format(_training!.trainedAt!),
+          child: Text(_trainingLabel, style: theme.textTheme.labelMedium),
+        ),
+        SecondaryButton(
+          onPressed: _isTraining ? null : _retrain,
+          isLoading: _isTraining,
+          label: "Retrain now",
+        ),
+      ],
+    );
+  }
+
   Widget _buildCriticalDevices(ThemeData theme) {
     if (_isLoadingCritical) return globalLoadingSpinner();
 
@@ -211,6 +282,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     onPressed: () =>
                         showDeviceHealthPdfDialog(context, _offices),
                   ),
+                  _buildTrainingInfo(theme),
                   _buildCriticalDevices(theme),
                   const SizedBox(height: 40),
                   Text(

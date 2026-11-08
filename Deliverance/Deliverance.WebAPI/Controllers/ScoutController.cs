@@ -50,6 +50,13 @@ namespace Deliverance.WebAPI.Controllers
             return NoContent();
         }
 
+        [HttpPut("Me/SystemInfo")]
+        public async Task<IActionResult> UpdateSystemInfo([FromBody] ScoutSystemInfoRequest request)
+        {
+            await _scoutService.UpdateSystemInfoAsync(request, User.GetScoutId());
+            return NoContent();
+        }
+
         [HttpPost("Logs")]
         public async Task<IActionResult> SaveLogs([FromBody] ScoutLogBatchRequest request)
         {

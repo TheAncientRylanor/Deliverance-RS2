@@ -49,8 +49,7 @@ class NotificationProvider extends BaseProvider<AppNotification> {
     try {
       await _hub.start();
       if (!_isActive) await _hub.stop();
-    } catch (_) {
-    }
+    } catch (_) {}
     await load();
   }
 

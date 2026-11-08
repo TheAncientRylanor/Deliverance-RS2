@@ -28,7 +28,9 @@ class ScoutHubClient {
     final connection = HubConnectionBuilder()
         .withUrl(
           "${ApiConstants.baseUrl}$_hubPath",
-          options: HttpConnectionOptions(accessTokenFactory: accessTokenFactory),
+          options: HttpConnectionOptions(
+            accessTokenFactory: accessTokenFactory,
+          ),
         )
         .withAutomaticReconnect()
         .build();

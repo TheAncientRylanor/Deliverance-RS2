@@ -49,6 +49,16 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
     _selectedOccurrence = widget._deviceReport?.occurrence ?? "";
   }
 
+  String get _reportedBefore {
+    final times = widget._selectedDevice.timesReported;
+    if (times == null) return "Unknown";
+    if (times == 0) return "No";
+    final count = times == 1 ? "Yes, once" : "Yes, $times times";
+    return widget._selectedDevice.hasOpenReport == true
+        ? "$count, one still open"
+        : count;
+  }
+
   @override
   Widget build(BuildContext context) {
     TextStyle? style = Theme.of(context).textTheme.labelMedium;
@@ -140,7 +150,7 @@ class _DeviceReportStepState extends State<DeviceReportStep> {
                 TableCell(
                   child: Padding(
                     padding: EdgeInsets.all(8.0),
-                    child: Text('YES', style: style),
+                    child: Text(_reportedBefore, style: style),
                   ),
                 ),
               ],

@@ -3,6 +3,8 @@ import 'package:deliverance_mobile/models/severity_enum.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_drop_down.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
+import 'package:deliverance_mobile/widgets/help_button.dart';
+import 'package:deliverance_mobile/widgets/report_help_content.dart';
 import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:flutter/material.dart';
 
@@ -97,7 +99,16 @@ class _DetailsStepState extends State<DetailsStep> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text("3. Severity", style: style),
+                    child: Row(
+                      spacing: 10,
+                      children: [
+                        Text("3. Severity", style: style),
+                        const HelpButton(
+                          title: "Severity",
+                          sections: severityHelpSections,
+                        ),
+                      ],
+                    ),
                   ),
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(

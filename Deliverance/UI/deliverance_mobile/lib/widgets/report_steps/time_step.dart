@@ -54,7 +54,8 @@ class _TimeStepState extends State<TimeStep> {
         mapOccurrences(
           result.items!
               .map(
-                (x) => ReportOccurrence(occurrenceId: x.id, question: x.question),
+                (x) =>
+                    ReportOccurrence(occurrenceId: x.id, question: x.question),
               )
               .toList(),
         );

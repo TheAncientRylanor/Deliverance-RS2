@@ -16,18 +16,14 @@ import 'package:deliverance_desktop/widgets/custom_toast.dart';
 import 'package:deliverance_desktop/widgets/full_screen_office_map.dart';
 import 'package:deliverance_desktop/widgets/occurrence_dialog.dart';
 import 'package:deliverance_desktop/widgets/office_canvas.dart';
+import 'package:deliverance_desktop/widgets/screen_back_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SingleReportScreen extends StatefulWidget {
   final Report report;
-  final bool showBackButton;
 
-  const SingleReportScreen({
-    super.key,
-    required this.report,
-    this.showBackButton = false,
-  });
+  const SingleReportScreen({super.key, required this.report});
 
   @override
   State<SingleReportScreen> createState() => _SingleReportScreenState();
@@ -78,19 +74,26 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
     }
   }
 
-  Future<void> _clearReport() async {
+  Future<void> _clearReport({bool isFalseAlarm = false}) async {
     if (!(_commentFormKey.currentState?.validate() ?? true)) return;
     final confirmed = await alertBox(
       context,
-      "Clear report",
-      "Mark this report as cleared?",
+      isFalseAlarm ? "False alarm" : "Clear report",
+      isFalseAlarm
+          ? "Clear this report as a false alarm?"
+          : "Mark this report as cleared?",
       mode: AlertBoxMode.choice,
     );
     if (confirmed != true || !mounted) return;
 
     setState(() => _isClearing = true);
     try {
-      final comment = _commentController.text.trim();
+      final typed = _commentController.text.trim();
+      final comment = !isFalseAlarm
+          ? typed
+          : typed.isEmpty
+          ? "False alarm"
+          : "False alarm: $typed";
       final cleared = await _reportProvider.clear(
         widget.report.id!,
         comment: comment.isEmpty ? null : comment,
@@ -101,6 +104,7 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
       setState(() {
         _isCleared = true;
         _issueType = cleared.issueType;
+        _commentController.text = cleared.comment ?? '';
       });
       showCustomToast(
         context,
@@ -234,15 +238,7 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 30,
         children: [
-          if (widget.showBackButton)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SecondaryButton(
-                onPressed: () => Navigator.pop(context),
-                label: "Back",
-                width: 120,
-              ),
-            ),
+          const ScreenBackButton(),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: Text(
@@ -385,7 +381,12 @@ class _SingleReportScreenState extends State<SingleReportScreen> {
                       setState(() => _selectedIssueType = value),
                 ),
                 const Spacer(),
-                SecondaryButton(onPressed: () {}, label: "False alarm"),
+                SecondaryButton(
+                  onPressed: _isClearing
+                      ? null
+                      : () => _clearReport(isFalseAlarm: true),
+                  label: "False alarm",
+                ),
                 PrimaryButton(
                   onPressed: _clearReport,
                   label: "Issue cleared",

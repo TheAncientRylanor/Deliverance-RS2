@@ -12,18 +12,14 @@ import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:deliverance_desktop/widgets/image_holder.dart';
 import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:deliverance_desktop/widgets/reports_child.dart';
+import 'package:deliverance_desktop/widgets/screen_back_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SingleUserScreen extends StatefulWidget {
   final User user;
-  final bool showBackButton;
 
-  const SingleUserScreen({
-    super.key,
-    required this.user,
-    this.showBackButton = false,
-  });
+  const SingleUserScreen({super.key, required this.user});
   @override
   State<SingleUserScreen> createState() => _SingleUserScreen();
 }
@@ -116,15 +112,7 @@ class _SingleUserScreen extends State<SingleUserScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (widget.showBackButton)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: SecondaryButton(
-                            onPressed: () => Navigator.pop(context),
-                            label: "Back",
-                            width: 120,
-                          ),
-                        ),
+                      const ScreenBackButton(),
                       Text(
                         _usernameController.text,
                         style: Theme.of(context).textTheme.displayLarge,

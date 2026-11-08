@@ -29,6 +29,22 @@ class RecommendationProvider extends BaseProvider<DeviceRecommendation> {
     return data.map((e) => fromJson(e)).toList();
   }
 
+  Future<RecommendationTraining> getTrainingInfo() async {
+    final response = await sendWithRetry(() async {
+      final uri = Uri.parse("${BaseProvider.baseUrl}$endpoint/Model");
+      return await http.get(uri, headers: createHeaders());
+    });
+    return RecommendationTraining.fromJson(jsonDecode(response.body));
+  }
+
+  Future<RecommendationTraining> train() async {
+    final response = await sendWithRetry(() async {
+      final uri = Uri.parse("${BaseProvider.baseUrl}$endpoint/Train");
+      return await http.post(uri, headers: createHeaders());
+    });
+    return RecommendationTraining.fromJson(jsonDecode(response.body));
+  }
+
   Future<DeviceEvidence> getEvidence(int deviceId) async {
     final response = await sendWithRetry(() async {
       final uri = Uri.parse(

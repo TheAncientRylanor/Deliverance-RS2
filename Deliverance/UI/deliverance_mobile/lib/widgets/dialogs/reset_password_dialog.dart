@@ -13,8 +13,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
   final TextEditingController currentPasswordController =
       TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController newRePasswordController =
-      TextEditingController();
+  final TextEditingController newRePasswordController = TextEditingController();
   final authProvider = context.read<AuthProvider>();
   bool hideCurrentPassword = true;
   bool hideNewPassword = true;
@@ -69,7 +68,10 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                       labelText: "Current password",
                       obscureText: hideCurrentPassword,
                       controller: currentPasswordController,
-                      validator: serverErrors.wrap('OldPassword', requiredField('Current password')),
+                      validator: serverErrors.wrap(
+                        'OldPassword',
+                        requiredField('Current password'),
+                      ),
                       suffixIcon: IconButton(
                         onPressed: () {
                           setDialogState(() {
@@ -88,7 +90,15 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                       labelText: "New password",
                       obscureText: hideNewPassword,
                       controller: newPasswordController,
-                      validator: serverErrors.wrap('NewPassword', allOf([password('New password'), (value) => value == currentPasswordController.text ? 'New password must be different from the current password' : null])),
+                      validator: serverErrors.wrap(
+                        'NewPassword',
+                        allOf([
+                          password('New password'),
+                          (value) => value == currentPasswordController.text
+                              ? 'New password must be different from the current password'
+                              : null,
+                        ]),
+                      ),
                       suffixIcon: IconButton(
                         onPressed: () {
                           setDialogState(() {
@@ -107,7 +117,13 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                       labelText: "Repeat new password",
                       obscureText: hideNewPassword,
                       controller: newRePasswordController,
-                      validator: allOf([requiredField('Repeated new password'), sameAs(() => newPasswordController.text, 'Passwords do not match. Enter the same new password twice.')]),
+                      validator: allOf([
+                        requiredField('Repeated new password'),
+                        sameAs(
+                          () => newPasswordController.text,
+                          'Passwords do not match. Enter the same new password twice.',
+                        ),
+                      ]),
                     ),
                     if (errorMessage != null)
                       Text(

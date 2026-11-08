@@ -3,11 +3,13 @@ import 'package:deliverance_scout/models/scout_command.dart';
 import 'package:deliverance_scout/providers/scout_auth_provider.dart';
 import 'package:deliverance_scout/providers/scout_provider.dart';
 import 'package:deliverance_scout/utils/api_client_exception.dart';
+import 'package:deliverance_scout/utils/device_info_collector.dart';
 import 'package:deliverance_scout/utils/scout_command_runner.dart';
 import 'package:deliverance_scout/utils/scout_hub_client.dart';
 import 'package:deliverance_scout/utils/scout_log_collector.dart';
 import 'package:deliverance_scout/utils/scout_log_reporter.dart';
 import 'package:deliverance_scout/utils/scout_storage.dart';
+import 'package:deliverance_scout/utils/system_info_reporter.dart';
 import 'package:deliverance_scout/utils/util_widgets.dart';
 import 'package:deliverance_scout/widgets/custom_buttons.dart';
 import 'package:deliverance_scout/widgets/scout_page.dart';
@@ -26,10 +28,12 @@ class _ScoutHomeScreenState extends State<ScoutHomeScreen> {
   late final ScoutProvider _scoutProvider;
   late final ScoutHubClient _hubClient;
   late final ScoutLogReporter _logReporter;
+  late final SystemInfoReporter _systemInfoReporter;
   final _commandRunner = ScoutCommandRunner();
   String? _hubError;
   String? _lastCommandStatus;
   String? _lastLogStatus;
+  String? _lastSystemInfoStatus;
 
   @override
   void initState() {
@@ -55,12 +59,20 @@ class _ScoutHomeScreenState extends State<ScoutHomeScreen> {
         if (mounted) setState(() => _lastLogStatus = status);
       },
     )..start();
+    _systemInfoReporter = SystemInfoReporter(
+      collect: SystemInfoCollector().collect,
+      send: _scoutProvider.sendSystemInfo,
+      onStatus: (status) {
+        if (mounted) setState(() => _lastSystemInfoStatus = status);
+      },
+    )..start();
   }
 
   @override
   void dispose() {
     _hubClient.stop();
     _logReporter.stop();
+    _systemInfoReporter.stop();
     super.dispose();
   }
 
@@ -150,6 +162,12 @@ class _ScoutHomeScreenState extends State<ScoutHomeScreen> {
               if (_lastLogStatus != null)
                 Text(
                   _lastLogStatus!,
+                  textAlign: TextAlign.center,
+                  style: textTheme.labelMedium,
+                ),
+              if (_lastSystemInfoStatus != null)
+                Text(
+                  _lastSystemInfoStatus!,
                   textAlign: TextAlign.center,
                   style: textTheme.labelMedium,
                 ),

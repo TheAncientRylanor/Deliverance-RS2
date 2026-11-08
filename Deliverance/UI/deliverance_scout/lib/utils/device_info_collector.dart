@@ -3,8 +3,32 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:deliverance_scout/models/device_info.dart';
+import 'package:deliverance_scout/models/system_info.dart';
 
 const bool fakeNetwork = bool.fromEnvironment('fakeNetwork');
+
+const _maxOsLength = 50;
+
+String? _truncate(String? value, int maxLength) =>
+    value == null || value.length <= maxLength
+    ? value
+    : value.substring(0, maxLength);
+
+Future<Map<String, dynamic>> _runPowerShellJson(
+  String script,
+  String what,
+) async {
+  final result = await Process.run('powershell', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    script,
+  ]);
+  if (result.exitCode != 0) {
+    throw Exception("Could not read the $what: ${result.stderr}");
+  }
+  return jsonDecode(result.stdout as String) as Map<String, dynamic>;
+}
 
 abstract class DeviceInfoCollector {
   Future<DeviceInfo> collect();
@@ -34,25 +58,12 @@ $os = Get-CimInstance Win32_OperatingSystem
 } | ConvertTo-Json -Compress
 ''';
 
-  static const _maxOsLength = 50;
   static const _maxManufacturerLength = 50;
 
   @override
   Future<DeviceInfo> collect() async {
-    final result = await Process.run('powershell', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      _script,
-    ]);
-    if (result.exitCode != 0) {
-      throw Exception(
-        "Could not read the device information: ${result.stderr}",
-      );
-    }
-
     final info = DeviceInfo.fromJson(
-      jsonDecode(result.stdout as String) as Map<String, dynamic>,
+      await _runPowerShellJson(_script, "device information"),
     );
     return DeviceInfo(
       ipAddress: info.ipAddress,
@@ -63,11 +74,27 @@ $os = Get-CimInstance Win32_OperatingSystem
       hostname: info.hostname,
     );
   }
+}
 
-  static String? _truncate(String? value, int maxLength) =>
-      value == null || value.length <= maxLength
-      ? value
-      : value.substring(0, maxLength);
+class SystemInfoCollector {
+  static const _script = r'''
+$os = Get-CimInstance Win32_OperatingSystem
+$fix = Get-HotFix | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1
+[pscustomobject]@{
+  os = "$($os.Caption) $($os.Version)".Trim()
+  lastOsUpdate = if ($fix) { $fix.InstalledOn.ToUniversalTime().ToString('o') } else { $null }
+} | ConvertTo-Json -Compress
+''';
+
+  Future<SystemInfo> collect() async {
+    final info = SystemInfo.fromJson(
+      await _runPowerShellJson(_script, "system information"),
+    );
+    return SystemInfo(
+      os: _truncate(info.os, _maxOsLength),
+      lastOsUpdate: info.lastOsUpdate,
+    );
+  }
 }
 
 class FakeDeviceInfoCollector implements DeviceInfoCollector {

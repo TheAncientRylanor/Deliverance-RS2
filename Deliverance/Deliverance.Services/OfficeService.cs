@@ -45,8 +45,53 @@ namespace Deliverance.Services
         }
         public override async Task<OfficeResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
         {
-            var entity = await GetOfficeOrThrowAsync(id, userId, isAdmin);
-            return MapToResponse(entity, isAdmin);
+            var entity = await GetOfficeOrThrowAsync(id);
+            var response = MapToResponse(entity, isAdmin);
+            if (!isAdmin && response.Devices != null)
+            {
+                await AddReportHistoryAsync(response.Devices, userId);
+            }
+            return response;
+        }
+
+        public override async Task<PageResult<OfficeResponse>> GetAllAsync(OfficeSearchObject? search = null, Guid userId = default, bool isAdmin = false)
+        {
+            var result = await base.GetAllAsync(search, userId, isAdmin);
+            if (!isAdmin && result.Items != null)
+            {
+                await AddReportHistoryAsync(result.Items.SelectMany(x => x.Devices ?? []).ToList(), userId);
+            }
+            return result;
+        }
+
+        private async Task AddReportHistoryAsync(List<DeviceReportSensitiveResponse> devices, Guid userId)
+        {
+            if (devices.Count == 0)
+            {
+                return;
+            }
+
+            var deviceIds = devices.Select(x => x.Id).ToList();
+            var history = await _dbContext.DeviceReports
+                .Where(dr => deviceIds.Contains(dr.DeviceId)
+                    && dr.OfficeReport!.Report!.UserUUID == userId
+                    && dr.OfficeReport.Report.Status != nameof(StatusEnum.DraftReportState))
+                .GroupBy(dr => dr.DeviceId)
+                .Select(g => new
+                {
+                    DeviceId = g.Key,
+                    TimesReported = g.Count(),
+                    HasOpenReport = g.Any(dr => dr.OfficeReport!.Report!.Status == nameof(StatusEnum.UnseenReportState)
+                        || dr.OfficeReport.Report.Status == nameof(StatusEnum.SeenReportState)),
+                })
+                .ToDictionaryAsync(x => x.DeviceId);
+
+            foreach (var device in devices)
+            {
+                var deviceHistory = history.GetValueOrDefault(device.Id);
+                device.TimesReported = deviceHistory?.TimesReported ?? 0;
+                device.HasOpenReport = deviceHistory?.HasOpenReport ?? false;
+            }
         }
 
         protected override OfficeResponse MapToResponse(Office entity, bool isAdmin)
@@ -60,30 +105,25 @@ namespace Deliverance.Services
             return response;
         }
 
-        private async Task<Office> GetOfficeOrThrowAsync(int id, Guid userId, bool isAdmin)
+        private async Task<Office> GetOfficeOrThrowAsync(int id)
         {
-            var entity = await _dbContext.Set<Office>()
-            .Include(x => x.Devices).ThenInclude(d => d.Scout).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-            if (entity == null)
-            {
-                throw new NotFoundException($"Office with id {id} was not found.");
-            }
-            if (!isAdmin && entity.UserUUID != userId)
-            {
-                throw new ForbiddenException("You do not have access to this office.");
-            }
-            return entity;
+            return await _dbContext.Set<Office>()
+                .Include(x => x.Devices).ThenInclude(d => d.Scout).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id)
+                ?? throw new NotFoundException($"Office with id {id} was not found.");
         }
 
         public async Task<OfficeResponse> GetFromReport(int officeReportId, int id, Guid userId, bool isAdmin = false)
         {
-            var entity = await GetOfficeOrThrowAsync(id, userId, isAdmin);
+            var entity = await GetOfficeOrThrowAsync(id);
 
-            var reportBelongsToOffice = await _dbContext.Set<OfficeReport>()
-                .AnyAsync(x => x.Id == officeReportId && x.OfficeId == id);
-            if (!reportBelongsToOffice)
+            var officeReport = await _dbContext.Set<OfficeReport>()
+                .Where(x => x.Id == officeReportId && x.OfficeId == id)
+                .Select(x => new { x.Report!.UserUUID })
+                .FirstOrDefaultAsync()
+                ?? throw new BusinessException("Report does not belong to this office.");
+            if (!isAdmin && officeReport.UserUUID != userId)
             {
-                throw new BusinessException("Report does not belong to this office.");
+                throw new ForbiddenException("You do not have access to this report.");
             }
 
             var reportedDeviceIds = await _dbContext.DeviceReports

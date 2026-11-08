@@ -30,6 +30,12 @@ namespace Deliverance.WebAPI.Controllers
             return await _service.GetDeviceEvidenceAsync(deviceId, User.IsAdmin());
         }
 
+        [HttpGet("Model")]
+        public async Task<RecommendationTrainingResponse> GetTrainingInfo()
+        {
+            return await _service.GetTrainingInfoAsync(User.IsAdmin());
+        }
+
         [HttpPost("Train")]
         public async Task<RecommendationTrainingResponse> Train()
         {

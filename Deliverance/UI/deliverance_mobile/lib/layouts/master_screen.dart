@@ -1,6 +1,7 @@
 import 'package:deliverance_mobile/layouts/global_last_screen.dart';
 import 'package:deliverance_mobile/screens/chat_bot_screen.dart';
 import 'package:deliverance_mobile/screens/contacts_screen.dart';
+import 'package:deliverance_mobile/screens/help_screen.dart';
 import 'package:deliverance_mobile/screens/home_screen.dart';
 import 'package:deliverance_mobile/screens/my_profile_screen.dart';
 import 'package:deliverance_mobile/screens/report_history_screen.dart';
@@ -37,6 +38,8 @@ class _MasterScreenState extends State<MasterScreen> {
         return ReportScreen();
       case 'my reports':
         return MasterScreen(title: "my reports", child: ReportHistoryScreen());
+      case 'help':
+        return MasterScreen(title: "Help", child: HelpScreen());
       case 'chatbot':
         return MasterScreen(title: "Chatbot", child: ChatBotScreen());
       default:

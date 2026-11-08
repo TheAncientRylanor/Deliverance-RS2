@@ -105,8 +105,7 @@ class _MasterScreenState extends State<MasterScreen> {
 
     try {
       await context.read<NotificationProvider>().markAsRead(notification.id);
-    } catch (_) {
-    }
+    } catch (_) {}
 
     final reportId = notification.reportId;
     final userId = notification.relatedUserUUID;
@@ -139,7 +138,7 @@ class _MasterScreenState extends State<MasterScreen> {
       MaterialPageRoute(
         builder: (context) => MasterScreen(
           title: "Single report",
-          child: SingleReportScreen(report: report, showBackButton: true),
+          child: SingleReportScreen(report: report),
         ),
       ),
     );
@@ -165,7 +164,7 @@ class _MasterScreenState extends State<MasterScreen> {
       MaterialPageRoute(
         builder: (context) => MasterScreen(
           title: "Single user",
-          child: SingleUserScreen(user: user, showBackButton: true),
+          child: SingleUserScreen(user: user),
         ),
       ),
     );

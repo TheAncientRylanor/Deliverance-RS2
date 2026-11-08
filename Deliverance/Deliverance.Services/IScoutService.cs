@@ -10,5 +10,7 @@ namespace Deliverance.Services
         Task CommandUpdate(int commandId, ScoutCommandResultRequest result, int scoutId);
 
         Task SaveLogsAsync(ScoutLogBatchRequest request, int scoutId);
+
+        Task UpdateSystemInfoAsync(ScoutSystemInfoRequest request, int scoutId);
     }
 }
