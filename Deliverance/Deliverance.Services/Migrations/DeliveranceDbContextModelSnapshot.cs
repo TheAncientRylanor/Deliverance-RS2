@@ -193,6 +193,48 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Conversations");
                 });
 
+            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("RelatedUserUUID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserUUID")
+                        .HasColumnType("UNIQUEIDENTIFIER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserUUID", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
                 {
                     b.Property<int>("Id")
@@ -959,6 +1001,17 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Deliverance.Services.Database.Notification", b =>
+                {
+                    b.HasOne("User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserUUID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Deliverance.Services.Database.RefreshTokens", b =>
                 {
                     b.HasOne("User", "User")
@@ -997,7 +1050,7 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("Device", "Device")
                         .WithMany("DeviceReports")
                         .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("OfficeReport", "OfficeReport")
@@ -1016,7 +1069,7 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("User", "User")
                         .WithMany()
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -1046,7 +1099,7 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("User", "User")
                         .WithMany("Reports")
                         .HasForeignKey("UserUUID")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -1057,7 +1110,7 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("Occurance", "Occurance")
                         .WithMany("ReportOccurances")
                         .HasForeignKey("OccuranceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Report", "Report")
@@ -1076,7 +1129,7 @@ namespace Deliverance.Services.Migrations
                     b.HasOne("Device", "Device")
                         .WithMany()
                         .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Office", "Office")

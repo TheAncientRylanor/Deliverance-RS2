@@ -1,3 +1,4 @@
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'chat_bot_message.g.dart';
@@ -10,6 +11,7 @@ class ChatBotMessage {
   final String? userUUID;
   final bool? isFromBot;
   final String? content;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
 
   ChatBotMessage({

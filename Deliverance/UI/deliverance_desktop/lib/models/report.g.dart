@@ -4,9 +4,7 @@ Report _$ReportFromJson(Map<String, dynamic> json) => Report(
   id: json['id'] as int?,
   reportName: json['reportName'] as String?,
   status: json['status'] as String?,
-  dateReported: json['dateReported'] == null
-      ? null
-      : DateTime.parse(json['dateReported'] as String),
+  dateReported: nullableDateFromJson(json['dateReported'] as String?),
   severity: json['severity'] as int?,
   issueType: json['issueType'] as int?,
   detail: json['detail'] as String?,
@@ -28,7 +26,7 @@ Map<String, dynamic> _$ReportToJson(Report instance) => <String, dynamic>{
   'id': instance.id,
   'reportName': instance.reportName,
   'status': instance.status,
-  'dateReported': instance.dateReported?.toIso8601String(),
+  'dateReported': nullableDateToJson(instance.dateReported),
   'severity': instance.severity,
   'issueType': instance.issueType,
   'detail': instance.detail,

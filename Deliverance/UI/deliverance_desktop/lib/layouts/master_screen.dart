@@ -1,5 +1,9 @@
+import 'package:deliverance_desktop/models/report.dart';
 import 'package:deliverance_desktop/models/user.dart';
+import 'package:deliverance_desktop/providers/notification_provider.dart';
+import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/selected_report_provider.dart';
+import 'package:deliverance_desktop/providers/selected_user_provider.dart';
 import 'package:deliverance_desktop/providers/user_provider.dart';
 import 'package:deliverance_desktop/screens/home_screen.dart';
 import 'package:deliverance_desktop/screens/my_profile_screen.dart';
@@ -7,11 +11,16 @@ import 'package:deliverance_desktop/screens/offices_screen.dart';
 import 'package:deliverance_desktop/screens/reports_history.dart';
 import 'package:deliverance_desktop/screens/reports_screen.dart';
 import 'package:deliverance_desktop/screens/single_report_screen.dart';
+import 'package:deliverance_desktop/screens/single_user_screen.dart';
 import 'package:deliverance_desktop/screens/statistics_screen.dart';
 import 'package:deliverance_desktop/screens/user_profiles_sceen.dart';
+import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/api_constants.dart';
+import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/chat_bot_button.dart';
 import 'package:deliverance_desktop/widgets/image_holder.dart';
+import 'package:deliverance_desktop/widgets/notification_bell.dart';
+import 'package:deliverance_desktop/widgets/notification_panel.dart';
 import 'package:deliverance_desktop/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -91,6 +100,92 @@ class _MasterScreenState extends State<MasterScreen> {
     navigator.pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => _buildScreenForTitle(titleName)),
       (route) => false,
+    );
+  }
+
+  Future<void> _showNotifications() async {
+    final notification = await showNotificationPanel(context);
+    if (notification == null || !mounted) return;
+
+    try {
+      await context.read<NotificationProvider>().markAsRead(notification.id);
+    } catch (_) {
+      // It stays unread, but what it points to can still be opened.
+    }
+
+    final reportId = notification.reportId;
+    final userId = notification.relatedUserUUID;
+    if (reportId == null && userId == null) return;
+
+    // Going through a new route skips _navigateTo, so ask here instead.
+    final guard = _leaveGuard;
+    if (guard != null && !await guard()) return;
+
+    if (reportId != null) {
+      await _openReport(reportId);
+    } else if (userId != null) {
+      await _openUser(userId);
+    }
+  }
+
+  Future<void> _openReport(int id) async {
+    if (!mounted) return;
+    final Report report;
+    try {
+      report = await context.read<ReportProvider>().getById(id);
+    } catch (e) {
+      _showUnavailable(e, "report");
+      return;
+    }
+    if (!mounted) return;
+
+    context.read<SelectedReportProvider>().select(report);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MasterScreen(
+          title: "Single report",
+          child: SingleReportScreen(report: report, showBackButton: true),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openUser(String id) async {
+    if (!mounted) return;
+    final User user;
+    try {
+      user = await context.read<UserProvider>().getByUUID(
+        id,
+        isCurrentUser: false,
+      );
+    } catch (e) {
+      _showUnavailable(e, "user");
+      return;
+    }
+    if (!mounted) return;
+
+    context.read<SelectedUserProvider>().select(user);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MasterScreen(
+          title: "Single user",
+          child: SingleUserScreen(user: user, showBackButton: true),
+        ),
+      ),
+    );
+  }
+
+  void _showUnavailable(Object error, String item) {
+    if (!mounted) return;
+    final isMissing = error is ApiClientException && error.isNotFound;
+    alertBox(
+      context,
+      isMissing ? "This $item no longer exists" : "Couldn't open this $item",
+      isMissing
+          ? "It may have been deleted, so there's nothing to show."
+          : "We couldn't load it right now. Please check your connection and try again in a moment.",
     );
   }
 
@@ -377,6 +472,11 @@ class _MasterScreenState extends State<MasterScreen> {
           ),
           // Above the screen's content, so the chat is reachable everywhere.
           const Positioned(right: 20, bottom: 20, child: ChatBotButton()),
+          Positioned(
+            right: 20,
+            top: 20,
+            child: NotificationBell(onPressed: _showNotifications),
+          ),
         ],
       ),
     );

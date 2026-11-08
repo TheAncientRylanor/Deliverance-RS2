@@ -10,12 +10,8 @@ Contact _$ContactFromJson(Map<String, dynamic> json) => Contact(
   contactPhoneNumbers: (json['contactPhoneNumbers'] as List<dynamic>?)
       ?.map((e) => PhoneNumber.fromJson(e as Map<String, dynamic>))
       .toList(),
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
-  updatedAt: json['updatedAt'] == null
-      ? null
-      : DateTime.parse(json['updatedAt'] as String),
+  createdAt: nullableDateFromJson(json['createdAt'] as String?),
+  updatedAt: nullableDateFromJson(json['updatedAt'] as String?),
   availabilities: (json['availabilities'] as List<dynamic>?)
       ?.map((e) => Availability.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -29,8 +25,8 @@ Map<String, dynamic> _$ContactToJson(Contact instance) => <String, dynamic>{
   'contactPhoneNumbers': instance.contactPhoneNumbers
       ?.map((e) => e.toJson())
       .toList(),
-  'createdAt': instance.createdAt?.toIso8601String(),
-  'updatedAt': instance.updatedAt?.toIso8601String(),
+  'createdAt': nullableDateToJson(instance.createdAt),
+  'updatedAt': nullableDateToJson(instance.updatedAt),
   'availabilities': instance.availabilities?.map((e) => e.toJson()).toList(),
 };
 
@@ -56,12 +52,8 @@ Availability _$AvailabilityFromJson(Map<String, dynamic> json) => Availability(
   fromTime: json['fromTime'] as String?,
   toTime: json['toTime'] as String?,
   pause: json['pause'] as String?,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
-  updatedAt: json['updatedAt'] == null
-      ? null
-      : DateTime.parse(json['updatedAt'] as String),
+  createdAt: nullableDateFromJson(json['createdAt'] as String?),
+  updatedAt: nullableDateFromJson(json['updatedAt'] as String?),
 );
 
 Map<String, dynamic> _$AvailabilityToJson(Availability instance) =>
@@ -71,6 +63,6 @@ Map<String, dynamic> _$AvailabilityToJson(Availability instance) =>
       'fromTime': instance.fromTime,
       'toTime': instance.toTime,
       'pause': instance.pause,
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'updatedAt': instance.updatedAt?.toIso8601String(),
+      'createdAt': nullableDateToJson(instance.createdAt),
+      'updatedAt': nullableDateToJson(instance.updatedAt),
     };

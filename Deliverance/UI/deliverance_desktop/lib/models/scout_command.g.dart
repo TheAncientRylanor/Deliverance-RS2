@@ -12,10 +12,8 @@ ScoutCommand _$ScoutCommandFromJson(Map<String, dynamic> json) => ScoutCommand(
   output: json['output'] as String?,
   exitCode: json['exitCode'] as int?,
   createdByUserUUID: json['createdByUserUUID'] as String?,
-  createdAt: DateTime.parse(json['createdAt'] as String),
-  completedAt: json['completedAt'] == null
-      ? null
-      : DateTime.parse(json['completedAt'] as String),
+  createdAt: dateFromJson(json['createdAt'] as String),
+  completedAt: nullableDateFromJson(json['completedAt'] as String?),
 );
 
 Map<String, dynamic> _$ScoutCommandInsertRequestToJson(

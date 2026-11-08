@@ -1,3 +1,4 @@
+import 'package:deliverance_mobile/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'report.g.dart';
@@ -7,11 +8,15 @@ class Report {
   final int? id;
   final String? reportName;
   final String? status;
+  @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime dateReported;
   final int? severity;
   final String? detail;
   final String? userUUID;
   final String? reportClearedBy;
+  final String? comment;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
+  final DateTime? dateCleared;
   final List<OfficeReport>? officeReports;
   final List<ReportOccurance>? reportOccurances;
   final int? issueType;
@@ -25,6 +30,8 @@ class Report {
     this.detail,
     this.userUUID,
     this.reportClearedBy,
+    this.comment,
+    this.dateCleared,
     this.officeReports,
     this.reportOccurances,
     this.issueType,

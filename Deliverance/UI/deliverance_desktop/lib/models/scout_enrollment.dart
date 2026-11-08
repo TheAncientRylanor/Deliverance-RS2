@@ -1,4 +1,5 @@
 import 'package:deliverance_desktop/models/scout_enrollment_status_enum.dart';
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'scout_enrollment.g.dart';
@@ -39,6 +40,7 @@ class ScoutEnrollment {
 class ScoutEnrollmentToken {
   final int enrollmentId;
   final String token;
+  @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime expiresAt;
 
   ScoutEnrollmentToken({

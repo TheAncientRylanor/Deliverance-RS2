@@ -70,14 +70,18 @@ class _MasterScreenState extends State<MasterScreen> {
       // ignore: curly_braces_in_flow_control_structures
     } else {
       return OutlinedButton(
-        onPressed: () {
+        onPressed: () async {
+          final previousScreenName = globalData.lastScreenName;
+          setState(() => _isDrawerOpen = false);
           globalData.updateWidget(titleName.toLowerCase());
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => _buildScreenForTitle(globalData, titleName),
             ),
           );
+          // Returning to this page, so its drawer entry is the active one again.
+          globalData.updateWidget(previousScreenName);
         },
         style: OutlinedButton.styleFrom(
           padding: EdgeInsets.all(5.0),

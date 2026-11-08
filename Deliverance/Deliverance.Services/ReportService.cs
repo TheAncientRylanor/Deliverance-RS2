@@ -20,16 +20,19 @@ namespace Deliverance.Services
         private readonly BaseReportState _reportState;
         private readonly IReportEventPublisher _reportEventPublisher;
         private readonly IValidator<ReportClearRequest> _clearValidator;
+        private readonly INotificationService _notificationService;
 
         public ReportService(DeliveranceDbContext dbContext, IMapper mapper,
             IValidator<ReportInsertRequest> insertValidator, IValidator<ReportUpdateRequest> updateValidator,
             IValidator<ReportClearRequest> clearValidator,
-            BaseReportState reportState, IReportEventPublisher reportEventPublisher)
+            BaseReportState reportState, IReportEventPublisher reportEventPublisher,
+            INotificationService notificationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _reportState = reportState;
             _reportEventPublisher = reportEventPublisher;
             _clearValidator = clearValidator;
+            _notificationService = notificationService;
         }
 
         protected override Report MapInsertRequestToEntity(ReportInsertRequest request)
@@ -188,11 +191,11 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{typeof(Report).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Report).Name} with id {id} not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this report.");
+                throw new ForbiddenException("You do not have access to this report.");
             }
 
             return _mapper.Map<ReportResponse>(entity);
@@ -214,19 +217,43 @@ namespace Deliverance.Services
                 .AsSplitQuery();
         }
 
+        // The report is saved first (its id is needed for the notifications), then the
+        // notifications; the transaction keeps both or neither. Pushes go out after the commit.
         public override async Task<ReportResponse> InsertAsync(ReportInsertRequest request, Guid userId)
         {
-            var result = await base.InsertAsync(request, userId);
-            result = await GetByIdAsync(result.Id, userId);
-            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = result.Id, Type = ChangeType.Created });
-            return result;
+            var (inserted, notifications) = await _dbContext.InTransactionAsync(async () =>
+            {
+                var inserted = await base.InsertAsync(request, userId);
+                var notifications = request.IsDraft
+                    ? NoNotifications
+                    : await AddReportSentNotificationsAsync(inserted, userId);
+                await _dbContext.SaveChangesAsync();
+                return (inserted, notifications);
+            });
+
+            await _notificationService.PushAsync(notifications);
+            await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = inserted.Id, Type = ChangeType.Created });
+            return await GetByIdAsync(inserted.Id, userId);
         }
 
         public override async Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request, Guid userId, bool isAdmin = false)
         {
             var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
-            var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
-            var result = await state.UpdateAsync(id, request);
+            // The state changes this same tracked entity, so read the status first.
+            var status = entity.Status ?? nameof(DraftReportState);
+            var state = _reportState.GetReportState(status);
+
+            var (result, notifications) = await _dbContext.InTransactionAsync(async () =>
+            {
+                var result = await state.UpdateAsync(id, request);
+                var notifications = status == nameof(DraftReportState) && !request.IsDraft
+                    ? await AddReportSentNotificationsAsync(result, userId)
+                    : NoNotifications;
+                await _dbContext.SaveChangesAsync();
+                return (result, notifications);
+            });
+
+            await _notificationService.PushAsync(notifications);
             await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
             return result;
         }
@@ -243,7 +270,17 @@ namespace Deliverance.Services
         {
             var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
             var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
-            return await state.SeenAsync(id, isAdmin);
+            var (result, notifications) = await _dbContext.InTransactionAsync(async () =>
+            {
+                var result = await state.SeenAsync(id, isAdmin);
+                var notifications = await AddOwnerNotificationAsync(entity, userId, NotificationTypeEnum.ReportSeen,
+                    "Report seen", $"An admin has seen your report \"{result.ReportName}\".");
+                await _dbContext.SaveChangesAsync();
+                return (result, notifications);
+            });
+
+            await _notificationService.PushAsync(notifications);
+            return result;
         }
 
         public async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid userId, bool isAdmin = false)
@@ -251,21 +288,43 @@ namespace Deliverance.Services
             await _clearValidator.ValidateAndThrowAsync(request);
             var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
             var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
-            var result = await state.ClearAsync(id, request, isAdmin);
+            var (result, notifications) = await _dbContext.InTransactionAsync(async () =>
+            {
+                var result = await state.ClearAsync(id, request, userId, isAdmin);
+                var notifications = await AddOwnerNotificationAsync(entity, userId, NotificationTypeEnum.ReportCleared,
+                    "Report cleared", $"Your report \"{result.ReportName}\" has been cleared.");
+                await _dbContext.SaveChangesAsync();
+                return (result, notifications);
+            });
+
+            await _notificationService.PushAsync(notifications);
             await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
             return result;
         }
+
+        private static readonly IReadOnlyList<Notification> NoNotifications = Array.Empty<Notification>();
+
+        private Task<IReadOnlyList<Notification>> AddReportSentNotificationsAsync(ReportResponse report, Guid senderId)
+            => _notificationService.AddForAdminsAsync(NotificationTypeEnum.ReportSent, "New report",
+                $"\"{report.ReportName}\" was sent.", report.Id, senderId);
+
+        // Nobody is told about their own action, such as an admin clearing their own report.
+        private Task<IReadOnlyList<Notification>> AddOwnerNotificationAsync(Report report, Guid actorId,
+            NotificationTypeEnum type, string title, string text)
+            => report.UserUUID == actorId
+                ? Task.FromResult(NoNotifications)
+                : _notificationService.AddForUserAsync(report.UserUUID, type, title, text, report.Id);
 
         private async Task<Report> EnsureOwnedEntityAsync(int id, Guid userId, bool isAdmin)
         {
             var entity = await this._dbContext.Set<Report>().FindAsync(id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{typeof(Report).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Report).Name} with id {id} not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this report.");
+                throw new ForbiddenException("You do not have access to this report.");
             }
 
             return entity;

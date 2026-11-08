@@ -37,6 +37,14 @@ namespace Deliverance.Services.Database
         public DbSet<ScoutEnrollment> ScoutEnrollments { get; set; }
         public DbSet<ScoutCommand> ScoutCommands { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        // Every DateTime is stored as UTC and read back marked as UTC (see UtcDateTimeConverter).
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+            configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

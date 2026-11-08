@@ -1,3 +1,4 @@
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'office.g.dart';
@@ -63,6 +64,7 @@ class Devices {
 @JsonSerializable()
 class Scout {
   final int id;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
   final bool isDisabled;
   Scout({required this.id, this.createdAt, required this.isDisabled});

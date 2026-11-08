@@ -6,6 +6,9 @@
 # Visual Studio cache/options directory
 .vs/
 
+# Enviroment
+.env
+
 # User-specific files
 *.suo
 *.user

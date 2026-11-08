@@ -7,9 +7,7 @@ ChatBotMessage _$ChatBotMessageFromJson(Map<String, dynamic> json) =>
       userUUID: json['userUUID'] as String?,
       isFromBot: json['isFromBot'] as bool?,
       content: json['content'] as String?,
-      createdAt: json['createdAt'] == null
-          ? null
-          : DateTime.parse(json['createdAt'] as String),
+      createdAt: nullableDateFromJson(json['createdAt'] as String?),
     );
 
 Map<String, dynamic> _$ChatBotMessageInsertRequestToJson(

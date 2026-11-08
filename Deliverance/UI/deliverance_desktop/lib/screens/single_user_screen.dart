@@ -17,8 +17,14 @@ import 'package:provider/provider.dart';
 
 class SingleUserScreen extends StatefulWidget {
   final User user;
+  // For a user opened from another screen, which the sidebar can't return to.
+  final bool showBackButton;
 
-  const SingleUserScreen({super.key, required this.user});
+  const SingleUserScreen({
+    super.key,
+    required this.user,
+    this.showBackButton = false,
+  });
   @override
   State<SingleUserScreen> createState() => _SingleUserScreen();
 }
@@ -111,6 +117,15 @@ class _SingleUserScreen extends State<SingleUserScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      if (widget.showBackButton)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: SecondaryButton(
+                            onPressed: () => Navigator.pop(context),
+                            label: "Back",
+                            width: 120,
+                          ),
+                        ),
                       Text(
                         _usernameController.text,
                         style: Theme.of(context).textTheme.displayLarge,

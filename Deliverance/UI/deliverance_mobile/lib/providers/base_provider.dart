@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:deliverance_mobile/models/search_result.dart';
 import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
+import 'package:deliverance_mobile/utils/api_constants.dart';
 import 'package:deliverance_mobile/utils/navigation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
-  static String? _baseUrl;
+  static final String _baseUrl = ApiConstants.baseUrl;
 
   static String? get baseUrl => _baseUrl;
   T? _data;
@@ -18,12 +19,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   final String endpoint;
 
-  BaseProvider(this.endpoint) {
-    _baseUrl = const String.fromEnvironment(
-      "baseUrl",
-      defaultValue: "http://10.0.2.2:5095/",
-    );
-  }
+  BaseProvider(this.endpoint);
 
   Future<SearchResult<T>> get({dynamic filter}) async {
     var url = "$_baseUrl$endpoint";
@@ -174,7 +170,8 @@ abstract class BaseProvider<T> with ChangeNotifier {
         }
         query += '$prefix$key=$encoded';
       } else if (value is DateTime) {
-        query += '$prefix$key=${value.toIso8601String()}';
+        // Always UTC, like every other time sent to the API.
+        query += '$prefix$key=${value.toUtc().toIso8601String()}';
       } else if (value is List || value is Map) {
         if (value is List) value = value.asMap();
         value.forEach((k, v) {

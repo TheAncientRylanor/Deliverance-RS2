@@ -84,7 +84,8 @@ namespace Deliverance.Services.Database
             .WithMany(u => u.Reports)
             .HasForeignKey(r => r.UserUUID)
             .HasPrincipalKey(u => u.UUID)
-            .OnDelete(DeleteBehavior.SetNull);
+            // Reports are history, and UserUUID is required, so SetNull couldn't work.
+            .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Report>(entity =>
             {
@@ -113,7 +114,8 @@ namespace Deliverance.Services.Database
             .HasOne(dr => dr.Device)
             .WithMany(d => d.DeviceReports)
             .HasForeignKey(dr => dr.DeviceId)
-            .OnDelete(DeleteBehavior.Cascade);
+            // A device in a report can't be deleted (DeviceService and OfficeService check first).
+            .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ChatBotMessage>()
             .HasOne(m => m.User)
@@ -134,7 +136,8 @@ namespace Deliverance.Services.Database
             .HasOne(ro => ro.Occurance)
             .WithMany(o => o.ReportOccurances)
             .HasForeignKey(ro => ro.OccuranceId)
-            .OnDelete(DeleteBehavior.Cascade);
+            // Deleting a question must not remove its answers from reports.
+            .OnDelete(DeleteBehavior.Restrict);
 
 
             modelBuilder.Entity<RefreshTokens>()
@@ -204,6 +207,31 @@ namespace Deliverance.Services.Database
             .HasForeignKey(rs => rs.UserId)
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ReportStatistics>()
+            .HasOne(rs => rs.Device)
+            .WithMany()
+            .HasForeignKey(rs => rs.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            // Offices outlive the admin who created them.
+            modelBuilder.Entity<Office>()
+            .HasOne(o => o.User)
+            .WithMany()
+            .HasForeignKey(o => o.UserUUID)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserUUID)
+            .HasPrincipalKey(u => u.UUID)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            // The apps list a user's latest notifications and count the unread ones.
+            modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserUUID, n.CreatedAt });
 
             modelBuilder.Entity<Office>(entity =>
             {

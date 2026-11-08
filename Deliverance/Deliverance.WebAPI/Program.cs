@@ -1,12 +1,14 @@
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Services;
+using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
 using Deliverance.Services.Messaging;
 using Deliverance.Services.ServiceStateMachine;
 using Deliverance.Services.Validators;
 using Deliverance.WebAPI.BackgroundServices;
 using Deliverance.WebAPI.Hubs;
+using DotNetEnv;
 using FluentValidation;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,12 +19,21 @@ using Scalar.AspNetCore;
 using System;
 using System.Text;
 
+// All configuration lives in .env in the repository root. TraversePath finds it from the
+// project or bin folder too. NoClobber: a variable already set in the environment wins.
+Env.NoClobber().TraversePath().Load();
 var builder = WebApplication.CreateBuilder(args);
+// Read and checked once here; services get the parts they need injected.
+var settings = DeliveranceSettings.Load(builder.Configuration);
+builder.WebHost.UseUrls(settings.ApiUrl);
+builder.Services.AddSingleton(settings.Auth);
+builder.Services.AddSingleton(settings.RabbitMq);
+builder.Services.AddSingleton(settings.Ollama);
+builder.Services.AddSingleton(settings.DisplayTimeZone);
 builder.Services.AddHttpContextAccessor();
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DeliveranceDbContext>(options =>
-    options.UseSqlServer(connectionString)
+    options.UseSqlServer(settings.ConnectionString)
 );
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi7
@@ -47,29 +58,35 @@ builder.Services.AddScoped<IDeviceRecommendationService, DeviceRecommendationSer
 builder.Services.AddScoped<IScoutEnrollmentService, ScoutEnrollmentService>();
 builder.Services.AddScoped<IScoutAccessManager, ScoutAccessManager>();
 builder.Services.AddScoped<IScoutService, ScoutService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IPdfReportService, PdfReportService>();
+// Free for individuals, education and companies under $1M a year in revenue.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 // Registers ChatBotService with an HttpClient pointed at Ollama.
 builder.Services.AddHttpClient<IChatBotService, ChatBotService>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434/");
-    // A local model on the CPU can take well over the default 100 seconds to answer.
-    client.Timeout = TimeSpan.FromMinutes(3);
+    client.BaseAddress = settings.Ollama.BaseUrl;
+    client.Timeout = settings.Ollama.Timeout;
 });
 builder.Services.AddSingleton<IScoutEnrollmentNotifier, SignalRScoutEnrollmentNotifier>();
 builder.Services.AddSingleton<IDeviceNotifier, SinalRDeviceNotifier>();
 builder.Services.AddSingleton<IScoutNotifier, SignalRScoutNotifier>();
+builder.Services.AddSingleton<INotificationNotifier, SignalRNotificationNotifier>();
 builder.Services.AddSignalR();
 
+// One connection for the whole app, shared by the publisher and the consumer.
 builder.Services.AddSingleton<IConnection>(sp =>
 {
-    var configuration = sp.GetRequiredService<IConfiguration>();
     var factory = new ConnectionFactory
     {
-        HostName = configuration["RabbitMq:HostName"] ?? "localhost",
-        Port = int.Parse(configuration["RabbitMq:Port"] ?? "5672"),
-        UserName = configuration["RabbitMq:UserName"] ?? "guest",
-        Password = configuration["RabbitMq:Password"] ?? "guest"
+        HostName = settings.RabbitMq.HostName,
+        Port = settings.RabbitMq.Port,
+        UserName = settings.RabbitMq.UserName,
+        Password = settings.RabbitMq.Password,
+        ClientProvidedName = "Deliverance.WebAPI",
     };
-    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("RabbitMQ");
+    return RabbitMqConnection.ConnectAsync(factory, logger).GetAwaiter().GetResult();
 });
 builder.Services.AddSingleton<IReportEventPublisher, RabbitMqReportEventPublisher>();
 builder.Services.AddHostedService<ReportStatisticsConsumer>();
@@ -111,12 +128,11 @@ TypeAdapterConfig<OfficeReport, OfficeReportResponse>.NewConfig()
 
 
 // User and scout tokens share issuer and signing key and differ only in audience.
-TokenValidationParameters CreateTokenValidationParameters(string? audience) => new()
+TokenValidationParameters CreateTokenValidationParameters(string audience) => new()
 {
-    ValidIssuer = builder.Configuration["JwtToken:Issuer"],
+    ValidIssuer = settings.Auth.Issuer,
     ValidAudience = audience,
-    IssuerSigningKey = new SymmetricSecurityKey(
-        Encoding.UTF8.GetBytes(builder.Configuration["JwtToken:SecretKey"] ?? string.Empty)),
+    IssuerSigningKey = settings.Auth.SigningKey,
     ValidateIssuer = true,
     ValidateAudience = true,
     ValidateLifetime = true,
@@ -140,7 +156,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         o.RequireHttpsMetadata = false;
         o.SaveToken = true;
-        o.TokenValidationParameters = CreateTokenValidationParameters(builder.Configuration["JwtToken:Audience"]);
+        o.TokenValidationParameters = CreateTokenValidationParameters(settings.Auth.Audience);
         o.Events = new JwtBearerEvents
         {
             OnMessageReceived = ReadHubAccessToken
@@ -154,7 +170,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.Events = new JwtBearerEvents
         {
             OnMessageReceived = ReadHubAccessToken,
-            // Scout tokens live for TokenLifetime, so a token issued before the scout was
+            // Scout tokens live for SCOUT_TOKEN_DURATION_MINUTES, so a token issued before the scout was
             // disabled (or its device deleted) would keep working. Reject it right away.
             OnTokenValidated = async context =>
             {
@@ -181,7 +197,15 @@ if (args.Contains("--seed-test-data") && app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<DeliveranceDbContext>();
     var seeded = await dbContext.SeedTestDataAsync();
-    Console.WriteLine(seeded ? "Test data added." : "Test data already exists, nothing was added.");
+    if (seeded)
+    {
+        Console.WriteLine("Test data added.");
+    }
+    else
+    {
+        var filled = await dbContext.FillTestClearDetailsAsync();
+        Console.WriteLine($"Test data already exists, nothing was added. Filled in clear details on {filled} seeded reports.");
+    }
     return;
 }
 
@@ -201,5 +225,6 @@ app.MapControllers();
 app.MapHub<EnrollmentHub>("/hubs/enrollment");
 app.MapHub<ScoutHub>("/hubs/scout");
 app.MapHub<DeviceHub>("/hubs/device");
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();

@@ -1,3 +1,4 @@
+import 'package:deliverance_mobile/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'contact.g.dart';
@@ -9,7 +10,9 @@ class Contact {
   final String? lastName;
   final List<Email>? contactEmails;
   final List<PhoneNumber>? contactPhoneNumbers;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? updatedAt;
   final List<Availability>? availabilities;
 
@@ -62,7 +65,9 @@ class Availability {
   final String? fromTime;
   final String? toTime;
   final String? pause;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? updatedAt;
 
   Availability({

@@ -2,6 +2,7 @@ using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
+using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
 using Deliverance.Services.Messaging;
 using FluentValidation;
@@ -17,20 +18,21 @@ namespace Deliverance.Services
     /// </summary>
     public class ScoutEnrollmentService : IScoutEnrollmentService
     {
-        private static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(15);
-
         private readonly DeliveranceDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly IValidator<ScoutEnrollmentClaimRequest> _claimValidator;
         private readonly IScoutEnrollmentNotifier _notifier;
+        private readonly TimeSpan _tokenLifetime;
 
         public ScoutEnrollmentService(DeliveranceDbContext dbContext, IMapper mapper,
-            IValidator<ScoutEnrollmentClaimRequest> claimValidator, IScoutEnrollmentNotifier notifier)
+            IValidator<ScoutEnrollmentClaimRequest> claimValidator, IScoutEnrollmentNotifier notifier,
+            AuthSettings authSettings)
         {
             _dbContext = dbContext;
             _mapper = mapper;
             _claimValidator = claimValidator;
             _notifier = notifier;
+            _tokenLifetime = authSettings.ScoutEnrollmentTokenLifetime;
         }
 
         public async Task<ScoutEnrollmentTokenResponse> CreateAsync(Guid userId, bool isAdmin)
@@ -44,7 +46,7 @@ namespace Deliverance.Services
                 TokenHash = ScoutSecrets.Hash(token),
                 CreatedByUserUUID = userId,
                 CreatedAt = now,
-                ExpiresAt = now.Add(TokenLifetime),
+                ExpiresAt = now.Add(_tokenLifetime),
                 Status = ScoutEnrollmentStatusEnum.Pending,
             };
             _dbContext.ScoutEnrollments.Add(enrollment);
@@ -69,7 +71,7 @@ namespace Deliverance.Services
             var enrollment = await GetOwnedOrThrowAsync(id, userId, isAdmin);
             if (enrollment.Status == ScoutEnrollmentStatusEnum.Completed)
             {
-                throw new ClientException("This enrollment is already completed and can't be cancelled.");
+                throw new BusinessException("This enrollment is already completed and can't be cancelled.");
             }
             enrollment.Status = ScoutEnrollmentStatusEnum.Cancelled;
             await _dbContext.SaveChangesAsync();
@@ -110,7 +112,7 @@ namespace Deliverance.Services
                     .SetProperty(x => x.Hostname, hostname));
             if (claimed == 0)
             {
-                throw new ClientException("The enrollment token is invalid, has expired or was already used.");
+                throw new BusinessException("The enrollment token is invalid, has expired or was already used.");
             }
 
             var enrollment = await _dbContext.ScoutEnrollments.AsNoTracking()
@@ -132,7 +134,7 @@ namespace Deliverance.Services
             }
             if (ids.Distinct().Count() != ids.Count)
             {
-                throw new ClientException("The same scout enrollment can't be used for two devices.");
+                throw new BusinessException("The same scout enrollment can't be used for two devices.");
             }
 
             var enrollments = await _dbContext.ScoutEnrollments
@@ -143,11 +145,11 @@ namespace Deliverance.Services
             {
                 if (!enrollments.TryGetValue(id, out var enrollment) || enrollment.CreatedByUserUUID != userId)
                 {
-                    throw new ClientException("Scout enrollment does not exist.");
+                    throw new BusinessException("Scout enrollment does not exist.");
                 }
                 if (enrollment.Status != ScoutEnrollmentStatusEnum.Claimed)
                 {
-                    throw new ClientException(enrollment.Status switch
+                    throw new BusinessException(enrollment.Status switch
                     {
                         ScoutEnrollmentStatusEnum.Pending => "The scout hasn't sent its device information yet.",
                         ScoutEnrollmentStatusEnum.Completed => "This scout enrollment was already used for another device.",
@@ -162,7 +164,7 @@ namespace Deliverance.Services
         {
             if (device.Scout != null)
             {
-                throw new ClientException($"Device '{device.Name}' is already enrolled as a scout.");
+                throw new BusinessException($"Device '{device.Name}' is already enrolled as a scout.");
             }
 
             var scout = new Scout { CreatedAt = DateTime.UtcNow, Device = device };
@@ -178,7 +180,7 @@ namespace Deliverance.Services
             // Another admin's enrollment is reported the same as a missing one.
             if (enrollment == null || enrollment.CreatedByUserUUID != userId)
             {
-                throw new ClientException("Scout enrollment does not exist.");
+                throw new NotFoundException("Scout enrollment does not exist.");
             }
             return enrollment;
         }
@@ -187,7 +189,7 @@ namespace Deliverance.Services
         {
             if (!isAdmin)
             {
-                throw new ClientException("Only admins can enroll scouts.");
+                throw new ForbiddenException("Only admins can enroll scouts.");
             }
         }
 

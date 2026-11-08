@@ -1,5 +1,6 @@
 import 'package:deliverance_desktop/models/execution_command_enum.dart';
 import 'package:deliverance_desktop/models/scout_command_status_enum.dart';
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'scout_command.g.dart';
@@ -17,7 +18,9 @@ class ScoutCommand {
   final String? output;
   final int? exitCode;
   final String? createdByUserUUID;
+  @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime createdAt;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? completedAt;
 
   ScoutCommand({

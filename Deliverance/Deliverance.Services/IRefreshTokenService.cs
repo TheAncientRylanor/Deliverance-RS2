@@ -10,7 +10,9 @@ namespace Deliverance.Services
     public interface IRefreshTokenService
     {
         Task<RefreshTokens?> GetStoredTokenAsync(string refreshToken);
-        Task InsertAsync(RefreshTokens refreshToken);
-        Task DeleteAllUserRefreshTokensAsync(Guid userId);
+        /// <summary>Adds the token to the shared DbContext. The caller saves.</summary>
+        void Add(RefreshTokens refreshToken);
+        /// <summary>Marks all of the user's tokens for removal. The caller saves.</summary>
+        Task RemoveAllForUserAsync(Guid userId);
     }
 }

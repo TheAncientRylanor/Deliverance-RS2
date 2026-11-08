@@ -105,7 +105,7 @@ namespace Deliverance.Services
             var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
 
             if (entity == null)
-                throw new KeyNotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
             EnsureOwner(entity, userId, isAdmin);
             MapUpdateRequestToEntity(request, entity);
 
@@ -127,7 +127,7 @@ namespace Deliverance.Services
         {
             var entity = await this._dbContext.Set<TEntity>().FindAsync(id);
             if (entity == null)
-                throw new KeyNotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(TEntity).Name} with id {id} not found.");
             EnsureOwner(entity, userId, isAdmin);
 
             this._dbContext.Set<TEntity>().Remove(entity);
@@ -141,7 +141,7 @@ namespace Deliverance.Services
             if (!isAdmin && entity is IUserOwnedEntity ownedEntity && userId != Guid.Empty
                 && ownedEntity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this resource.");
+                throw new ForbiddenException("You do not have access to this resource.");
             }
         }
 

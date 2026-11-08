@@ -2,7 +2,9 @@ import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:deliverance_desktop/providers/chat_bot_provider.dart';
 import 'package:deliverance_desktop/providers/device_provider.dart';
 import 'package:deliverance_desktop/providers/execution_command_provider.dart';
+import 'package:deliverance_desktop/providers/notification_provider.dart';
 import 'package:deliverance_desktop/providers/office_provider.dart';
+import 'package:deliverance_desktop/providers/pdf_report_provider.dart';
 import 'package:deliverance_desktop/providers/recommendation_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/report_statistics_provider.dart';
@@ -39,6 +41,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => DeviceProvider()),
         ChangeNotifierProvider(create: (_) => ScoutCommandProvider()),
         ChangeNotifierProvider(create: (_) => ChatBotProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => PdfReportProvider()),
       ],
 
       child: const MyApp(),

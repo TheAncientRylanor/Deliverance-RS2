@@ -24,7 +24,8 @@ class UserProvider extends BaseProvider<User> {
     return await getByUUID(userId);
   }
 
-  Future<User> getByUUID(String id) async {
+  /// The sidebar shows [data], so only the logged-in user may be stored there.
+  Future<User> getByUUID(String id, {bool isCurrentUser = true}) async {
     final response = await sendWithRetry(() async {
       var baseURL = BaseProvider.baseUrl;
       var url = "$baseURL$endpoint/UUID/$id";
@@ -34,7 +35,7 @@ class UserProvider extends BaseProvider<User> {
     });
     var data = jsonDecode(response.body);
     final parsed = fromJson(data);
-    setData(parsed);
+    if (isCurrentUser) setData(parsed);
     return parsed;
   }
 

@@ -30,7 +30,7 @@ public class DeviceHub : Hub
         {
             await _deviceService.GetByIdAsync(deviceId, Context.User!.GetUserId(), Context.User!.IsAdmin());
         }
-        catch (ClientException ex)
+        catch (Exception ex) when (ex is BusinessException or NotFoundException or ForbiddenException)
         {
             throw new HubException(ex.Message);
         }

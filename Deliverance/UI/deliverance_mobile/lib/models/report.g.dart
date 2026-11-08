@@ -4,11 +4,13 @@ Report _$ReportFromJson(Map<String, dynamic> json) => Report(
   id: json['id'] as int?,
   reportName: json['reportName'] as String?,
   status: json['status'] as String?,
-  dateReported: DateTime.parse(json['dateReported'] as String),
+  dateReported: dateFromJson(json['dateReported'] as String),
   severity: json['severity'] as int?,
   detail: json['detail'] as String?,
   userUUID: json['userUUID'] as String?,
   reportClearedBy: json['reportClearedBy'] as String?,
+  comment: json['comment'] as String?,
+  dateCleared: nullableDateFromJson(json['dateCleared'] as String?),
   officeReports: (json['officeReports'] as List<dynamic>?)
       ?.map((e) => OfficeReport.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -23,11 +25,13 @@ Map<String, dynamic> _$ReportToJson(Report instance) => <String, dynamic>{
   'id': instance.id,
   'reportName': instance.reportName,
   'status': instance.status,
-  'dateReported': instance.dateReported.toIso8601String(),
+  'dateReported': dateToJson(instance.dateReported),
   'severity': instance.severity,
   'detail': instance.detail,
   'userUUID': instance.userUUID,
   'reportClearedBy': instance.reportClearedBy,
+  'comment': instance.comment,
+  'dateCleared': nullableDateToJson(instance.dateCleared),
   'officeReports': instance.officeReports?.map((e) => e.toJson()).toList(),
   'reportOccurances': instance.reportOccurances
       ?.map((e) => e.toJson())

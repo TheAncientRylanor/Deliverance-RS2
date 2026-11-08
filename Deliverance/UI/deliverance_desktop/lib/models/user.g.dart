@@ -7,9 +7,7 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   email: json['email'] as String?,
   username: json['username'] as String?,
   roleId: json['roleId'] as int?,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
+  createdAt: nullableDateFromJson(json['createdAt'] as String?),
   imagePath: json['imagePath'] as String?,
 );
 
@@ -20,6 +18,6 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'email': instance.email,
   'username': instance.username,
   'roleId': instance.roleId,
-  'createdAt': instance.createdAt?.toIso8601String(),
+  'createdAt': nullableDateToJson(instance.createdAt),
   'imagePath': instance.imagePath,
 };

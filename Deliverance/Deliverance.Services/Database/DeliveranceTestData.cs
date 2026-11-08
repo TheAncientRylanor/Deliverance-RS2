@@ -102,7 +102,9 @@ namespace Deliverance.Services.Database
             var regularUser = await Users.FirstOrDefaultAsync(x => x.RoleId == RoleEnum.User) ?? admin;
 
             var rnd = new Random(42);
-            var now = DateTime.Now;
+            // Its own generator, so adding clear details didn't change the rest of the data.
+            var clearRnd = new Random(43);
+            var now = DateTime.UtcNow;
 
             var profiles = TestDeviceProfiles
                 .SelectMany(x => Enumerable.Repeat(x, x.DeviceCount))
@@ -140,7 +142,7 @@ namespace Deliverance.Services.Database
                         };
                     }
 
-                    var deviceReports = CreateTestReports(office, device, profiles[index], admin.UUID, regularUser.UUID, rnd, now);
+                    var deviceReports = CreateTestReports(office, device, profiles[index], admin, regularUser.UUID, rnd, clearRnd, now);
                     reports.AddRange(deviceReports);
                     if (device.Scout != null)
                     {
@@ -206,8 +208,42 @@ namespace Deliverance.Services.Database
             };
         }
 
+        /// <summary>
+        /// Fills in when seeded cleared reports were cleared and by whom, on test data seeded before
+        /// those were recorded. Returns how many reports were changed.
+        /// </summary>
+        public async Task<int> FillTestClearDetailsAsync()
+        {
+            var admin = await Users.FirstOrDefaultAsync(x => x.RoleId == RoleEnum.Admin)
+                ?? throw new InvalidOperationException("Test data needs an admin user.");
+            var reports = await Reports
+                .Where(x => x.ReportName.StartsWith(TestDataPrefix)
+                    && x.Status == nameof(ClearedReportState)
+                    && x.DateCleared == null)
+                .OrderBy(x => x.Id)
+                .ToListAsync();
+
+            var rnd = new Random(43);
+            var now = DateTime.UtcNow;
+            foreach (var report in reports)
+            {
+                SetTestClearDetails(report, admin.Username, rnd, now);
+            }
+            await SaveChangesAsync();
+            return reports.Count;
+        }
+
+        // Urgent reports are dealt with within a day, the rest within five.
+        private static void SetTestClearDetails(Report report, string adminName, Random rnd, DateTime now)
+        {
+            var maxHours = report.Severity >= SeverityEnum.Danger ? 24 : 120;
+            var dateCleared = report.DateReported.AddHours(1 + rnd.NextDouble() * maxHours);
+            report.DateCleared = dateCleared < now ? dateCleared : now;
+            report.ReportClearedBy = adminName;
+        }
+
         private static List<Report> CreateTestReports(Office office, Device device, TestDeviceProfile profile,
-            Guid adminId, Guid regularUserId, Random rnd, DateTime now)
+            User admin, Guid regularUserId, Random rnd, Random clearRnd, DateTime now)
         {
             var isHealthy = profile.Issue == null;
             var count = isHealthy ? rnd.Next(2, 7) : rnd.Next(22, 33);
@@ -219,7 +255,7 @@ namespace Deliverance.Services.Database
                 var detail = profile.ReportDetails[rnd.Next(profile.ReportDetails.Length)];
                 var status = PickTestReportStatus(ageInDays, rnd);
 
-                reports.Add(new Report
+                var report = new Report
                 {
                     Status = status,
                     DateReported = now.AddDays(-ageInDays),
@@ -227,7 +263,7 @@ namespace Deliverance.Services.Database
                     // Some reporters don't say what kind of issue it was.
                     IssueType = rnd.NextDouble() < 0.05 ? null : profile.Issue ?? (IssueEnum)rnd.Next(1, 4),
                     Detail = detail,
-                    UserUUID = rnd.NextDouble() < 0.7 ? regularUserId : adminId,
+                    UserUUID = rnd.NextDouble() < 0.7 ? regularUserId : admin.UUID,
                     Comment = status == nameof(ClearedReportState)
                         ? profile.ClearComments[rnd.Next(profile.ClearComments.Length)]
                         : null,
@@ -240,7 +276,12 @@ namespace Deliverance.Services.Database
                             DeviceReports = { new DeviceReport { Device = device, Detail = detail } },
                         },
                     },
-                });
+                };
+                if (status == nameof(ClearedReportState))
+                {
+                    SetTestClearDetails(report, admin.Username, clearRnd, now);
+                }
+                reports.Add(report);
             }
             return reports;
         }

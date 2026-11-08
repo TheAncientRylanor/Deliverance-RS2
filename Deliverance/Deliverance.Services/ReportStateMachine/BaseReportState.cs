@@ -1,3 +1,4 @@
+using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Services.Database;
@@ -27,20 +28,20 @@ namespace Deliverance.Services.ServiceStateMachine
 
         public virtual Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request)
         {
-            throw new InvalidOperationException("Cannot update a Report in its current state.");
+            throw new BusinessException("This report can't be edited anymore.");
         }
 
         public virtual Task<ReportResponse> SeenAsync(int id, bool isAdmin = false)
         {
-            throw new InvalidOperationException("Cannot activate a Report in its current state.");
+            throw new BusinessException("Only a sent report that no admin has seen yet can be marked as seen.");
         }
-        public virtual Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, bool isAdmin = false)
+        public virtual Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid adminId, bool isAdmin = false)
         {
-            throw new InvalidOperationException("Cannot activate a Report in its current state.");
+            throw new BusinessException("Only a report an admin has seen can be cleared.");
         }
         public virtual Task DeleteAsync(int id)
         {
-            throw new InvalidOperationException("Cannot delete a Report in its current state.");
+            throw new BusinessException("Only draft reports can be deleted. This report has already been sent.");
         }
 
         public BaseReportState GetReportState(string stateName)

@@ -1,4 +1,5 @@
 import 'package:deliverance_desktop/models/user.dart';
+import 'package:deliverance_desktop/utils/date_json.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'report.g.dart';
@@ -8,6 +9,7 @@ class Report {
   final int? id;
   final String? reportName;
   final String? status;
+  @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? dateReported;
   final int? severity;
   final int? issueType;

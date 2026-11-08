@@ -15,8 +15,6 @@ namespace Deliverance.Model.Request
 
         public string? Detail { get; set; }
 
-        public string? ReportClearedBy { get; set; }
-
         public ICollection<OfficeReportInsertRequest> OfficeReports { get; set; } = new List<OfficeReportInsertRequest>();
 
         public ICollection<ReportOccuranceInsert> ReportOccurances {get;set;} = new List<ReportOccuranceInsert>();

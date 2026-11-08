@@ -62,11 +62,11 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == commandId && x.ScoutId == scoutId);
             if (command is null)
             {
-                throw new ClientException("Command does not exist");
+                throw new NotFoundException("Command does not exist");
             }
             if (command.Status != ScoutCommandStatusEnum.Pending && command.Status != ScoutCommandStatusEnum.Running)
             {
-                throw new ClientException("Command is not running anymore");
+                throw new BusinessException("Command is not running anymore");
             }
 
             _mapper.Map(result, command);
@@ -92,8 +92,7 @@ namespace Deliverance.Services
                 .Select(x => x.EventKey!)
                 .ToListAsync();
 
-            // Local time, because the recommender compares logs with DateTime.Now.
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var newLogs = request.Logs
                 .DistinctBy(x => x.EventKey)
                 .ExceptBy(savedKeys, x => x.EventKey)
@@ -103,7 +102,7 @@ namespace Deliverance.Services
                     EventKey = x.EventKey,
                     // A PC with a fast clock would otherwise log into the future,
                     // where the recommender never finds it.
-                    DateLogged = x.DateLogged.ToLocalTime() > now ? now : x.DateLogged.ToLocalTime(),
+                    DateLogged = x.DateLogged.AsUtc() > now ? now : x.DateLogged.AsUtc(),
                     Log = FormatLog(x),
                 });
 

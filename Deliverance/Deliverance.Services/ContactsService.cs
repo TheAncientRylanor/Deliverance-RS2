@@ -112,11 +112,11 @@ namespace Deliverance.Services
             .AsNoTracking().FirstOrDefault(x=>x.Id == id);
             if (entity == null)
             {
-                throw new KeyNotFoundException($"{typeof(Contact).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Contact).Name} with id {id} not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
-                throw new ClientException("You do not have access to this contact.");
+                throw new ForbiddenException("You do not have access to this contact.");
             }
             
             return await Task.FromResult(_mapper.Map<ContactsResponse>(entity));

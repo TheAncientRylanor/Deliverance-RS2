@@ -1,14 +1,15 @@
 version: "3.8"
 
+# Every value comes from .env next to this file, which docker-compose reads by itself.
 services:
   deliverance-2026:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: deliverance-2026
     environment:
       ACCEPT_EULA: Y
-      SA_PASSWORD: qweasd123!
+      SA_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "1435:1433"
+      - "${DB_PORT}:1433"
     expose:
       - "1433"
     volumes:
@@ -18,21 +19,24 @@ services:
     image: rabbitmq:3-management
     container_name: deliverance-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
   ollama:
-    build: ./ollama
+    build:
+      context: ./ollama
+      args:
+        OLLAMA_MODEL: ${OLLAMA_MODEL}
     container_name: deliverance-ollama
     environment:
-      OLLAMA_KEEP_ALIVE: 1h # keep the model loaded between questions
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE} # keep the model loaded between questions
     ports:
-      - "11434:11434"
+      - "${OLLAMA_PORT}:11434"
 
 volumes:
   sqlserver_data:

@@ -10,6 +10,5 @@ namespace Deliverance.Services
         public const string Scheme = "Scout";
         public const string Audience = "deliverance-scout";
         public const string ScoutIdClaim = "scoutId";
-        public static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(30);
     }
 }

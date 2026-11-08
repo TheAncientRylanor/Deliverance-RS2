@@ -59,16 +59,50 @@ namespace Deliverance.Services
             return query;
         }
 
+        // Its scout, logs and commands go with it (cascade); its reports must not.
+        public override async Task DeleteAsync(int id, Guid userId, bool isAdmin = false)
+        {
+            if (!isAdmin)
+            {
+                throw new ForbiddenException("Only admins can delete devices.");
+            }
+            var device = await _dbContext.Devices.FirstOrDefaultAsync(d => d.Id == id)
+                ?? throw new NotFoundException($"Device with id {id} not found.");
+
+            var reportCount = await CountReportsAsync(_dbContext, [id]);
+            if (reportCount.TryGetValue(id, out var count))
+            {
+                throw new BusinessException(
+                    $"{device.Name} appears in {count} report(s) and can't be deleted, so the report history stays intact.");
+            }
+
+            _dbContext.Devices.Remove(device);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// How many reports name each of the given devices. Devices in no report are left out.
+        /// </summary>
+        public static async Task<Dictionary<int, int>> CountReportsAsync(DeliveranceDbContext dbContext,
+            IReadOnlyCollection<int> deviceIds)
+        {
+            return await dbContext.DeviceReports
+                .Where(dr => deviceIds.Contains(dr.DeviceId))
+                .GroupBy(dr => dr.DeviceId)
+                .Select(g => new { DeviceId = g.Key, Count = g.Select(dr => dr.OfficeReport!.ReportId).Distinct().Count() })
+                .ToDictionaryAsync(x => x.DeviceId, x => x.Count);
+        }
+
         public async Task SetScoutDisabledAsync(int deviceId, bool isDisabled, bool isAdmin)
         {
             if (!isAdmin)
             {
-                throw new ClientException("Only admins can disable or enable scouts.");
+                throw new ForbiddenException("Only admins can disable or enable scouts.");
             }
             var scout = await _dbContext.Scouts.FirstOrDefaultAsync(s => s.DeviceId == deviceId);
             if (scout == null)
             {
-                throw new ClientException("This device has no scout.");
+                throw new BusinessException("This device has no scout.");
             }
             scout.IsDisabled = isDisabled;
             await _dbContext.SaveChangesAsync();
@@ -79,20 +113,20 @@ namespace Deliverance.Services
 
             if (!isAdmin)
             {
-                throw new ClientException("Only admins can send commands to scouts.");
+                throw new ForbiddenException("Only admins can send commands to scouts.");
             }
             var device = await _dbContext.Devices.Include(x => x.Scout).FirstOrDefaultAsync(x => x.Id == command.DeviceId);
             if (device is null)
             {
-                throw new ClientException("Device does not exist inside the database");
+                throw new NotFoundException("Device does not exist inside the database");
             }
             if (device.Scout is null)
             {
-                throw new ClientException($"Current device {device.Name} is not a scout");
+                throw new BusinessException($"Current device {device.Name} is not a scout");
             }
             if (device.Scout.IsDisabled)
             {
-                throw new ClientException("Scout is disabled and cannot recieve any commands");
+                throw new BusinessException("Scout is disabled and cannot recieve any commands");
             }
             await _scoutCommandValidator.ValidateAndThrowAsync(command);
 
