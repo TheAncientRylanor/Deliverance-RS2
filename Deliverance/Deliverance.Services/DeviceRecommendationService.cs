@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.ML;
 using Microsoft.ML.Data;
+using System.Text.Json;
 
 namespace Deliverance.Services;
 
@@ -14,12 +15,13 @@ public class DeviceRecommendationService : IDeviceRecommendationService
 {
     private const int HorizonDays = 14;
     private const int RecentLogDays = 7;
-    private const int RecentLogsLimit = 20;
+    public const int RecentLogsLimit = 20;
     private const int EvidenceReportDays = 90;
     private const int EvidenceReportsLimit = 10;
     private const int RecentlyFixedDays = HorizonDays;
     private static readonly string ModelPath =
         Path.Combine(AppContext.BaseDirectory, "MLModels", "device-issue-model.zip");
+    private static readonly string TrainingInfoPath = Path.ChangeExtension(ModelPath, ".json");
 
     private const string ModelCacheKey = "recommendation:device-issue-model";
     private static readonly SemaphoreSlim ModelLock = new(1, 1);
@@ -178,12 +180,34 @@ public class DeviceRecommendationService : IDeviceRecommendationService
         _ml.Model.Save(model, data.Schema, ModelPath);
         CacheModel(model);
 
-        return new RecommendationTrainingResponse
+        var trainingInfo = new RecommendationTrainingResponse
         {
+            TrainedAt = DateTime.UtcNow,
             Rows = rows.Count,
             MicroAccuracy = metrics.MicroAccuracy,
             MacroAccuracy = metrics.MacroAccuracy,
             LogLoss = metrics.LogLoss,
+        };
+        await File.WriteAllTextAsync(TrainingInfoPath, JsonSerializer.Serialize(trainingInfo));
+        return trainingInfo;
+    }
+
+    public async Task<RecommendationTrainingResponse> GetTrainingInfoAsync(bool isAdmin)
+    {
+        EnsureAdmin(isAdmin);
+        if (File.Exists(TrainingInfoPath))
+        {
+            var saved = JsonSerializer.Deserialize<RecommendationTrainingResponse>(
+                await File.ReadAllTextAsync(TrainingInfoPath));
+            if (saved?.TrainedAt != null)
+            {
+                saved.TrainedAt = saved.TrainedAt.Value.AsUtc();
+                return saved;
+            }
+        }
+        return new RecommendationTrainingResponse
+        {
+            TrainedAt = File.Exists(ModelPath) ? File.GetLastWriteTimeUtc(ModelPath) : null,
         };
     }
 

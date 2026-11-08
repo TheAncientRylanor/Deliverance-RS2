@@ -8,9 +8,11 @@ class OfficeEditorCanvas extends StatefulWidget {
   final void Function(String type, Offset position) onDeviceDropped;
   final void Function(PlacedDevice device, Offset position) onDeviceMoved;
   final void Function(PlacedDevice device) onDeviceTapped;
+  final bool isReadOnly;
 
   const OfficeEditorCanvas({
     super.key,
+    required this.isReadOnly,
     required this.devices,
     required this.onDeviceDropped,
     required this.onDeviceMoved,
@@ -50,6 +52,7 @@ class _OfficeEditorCanvasState extends State<OfficeEditorCanvas> {
   @override
   Widget build(BuildContext context) {
     return DragTarget<String>(
+      onWillAcceptWithDetails: (_) => !widget.isReadOnly,
       onAcceptWithDetails: _handleDrop,
       builder: (context, _, _) => LayoutBuilder(
         builder: (context, constraints) {
@@ -59,29 +62,32 @@ class _OfficeEditorCanvasState extends State<OfficeEditorCanvas> {
             width: double.infinity,
             height: double.infinity,
             color: Colors.transparent,
-            child: Stack(
-              children: [
-                for (final device in widget.devices)
-                  Positioned(
-                    left: device.position.dx * size.width,
-                    top: device.position.dy * size.height,
-                    child: _CanvasDevice(
-                      device: device,
-                      onTap: () => widget.onDeviceTapped(device),
-                      onDrag: (delta) => widget.onDeviceMoved(
-                        device,
-                        _clamp(
-                          device.position +
-                              Offset(
-                                delta.dx / size.width,
-                                delta.dy / size.height,
-                              ),
-                          size,
+            child: IgnorePointer(
+              ignoring: widget.isReadOnly,
+              child: Stack(
+                children: [
+                  for (final device in widget.devices)
+                    Positioned(
+                      left: device.position.dx * size.width,
+                      top: device.position.dy * size.height,
+                      child: _CanvasDevice(
+                        device: device,
+                        onTap: () => widget.onDeviceTapped(device),
+                        onDrag: (delta) => widget.onDeviceMoved(
+                          device,
+                          _clamp(
+                            device.position +
+                                Offset(
+                                  delta.dx / size.width,
+                                  delta.dy / size.height,
+                                ),
+                            size,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           );
         },

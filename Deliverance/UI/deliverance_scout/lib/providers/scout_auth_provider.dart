@@ -8,17 +8,7 @@ import 'package:deliverance_scout/utils/scout_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-enum ScoutState {
-  loading,
-
-  unenrolled,
-
-  awaitingApproval,
-
-  active,
-
-  disabled,
-}
+enum ScoutState { loading, unenrolled, awaitingApproval, active, disabled }
 
 class ScoutRevokedException implements Exception {}
 

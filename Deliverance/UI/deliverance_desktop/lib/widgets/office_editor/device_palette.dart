@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
 class DevicePalette extends StatefulWidget {
-  const DevicePalette({super.key});
+  final bool isViewMode;
+
+  const DevicePalette({super.key, required this.isViewMode});
 
   @override
   State<DevicePalette> createState() => _DevicePaletteState();
@@ -29,6 +31,14 @@ class _DevicePaletteState extends State<DevicePalette> {
   void initState() {
     super.initState();
     _searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didUpdateWidget(DevicePalette oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isViewMode != oldWidget.isViewMode) {
+      _isOpen = !widget.isViewMode;
+    }
   }
 
   @override
@@ -64,12 +74,17 @@ class _DevicePaletteState extends State<DevicePalette> {
           spacing: 20,
           children: [
             IconButton(
+              tooltip: widget.isViewMode
+                  ? "Switch to edit mode to add devices"
+                  : null,
               icon: Icon(
                 _isOpen ? Icons.arrow_back_outlined : Icons.arrow_forward,
               ),
               color: theme.colorScheme.primary,
               iconSize: 30,
-              onPressed: () => setState(() => _isOpen = !_isOpen),
+              onPressed: widget.isViewMode
+                  ? null
+                  : () => setState(() => _isOpen = !_isOpen),
             ),
             if (_isOpen) ...[
               CustomTextField(

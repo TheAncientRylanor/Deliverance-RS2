@@ -33,5 +33,4 @@ class UserUpdateMultipart {
     }
     return request;
   }
-
 }

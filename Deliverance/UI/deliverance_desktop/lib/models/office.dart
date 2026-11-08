@@ -29,6 +29,8 @@ class Devices {
   final String? subnetMask;
   final String? vlanID;
   final String? os;
+  @JsonKey(fromJson: nullableDateFromJson, includeToJson: false)
+  final DateTime? lastOsUpdate;
   final String? manufacturer;
   bool? isReported;
   Scout? scout;
@@ -47,6 +49,7 @@ class Devices {
     this.subnetMask,
     this.vlanID,
     this.os,
+    this.lastOsUpdate,
     this.manufacturer,
     this.isReported = false,
     this.enrollmentId,

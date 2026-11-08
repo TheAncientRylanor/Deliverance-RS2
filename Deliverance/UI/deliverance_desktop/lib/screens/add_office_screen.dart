@@ -29,6 +29,7 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
   ];
   bool _isSaving = false;
   bool _hasUnsavedChanges = false;
+  bool _isViewMode = false;
 
   bool get _isEditing => widget.office != null;
 
@@ -173,13 +174,14 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const DevicePalette(),
+            DevicePalette(isViewMode: _isViewMode),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: OfficeEditorCanvas(
+                      isReadOnly: _isViewMode,
                       devices: _devices,
                       onDeviceDropped: _addDevice,
                       onDeviceMoved: _moveDevice,
@@ -192,6 +194,9 @@ class _AddOfficeScreenState extends State<AddOfficeScreen> {
                         ? null
                         : () => Navigator.maybePop(context),
                     isSaving: _isSaving,
+                    isViewMode: _isViewMode,
+                    onViewModeChanged: (isViewMode) =>
+                        setState(() => _isViewMode = isViewMode),
                   ),
                 ],
               ),

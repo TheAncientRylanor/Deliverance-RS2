@@ -1,4 +1,4 @@
-FROM ollama/ollama
+FROM ollama/ollama:0.40.11
 # Set from OLLAMA_MODEL in .env by docker-compose.
 ARG OLLAMA_MODEL
 # Download the model at build time so it ships inside the image.

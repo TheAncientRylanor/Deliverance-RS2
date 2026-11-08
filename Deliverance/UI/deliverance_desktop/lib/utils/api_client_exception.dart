@@ -1,7 +1,11 @@
 import 'dart:convert';
 
 class ApiClientException implements Exception {
-  ApiClientException(this.message, {this.statusCode, this.fieldErrors = const {}});
+  ApiClientException(
+    this.message, {
+    this.statusCode,
+    this.fieldErrors = const {},
+  });
 
   final String message;
   final int? statusCode;

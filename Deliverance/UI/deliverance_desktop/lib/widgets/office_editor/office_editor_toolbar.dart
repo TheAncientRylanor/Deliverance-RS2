@@ -8,9 +8,13 @@ class OfficeEditorToolbar extends StatefulWidget {
   final VoidCallback onSave;
   final VoidCallback? onCancel;
   final bool isSaving;
+  final bool isViewMode;
+  final ValueChanged<bool> onViewModeChanged;
 
   const OfficeEditorToolbar({
     super.key,
+    required this.isViewMode,
+    required this.onViewModeChanged,
     required this.onSave,
     required this.onCancel,
     required this.isSaving,
@@ -27,6 +31,14 @@ class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
   static const Duration _animationDuration = Duration(milliseconds: 250);
 
   bool _isOpen = true;
+
+  @override
+  void didUpdateWidget(OfficeEditorToolbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isViewMode != oldWidget.isViewMode) {
+      _isOpen = !widget.isViewMode;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,11 +66,18 @@ class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (_isOpen) ...[
-                  _ModeButton(icon: FontAwesomeIcons.eye, label: "View mode"),
+                  _ModeButton(
+                    icon: FontAwesomeIcons.eye,
+                    label: "View mode",
+                    isActive: widget.isViewMode,
+                    onPressed: () => widget.onViewModeChanged(true),
+                  ),
                   const _Gap(100),
                   _ModeButton(
                     icon: FontAwesomeIcons.penToSquare,
                     label: "Edit mode",
+                    isActive: !widget.isViewMode,
+                    onPressed: () => widget.onViewModeChanged(false),
                   ),
                   const _Gap(400),
                   Column(
@@ -82,14 +101,26 @@ class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
                   ),
                   const _Gap(100),
                 ],
-                IconButton(
-                  icon: Icon(
-                    _isOpen ? Icons.arrow_downward : Icons.arrow_upward,
+                if (!_isOpen && widget.isViewMode) ...[
+                  Text(
+                    "View mode: the office is locked",
+                    style: theme.textTheme.labelSmall,
                   ),
-                  color: theme.colorScheme.primary,
-                  iconSize: 30,
-                  onPressed: () => setState(() => _isOpen = !_isOpen),
-                ),
+                  const SizedBox(width: 20),
+                  SecondaryButton(
+                    onPressed: () => widget.onViewModeChanged(false),
+                    label: "Edit mode",
+                  ),
+                  const SizedBox(width: 20),
+                ] else
+                  IconButton(
+                    icon: Icon(
+                      _isOpen ? Icons.arrow_downward : Icons.arrow_upward,
+                    ),
+                    color: theme.colorScheme.primary,
+                    iconSize: 30,
+                    onPressed: () => setState(() => _isOpen = !_isOpen),
+                  ),
               ],
             ),
           ),
@@ -116,21 +147,36 @@ class _Gap extends StatelessWidget {
 class _ModeButton extends StatelessWidget {
   final FaIconData icon;
   final String label;
+  final bool isActive;
+  final VoidCallback onPressed;
 
-  const _ModeButton({required this.icon, required this.label});
+  const _ModeButton({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isActive ? theme.colorScheme.primary : Colors.white;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Flexible(
           child: IconButton(
-            onPressed: () {},
-            icon: FaIcon(icon, size: 60, color: Colors.white),
+            onPressed: isActive ? null : onPressed,
+            icon: FaIcon(icon, size: 60, color: color),
           ),
         ),
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color,
+            fontWeight: isActive ? FontWeight.bold : null,
+          ),
+        ),
       ],
     );
   }

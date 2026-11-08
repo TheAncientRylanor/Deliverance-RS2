@@ -49,11 +49,8 @@ FieldValidator lengthBetween(String label, int min, int max) => (value) {
 FieldValidator personName(String label) =>
     maxLength(label, FieldLimits.personNameMax, required: true);
 
-FieldValidator username() => lengthBetween(
-  'Username',
-  FieldLimits.usernameMin,
-  FieldLimits.usernameMax,
-);
+FieldValidator username() =>
+    lengthBetween('Username', FieldLimits.usernameMin, FieldLimits.usernameMax);
 
 FieldValidator email() => (value) {
   final text = _text(value);

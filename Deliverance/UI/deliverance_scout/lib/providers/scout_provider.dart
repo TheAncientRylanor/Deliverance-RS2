@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:deliverance_scout/models/scout.dart';
 import 'package:deliverance_scout/models/scout_command.dart';
 import 'package:deliverance_scout/models/scout_log.dart';
+import 'package:deliverance_scout/models/system_info.dart';
 import 'package:deliverance_scout/providers/scout_auth_provider.dart';
 import 'package:deliverance_scout/utils/api_client_exception.dart';
 import 'package:deliverance_scout/utils/api_constants.dart';
@@ -13,6 +14,7 @@ class ScoutProvider with ChangeNotifier {
   static const _meEndpoint = "Scout/Me";
   static const _commandsEndpoint = "Scout/Commands";
   static const _logsEndpoint = "Scout/Logs";
+  static const _systemInfoEndpoint = "Scout/Me/SystemInfo";
 
   final ScoutAuthProvider _auth;
 
@@ -55,6 +57,20 @@ class ScoutProvider with ChangeNotifier {
           "Content-Type": "application/json",
         },
         body: jsonEncode({"logs": logs.map((x) => x.toJson()).toList()}),
+      ),
+    );
+  }
+
+  Future<void> sendSystemInfo(SystemInfo info) async {
+    final uri = Uri.parse("${ApiConstants.baseUrl}$_systemInfoEndpoint");
+    await _sendAuthorized(
+      (token) => http.put(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode(info.toJson()),
       ),
     );
   }

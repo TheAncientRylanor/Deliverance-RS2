@@ -171,7 +171,7 @@ namespace Deliverance.Services
 
         public override async Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request, Guid userId, bool isAdmin = false)
         {
-            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin: false);
             var status = entity.Status ?? nameof(DraftReportState);
             var state = _reportState.GetReportState(status);
 
@@ -196,12 +196,12 @@ namespace Deliverance.Services
 
             await _notificationService.PushAsync(notifications);
             await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
-            return result;
+            return await GetByIdAsync(id, userId, isAdmin);
         }
 
         public override async Task DeleteAsync(int id, Guid userId, bool isAdmin = false)
         {
-            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
+            var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin: false);
             var state = _reportState.GetReportState(entity.Status ?? nameof(DraftReportState));
             await state.DeleteAsync(id);
             await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Removed });
@@ -221,7 +221,7 @@ namespace Deliverance.Services
             });
 
             await _notificationService.PushAsync(notifications);
-            return result;
+            return await GetByIdAsync(id, userId, isAdmin);
         }
 
         public async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid userId, bool isAdmin = false)
@@ -240,7 +240,7 @@ namespace Deliverance.Services
 
             await _notificationService.PushAsync(notifications);
             await _reportEventPublisher.PublishAsync(new ReportChangedMessage { ReportId = id, Type = ChangeType.Updated });
-            return result;
+            return await GetByIdAsync(id, userId, isAdmin);
         }
 
         private async Task EnsureReportCanBeSavedAsync(

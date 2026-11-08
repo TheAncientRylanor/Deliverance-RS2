@@ -16,7 +16,7 @@ public class ReportStatistics
     public DateTime DateReported { get; set; }
 
     [ForeignKey("ReportId")]
-    public Report Report { get; set; }
+    public Report? Report { get; set; }
 
     [ForeignKey("OfficeId")]
     public Office? Office { get; set; }

@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 
 import '../custom_buttons.dart';
 import '../custom_drop_down.dart';
+import '../help_button.dart';
+import '../report_help_content.dart';
 import 'device_report_step.dart';
 
 class LocationStep extends StatefulWidget {
@@ -282,9 +284,18 @@ class _LocationStepState extends State<LocationStep> {
                           fontStyle: FontStyle.italic,
                         ),
                       ),
-                    Text(
-                      "2. Device affected",
-                      style: Theme.of(context).textTheme.titleSmall,
+                    Row(
+                      spacing: 10,
+                      children: [
+                        Text(
+                          "2. Device affected",
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const HelpButton(
+                          title: "Selecting a device",
+                          sections: deviceHelpSections,
+                        ),
+                      ],
                     ),
                     LayoutBuilder(
                       builder: (context, constraints) {

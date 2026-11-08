@@ -124,7 +124,6 @@ abstract class BaseProvider<T> extends ApiProvider {
   T? _data;
   T? get data => _data;
 
-
   BaseProvider(super.endpoint);
 
   Future<SearchResult<T>> get({dynamic filter}) async {

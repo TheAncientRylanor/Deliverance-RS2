@@ -11,6 +11,7 @@ namespace Deliverance.Services
 
         Task<(List<ReportPoint>, List<LogPoint>)> LoadHistoryAsync(int? deviceId = null);
         Task<RecommendationTrainingResponse> TrainAsync(bool isAdmin);
+        Task<RecommendationTrainingResponse> GetTrainingInfoAsync(bool isAdmin);
         Task<List<DeviceRecommendationResponse>> GetRecommendationsAsync(int top, int minReports, float minProbability, bool isAdmin);
         Task<List<DeviceRecommendationResponse>> ScoreAllDevicesAsync(bool isAdmin);
         Task<DeviceEvidenceResponse> GetDeviceEvidenceAsync(int deviceId, bool isAdmin);

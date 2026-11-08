@@ -101,3 +101,18 @@ class DeviceEvidenceReport {
         comment: json['comment'] as String?,
       );
 }
+
+class RecommendationTraining {
+  final DateTime? trainedAt;
+  final int? rows;
+  final double? accuracy;
+
+  RecommendationTraining({this.trainedAt, this.rows, this.accuracy});
+
+  factory RecommendationTraining.fromJson(Map<String, dynamic> json) =>
+      RecommendationTraining(
+        trainedAt: nullableDateFromJson(json['trainedAt'] as String?),
+        rows: json['rows'] as int?,
+        accuracy: (json['microAccuracy'] as num?)?.toDouble(),
+      );
+}

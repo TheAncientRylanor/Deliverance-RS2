@@ -1,6 +1,6 @@
 services:
   deliverance-2026:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04
     container_name: deliverance-2026
     environment:
       ACCEPT_EULA: Y
@@ -11,9 +11,15 @@ services:
       - "1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13.7-management
     container_name: deliverance-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
@@ -23,18 +29,53 @@ services:
       - "${RABBITMQ_MANAGEMENT_PORT}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   ollama:
     build:
       context: ./ollama
       args:
         OLLAMA_MODEL: ${OLLAMA_MODEL}
+    image: deliverance-ollama:1.0.0
     container_name: deliverance-ollama
     environment:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
     ports:
       - "${OLLAMA_PORT}:11434"
 
+  api:
+    build:
+      context: .
+      dockerfile: Deliverance.WebAPI/Dockerfile
+    image: deliverance-api:1.0.0
+    container_name: deliverance-api
+    env_file: .env
+    environment:
+      API_URL: http://+:5095
+      DB_HOST: deliverance-2026
+      DB_PORT: "1433"
+      DB_CONNECTION_STRING: "Server=deliverance-2026,1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      OLLAMA_BASE_URL: http://ollama:11434/
+    ports:
+      - "5095:5095"
+    volumes:
+      - api_uploads:/app/Uploads
+    depends_on:
+      deliverance-2026:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
 volumes:
   sqlserver_data:
   rabbitmq_data:
+  api_uploads:

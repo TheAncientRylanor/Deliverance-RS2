@@ -19,17 +19,20 @@ namespace Deliverance.Services
         private readonly IDeviceNotifier _deviceNotifier;
         private readonly IValidator<ScoutCommandResultRequest> _scoutCommandValidator;
         private readonly IValidator<ScoutLogBatchRequest> _scoutLogValidator;
+        private readonly IValidator<ScoutSystemInfoRequest> _systemInfoValidator;
         private readonly IMapper _mapper;
 
         public ScoutService(DeliveranceDbContext dbContext,
         IDeviceNotifier deviceNotifier,
         IValidator<ScoutCommandResultRequest> scoutCommandValidator,
-        IValidator<ScoutLogBatchRequest> scoutLogValidator, IMapper mapper)
+        IValidator<ScoutLogBatchRequest> scoutLogValidator,
+        IValidator<ScoutSystemInfoRequest> systemInfoValidator, IMapper mapper)
         {
             _dbContext = dbContext;
             _deviceNotifier = deviceNotifier;
             _scoutCommandValidator = scoutCommandValidator;
             _scoutLogValidator = scoutLogValidator;
+            _systemInfoValidator = systemInfoValidator;
             _mapper = mapper;
         }
 
@@ -101,6 +104,21 @@ namespace Deliverance.Services
                 });
 
             _dbContext.DeviceLogs.AddRange(newLogs);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task UpdateSystemInfoAsync(ScoutSystemInfoRequest request, int scoutId)
+        {
+            await _systemInfoValidator.ValidateAndThrowAsync(request);
+
+            var device = await _dbContext.Devices.FirstOrDefaultAsync(d => d.Scout!.Id == scoutId)
+                ?? throw new UnauthorizedAccessException("This scout no longer exists.");
+
+            if (!string.IsNullOrWhiteSpace(request.OS))
+            {
+                device.OS = request.OS.Trim();
+            }
+            device.LastOsUpdate = request.LastOsUpdate?.AsUtc();
             await _dbContext.SaveChangesAsync();
         }
 

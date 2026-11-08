@@ -2,10 +2,13 @@ import 'package:deliverance_desktop/layouts/master_screen.dart';
 import 'package:deliverance_desktop/models/execution_command.dart';
 import 'package:deliverance_desktop/models/execution_command_enum.dart';
 import 'package:deliverance_desktop/models/office.dart';
+import 'package:deliverance_desktop/models/device_recommendation.dart';
 import 'package:deliverance_desktop/models/report.dart';
+import 'package:deliverance_desktop/models/report_status_filter.dart';
 import 'package:deliverance_desktop/models/scout_command.dart';
 import 'package:deliverance_desktop/models/search_models/report_search_object.dart';
 import 'package:deliverance_desktop/models/search_result.dart';
+import 'package:deliverance_desktop/providers/device_provider.dart';
 import 'package:deliverance_desktop/providers/execution_command_provider.dart';
 import 'package:deliverance_desktop/providers/report_provider.dart';
 import 'package:deliverance_desktop/providers/scout_command_provider.dart';
@@ -16,8 +19,12 @@ import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_drop_down.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
+import 'package:deliverance_desktop/widgets/device_log_tile.dart';
 import 'package:deliverance_desktop/widgets/reports_child.dart';
+import 'package:deliverance_desktop/widgets/scroll_list_box.dart';
+import 'package:deliverance_desktop/widgets/screen_back_button.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:provider/provider.dart';
 import 'package:simple_typing_indicator/simple_typing_indicator.dart';
 
@@ -44,6 +51,7 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
   final ScrollController _scrollController = ScrollController();
   ReportSearchObject searchObject = ReportSearchObject();
   SearchResult<Report> reportList = SearchResult();
+  int? _clearedCount;
   List<ExecutionCommand> executionCommands = [];
   int? selectedExecutionCommandId;
   final GlobalKey<FormState> _commandFormKey = GlobalKey<FormState>();
@@ -54,11 +62,17 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
   final Map<int, ScoutCommand> _earlyUpdates = {};
   String? _hubError;
   DeviceHubClient? _deviceHubClient;
+  final ValueNotifier<_PingStatus> _pingStatus = ValueNotifier(
+    _PingStatus.unknown,
+  );
+
+  bool get _hasIpAddress => widget.device.ipAddress?.isNotEmpty ?? false;
+
   TableRow _buildRow(
     BuildContext context,
     String label,
     String value, {
-    PrimaryButton? button,
+    Widget? content,
   }) {
     final theme = Theme.of(context);
     final style = theme.textTheme.labelMedium;
@@ -83,9 +97,7 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
         TableCell(
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: button == null
-                ? Text(value, style: style)
-                : Align(alignment: Alignment.centerLeft, child: button),
+            child: content ?? Text(value, style: style),
           ),
         ),
       ],
@@ -103,6 +115,7 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     searchObject.pageSize = 4;
     isLoading = true;
     _initValues();
+    if (_hasIpAddress) _checkStatus();
     if (widget.device.scout != null) _openConnection();
     MasterScreen.setLeaveGuard(context, _confirmLeave);
   }
@@ -113,7 +126,54 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     _commandController.dispose();
     _outputController.dispose();
     _scrollController.dispose();
+    _pingStatus.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkStatus() async {
+    if (_pingStatus.value == _PingStatus.checking) return;
+    _pingStatus.value = _PingStatus.checking;
+    try {
+      final result = await context.read<DeviceProvider>().ping(
+        widget.device.id,
+      );
+      if (!mounted) return;
+      _pingStatus.value = result.isOnline
+          ? _PingStatus.online
+          : _PingStatus.offline;
+    } on ApiClientException {
+      if (mounted) _pingStatus.value = _PingStatus.offline;
+    }
+  }
+
+  Widget _buildStatus(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelMedium;
+    return ValueListenableBuilder<_PingStatus>(
+      valueListenable: _pingStatus,
+      builder: (context, status, _) => Row(
+        spacing: 8,
+        children: [
+          if (status.dotColor != null)
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: status.dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          Expanded(child: Text(status.label, style: style)),
+          PrimaryButton(
+            width: 90,
+            height: 36,
+            label: "Check",
+            onPressed: _hasIpAddress && status != _PingStatus.checking
+                ? _checkStatus
+                : null,
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openConnection() async {
@@ -213,9 +273,18 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     try {
       final reports = _reportProvider.get(filter: searchObject.toJson());
       final commands = _executionCommandProvider.get();
-      await Future.wait([reports, commands]);
+      final cleared = _reportProvider.get(
+        filter: ReportSearchObject(
+          deviceId: widget.device.id,
+          status: ReportStatusFilter.cleared,
+          pageSize: 1,
+          includeTotalCount: true,
+        ).toJson(),
+      );
+      await Future.wait([reports, commands, cleared]);
       reportList = await reports;
       executionCommands = (await commands).items ?? [];
+      _clearedCount = (await cleared).totalCount;
     } on ApiClientException catch (e) {
       if (!mounted) return;
       alertBoxMoveBack(context, "Error", e.message, onRetry: _initValues);
@@ -228,6 +297,98 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
     }
   }
 
+  String _countText(int? count) =>
+      isLoading || count == null ? '-' : count.toString();
+
+  Widget _buildInfoTable(BuildContext context, {bool expanded = false}) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 500,
+      child: Table(
+        border: TableBorder.all(color: theme.colorScheme.primary),
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        columnWidths: const {0: IntrinsicColumnWidth()},
+        children: [
+          _buildRow(context, 'Device name', widget.device.name ?? "-"),
+          if (expanded) ...[
+            _buildRow(context, 'Type', widget.device.type ?? "-"),
+            _buildRow(
+              context,
+              'Manufacturer',
+              widget.device.manufacturer ?? "-",
+            ),
+          ],
+          _buildRow(context, 'IP address', widget.device.ipAddress ?? "-"),
+          if (expanded) ...[
+            _buildRow(context, 'MAC address', widget.device.macAddress ?? "-"),
+            _buildRow(context, 'Subnet mask', widget.device.subnetMask ?? "-"),
+            _buildRow(context, 'VLAN', widget.device.vlanID ?? "-"),
+          ],
+          _buildRow(context, 'Status', "", content: _buildStatus(context)),
+          _buildRow(context, 'OS and version', widget.device.os ?? "-"),
+          _buildRow(
+            context,
+            'Last OS update',
+            widget.device.lastOsUpdate == null
+                ? "-"
+                : DateFormat('dd.MM.yyyy').format(widget.device.lastOsUpdate!),
+          ),
+          _buildRow(
+            context,
+            'Reported problems count',
+            _countText(reportList.totalCount),
+          ),
+          if (expanded)
+            _buildRow(
+              context,
+              'Cleared issue count',
+              _countText(_clearedCount),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showExpandedInfo() {
+    final theme = Theme.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: theme.colorScheme.primary, width: 2),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        title: Center(
+          child: Text(
+            widget.device.name ?? "Device info",
+            style: theme.textTheme.titleLarge,
+          ),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        content: SingleChildScrollView(
+          child: _buildInfoTable(dialogContext, expanded: true),
+        ),
+        actions: [
+          PrimaryButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            label: "OK",
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRecentLogs() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _RecentLogsDialog(deviceId: widget.device.id),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -236,31 +397,31 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
       child: Column(
         spacing: 10,
         children: [
+          ScreenBackButton(confirmLeave: _confirmLeave),
           Text(widget.officeName, style: theme.textTheme.displayLarge),
           const SizedBox(height: 100),
+          _buildInfoTable(context),
+          const SizedBox(height: 10),
           SizedBox(
             width: 500,
-            child: Table(
-              border: TableBorder.all(color: theme.colorScheme.primary),
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              columnWidths: const {0: IntrinsicColumnWidth()},
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              spacing: 10,
               children: [
-                _buildRow(context, 'Device name', widget.device.name ?? "-"),
-                _buildRow(
-                  context,
-                  'IP address',
-                  widget.device.ipAddress ?? "-",
+                PrimaryButton(
+                  onPressed: _showExpandedInfo,
+                  label: "Expand info",
                 ),
-                _buildRow(context, 'OS and version', widget.device.os ?? "-"),
-                _buildRow(context, 'Last OS update', "-"),
-                _buildRow(
-                  context,
-                  'Reported problems count',
-                  isLoading
-                      ? '-'
-                      : reportList.totalCount != null
-                      ? reportList.totalCount.toString()
-                      : '-',
+                Tooltip(
+                  message: widget.device.scout == null
+                      ? "Only devices with a scout send logs"
+                      : "",
+                  child: PrimaryButton(
+                    onPressed: widget.device.scout == null
+                        ? null
+                        : _showRecentLogs,
+                    label: "Show last logs",
+                  ),
                 ),
               ],
             ),
@@ -327,25 +488,26 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
                               fontStyle: FontStyle.italic,
                             ),
                           ),
-                        Form(
-                          key: _commandFormKey,
-                          child: CustomTextField(
-                            labelText: "Commands",
-                            controller: _commandController,
-                            readOnly: false,
-                            onSubmited: (_) {
-                              if (!_isSending) _sendCommand();
-                            },
-                            maxLines: 18,
-                            minLines: 18,
-                            maxLength: FieldLimits.commandMax,
-                            validator: maxLength(
-                              'Command',
-                              FieldLimits.commandMax,
-                              required: true,
-                            ),
-                            textStyle: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w100,
+                        Expanded(
+                          child: Form(
+                            key: _commandFormKey,
+                            child: CustomTextField(
+                              labelText: "Commands",
+                              controller: _commandController,
+                              readOnly: false,
+                              onSubmited: (_) {
+                                if (!_isSending) _sendCommand();
+                              },
+                              expands: true,
+                              maxLength: FieldLimits.commandMax,
+                              validator: maxLength(
+                                'Command',
+                                FieldLimits.commandMax,
+                                required: true,
+                              ),
+                              textStyle: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w100,
+                              ),
                             ),
                           ),
                         ),
@@ -404,6 +566,99 @@ class _SingleDeviceReportScreenState extends State<SingleDeviceReportScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+enum _PingStatus {
+  unknown("-", null),
+  checking("Checking...", null),
+  online("Online", Colors.green),
+  offline("Offline", Colors.red);
+
+  final String label;
+  final Color? dotColor;
+  const _PingStatus(this.label, this.dotColor);
+}
+
+class _RecentLogsDialog extends StatefulWidget {
+  final int deviceId;
+
+  const _RecentLogsDialog({required this.deviceId});
+
+  @override
+  State<_RecentLogsDialog> createState() => _RecentLogsDialogState();
+}
+
+class _RecentLogsDialogState extends State<_RecentLogsDialog> {
+  List<DeviceEvidenceLog> _logs = [];
+  int _totalCount = 0;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
+  }
+
+  Future<void> _loadLogs() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final result = await context.read<DeviceProvider>().getRecentLogs(
+        widget.deviceId,
+      );
+      _logs = result.items ?? [];
+      _totalCount = result.totalCount ?? _logs.length;
+    } on ApiClientException catch (e) {
+      _error = e.message;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      backgroundColor: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: theme.colorScheme.primary, width: 2),
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      title: Column(
+        spacing: 4,
+        children: [
+          Text("Last logs", style: theme.textTheme.titleLarge),
+          if (!_isLoading && _error == null && _logs.isNotEmpty)
+            Text(
+              "Newest ${_logs.length} of $_totalCount",
+              style: theme.textTheme.labelSmall,
+            ),
+        ],
+      ),
+      content: SizedBox(
+        width: 700,
+        child: ScrollListBox(
+          height: 450,
+          isLoading: _isLoading,
+          itemCount: _logs.length,
+          itemBuilder: (context, index) => DeviceLogTile(log: _logs[index]),
+          emptyMessage: _error ?? "This scout hasn't sent any logs yet.",
+        ),
+      ),
+      actions: [
+        if (_error != null)
+          SecondaryButton(onPressed: _loadLogs, label: "Retry"),
+        PrimaryButton(
+          onPressed: () => Navigator.of(context).pop(),
+          label: "OK",
+        ),
+      ],
     );
   }
 }

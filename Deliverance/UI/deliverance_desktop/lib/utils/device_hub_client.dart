@@ -15,7 +15,6 @@ class DeviceHubClient {
 
   HubConnection? _connection;
 
-
   Future<void> start() async {
     await stop();
     final connection = HubConnectionBuilder()

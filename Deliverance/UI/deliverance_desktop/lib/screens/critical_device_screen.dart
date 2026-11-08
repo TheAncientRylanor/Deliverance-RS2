@@ -9,6 +9,9 @@ import 'package:deliverance_desktop/providers/selected_report_provider.dart';
 import 'package:deliverance_desktop/screens/single_report_screen.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
 import 'package:deliverance_desktop/utils/util_widgets.dart';
+import 'package:deliverance_desktop/widgets/device_log_tile.dart';
+import 'package:deliverance_desktop/widgets/scroll_list_box.dart';
+import 'package:deliverance_desktop/widgets/screen_back_button.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,12 +26,8 @@ class CriticalDeviceScreen extends StatefulWidget {
 }
 
 class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
-  static const _containerHeight = 280.0;
-
   late RecommendationProvider _recommendationProvider;
   late ReportProvider _reportProvider;
-  final ScrollController _logsController = ScrollController();
-  final ScrollController _reportsController = ScrollController();
   DeviceEvidence? _evidence;
   bool _isLoading = true;
   int? _openingReportId;
@@ -39,13 +38,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
     _recommendationProvider = context.read<RecommendationProvider>();
     _reportProvider = context.read<ReportProvider>();
     _loadEvidence();
-  }
-
-  @override
-  void dispose() {
-    _logsController.dispose();
-    _reportsController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadEvidence() async {
@@ -86,7 +78,7 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
       MaterialPageRoute(
         builder: (context) => MasterScreen(
           title: "Single report",
-          child: SingleReportScreen(report: opened, showBackButton: true),
+          child: SingleReportScreen(report: opened),
         ),
       ),
     );
@@ -107,56 +99,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildScrollContainer(
-    ThemeData theme, {
-    required ScrollController controller,
-    required int itemCount,
-    required IndexedWidgetBuilder itemBuilder,
-    required String emptyMessage,
-  }) {
-    return Container(
-      width: double.infinity,
-      height: _containerHeight,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
-        border: Border.all(color: theme.colorScheme.primary),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: _isLoading
-          ? globalLoadingSpinner()
-          : itemCount == 0
-          ? Center(child: Text(emptyMessage, style: theme.textTheme.labelMedium))
-          : Scrollbar(
-              controller: controller,
-              thumbVisibility: true,
-              child: ListView.separated(
-                controller: controller,
-                padding: const EdgeInsets.all(12),
-                itemCount: itemCount,
-                itemBuilder: itemBuilder,
-                separatorBuilder: (context, index) =>
-                    Divider(color: theme.colorScheme.primary, height: 16),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildLog(ThemeData theme, DeviceEvidenceLog log) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 16,
-      children: [
-        Text(
-          DateFormat('dd.MM.yyyy HH:mm').format(log.dateLogged),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        Expanded(child: Text(log.log, style: theme.textTheme.labelSmall)),
       ],
     );
   }
@@ -236,6 +178,7 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 20,
           children: [
+            const ScreenBackButton(),
             Center(
               child: Column(
                 spacing: 4,
@@ -267,20 +210,18 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
               ],
             ),
             Text("Logs", style: theme.textTheme.headlineMedium),
-            _buildScrollContainer(
-              theme,
-              controller: _logsController,
+            ScrollListBox(
+              isLoading: _isLoading,
               itemCount: logs.length,
-              itemBuilder: (context, index) => _buildLog(theme, logs[index]),
+              itemBuilder: (context, index) => DeviceLogTile(log: logs[index]),
               emptyMessage: "No logs in the last 7 days.",
             ),
             Text(
               "Reports (${device.reportsLast30Days} in last 30 days)",
               style: theme.textTheme.headlineMedium,
             ),
-            _buildScrollContainer(
-              theme,
-              controller: _reportsController,
+            ScrollListBox(
+              isLoading: _isLoading,
               itemCount: reports.length,
               itemBuilder: (context, index) =>
                   _buildReport(theme, reports[index]),

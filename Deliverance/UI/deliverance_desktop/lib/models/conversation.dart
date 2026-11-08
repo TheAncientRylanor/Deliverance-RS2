@@ -11,12 +11,7 @@ class Conversation {
   @JsonKey(fromJson: nullableDateFromJson, toJson: nullableDateToJson)
   final DateTime? createdAt;
 
-  Conversation({
-    required this.id,
-    this.userUUID,
-    this.title,
-    this.createdAt,
-  });
+  Conversation({required this.id, this.userUUID, this.title, this.createdAt});
 
   factory Conversation.fromJson(Map<String, dynamic> json) =>
       _$ConversationFromJson(json);

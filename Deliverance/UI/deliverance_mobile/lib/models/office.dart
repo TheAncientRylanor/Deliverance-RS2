@@ -1,32 +1,39 @@
 import 'package:json_annotation/json_annotation.dart';
 
 part 'office.g.dart';
+
 @JsonSerializable()
 class Office {
   final int? id;
   final String? name;
   final List<Devices>? devices;
-  Office({
-    this.id,
-    this.name,
-    this.devices,
-  });
-  factory Office.fromJson(Map<String, dynamic> json) =>
-      _$OfficeFromJson(json);
+  Office({this.id, this.name, this.devices});
+  factory Office.fromJson(Map<String, dynamic> json) => _$OfficeFromJson(json);
 
   Map<String, dynamic> toJson() => _$OfficeToJson(this);
 }
 
 @JsonSerializable()
-class Devices{
+class Devices {
   final int? id;
   final String? name;
   final String? type;
   final double? positionX;
   final double? positionY;
   final String? manufacturer;
+  final int? timesReported;
+  final bool? hasOpenReport;
 
-  Devices({ this.id,  this.name,  this.type,  this.positionX,  this.positionY,  this.manufacturer});
+  Devices({
+    this.id,
+    this.name,
+    this.type,
+    this.positionX,
+    this.positionY,
+    this.manufacturer,
+    this.timesReported,
+    this.hasOpenReport,
+  });
 
   factory Devices.fromJson(Map<String, dynamic> json) =>
       _$DevicesFromJson(json);
