@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Deliverance.Services
+﻿namespace Deliverance.Services
 {
     public interface ICryptoService
     {
-        string GenerateHash(string password, string salt);
-        string GenerateSlat();
+        (string Hash, string Salt) HashPassword(string password);
         bool Verify(string hash, string salt, string password);
+        bool NeedsRehash(string hash);
     }
 }

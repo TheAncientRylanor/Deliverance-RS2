@@ -38,7 +38,8 @@ namespace Deliverance.Services.Migrations
 
                     b.Property<string>("Day")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<TimeOnly?>("FromTime")
                         .HasColumnType("time");
@@ -54,7 +55,9 @@ namespace Deliverance.Services.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContactId");
+                    b.HasIndex("ContactId", "Day", "FromTime")
+                        .IsUnique()
+                        .HasFilter("[FromTime] IS NOT NULL");
 
                     b.ToTable("Availabilities");
                 });
@@ -375,7 +378,7 @@ namespace Deliverance.Services.Migrations
                     b.Property<int>("DeviceId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Occurance")
+                    b.Property<string>("Occurrence")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("OfficeReportId")
@@ -385,7 +388,8 @@ namespace Deliverance.Services.Migrations
 
                     b.HasIndex("DeviceId");
 
-                    b.HasIndex("OfficeReportId");
+                    b.HasIndex("OfficeReportId", "DeviceId")
+                        .IsUnique();
 
                     b.ToTable("DeviceReports");
                 });
@@ -417,7 +421,7 @@ namespace Deliverance.Services.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Occurance", b =>
+            modelBuilder.Entity("Occurrence", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -431,7 +435,7 @@ namespace Deliverance.Services.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Occurances");
+                    b.ToTable("Occurrences");
 
                     b.HasData(
                         new
@@ -520,7 +524,8 @@ namespace Deliverance.Services.Migrations
 
                     b.HasIndex("OfficeId");
 
-                    b.HasIndex("ReportId");
+                    b.HasIndex("ReportId", "OfficeId")
+                        .IsUnique();
 
                     b.ToTable("OfficeReports");
                 });
@@ -577,7 +582,7 @@ namespace Deliverance.Services.Migrations
                     b.ToTable("Reports");
                 });
 
-            modelBuilder.Entity("ReportOccurance", b =>
+            modelBuilder.Entity("ReportOccurrence", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -588,7 +593,7 @@ namespace Deliverance.Services.Migrations
                     b.Property<int>("Answer")
                         .HasColumnType("int");
 
-                    b.Property<int>("OccuranceId")
+                    b.Property<int>("OccurrenceId")
                         .HasColumnType("int");
 
                     b.Property<int>("ReportId")
@@ -596,11 +601,12 @@ namespace Deliverance.Services.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OccuranceId");
+                    b.HasIndex("OccurrenceId");
 
-                    b.HasIndex("ReportId");
+                    b.HasIndex("ReportId", "OccurrenceId")
+                        .IsUnique();
 
-                    b.ToTable("ReportOccurances");
+                    b.ToTable("ReportOccurrences");
                 });
 
             modelBuilder.Entity("ReportQuestion", b =>
@@ -1105,21 +1111,21 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ReportOccurance", b =>
+            modelBuilder.Entity("ReportOccurrence", b =>
                 {
-                    b.HasOne("Occurance", "Occurance")
-                        .WithMany("ReportOccurances")
-                        .HasForeignKey("OccuranceId")
+                    b.HasOne("Occurrence", "Occurrence")
+                        .WithMany("ReportOccurrences")
+                        .HasForeignKey("OccurrenceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Report", "Report")
-                        .WithMany("ReportOccurances")
+                        .WithMany("ReportOccurrences")
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Occurance");
+                    b.Navigation("Occurrence");
 
                     b.Navigation("Report");
                 });
@@ -1245,9 +1251,9 @@ namespace Deliverance.Services.Migrations
                     b.Navigation("Scout");
                 });
 
-            modelBuilder.Entity("Occurance", b =>
+            modelBuilder.Entity("Occurrence", b =>
                 {
-                    b.Navigation("ReportOccurances");
+                    b.Navigation("ReportOccurrences");
                 });
 
             modelBuilder.Entity("Office", b =>
@@ -1266,7 +1272,7 @@ namespace Deliverance.Services.Migrations
                 {
                     b.Navigation("OfficeReports");
 
-                    b.Navigation("ReportOccurances");
+                    b.Navigation("ReportOccurrences");
                 });
 
             modelBuilder.Entity("Role", b =>

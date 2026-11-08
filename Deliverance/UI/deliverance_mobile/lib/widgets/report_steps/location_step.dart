@@ -83,17 +83,18 @@ class _LocationStepState extends State<LocationStep> {
 
   Future<void> initValues() async {
     try {
-      var result = await _officeProvider.get();
+      final allOffices = _officeProvider.get();
+      final selected = _fetchOfficesByIds(_selectedOfficeIds);
+      await Future.wait([allOffices, selected]);
+      final result = await allOffices;
+      final selectedOffices = await selected;
       if (result.items != null && result.items!.isNotEmpty) {
         _offices = {
           for (final office in result.items!)
             if (office.id != null) office.id!: office.name ?? '',
         };
       }
-      if (_selectedOfficeIds.isNotEmpty) {
-        final offices = await _fetchOfficesByIds(_selectedOfficeIds);
-        _selectedOffice.addAll(offices);
-      }
+      _selectedOffice.addAll(selectedOffices);
       if (!mounted) return;
       setState(() {
         isLoading = false;
@@ -107,23 +108,19 @@ class _LocationStepState extends State<LocationStep> {
   List<String> _validationErrors() {
     final errors = <String>[];
     if (_selectedOfficeIds.isEmpty) {
-      errors.add("Please select at least one location");
+      errors.add("Select at least one office where the problem happened");
     }
     return errors;
   }
 
+  String? _locationError;
+
   void _handleNext() {
     final isFormValid = widget.locationKey.currentState?.validate() ?? true;
     final errors = _validationErrors();
+    setState(() => _locationError = errors.isEmpty ? null : errors.first);
     if (isFormValid && errors.isEmpty) {
       widget.onNext?.call();
-    } else {
-      alertBox(
-        context,
-        "Incomplete form",
-        errors.join("\n"),
-        mode: AlertBoxMode.ok,
-      );
     }
   }
 
@@ -202,11 +199,11 @@ class _LocationStepState extends State<LocationStep> {
         onRetry: () => _loadAddedOffices(addedIds),
       );
     } finally {
-      // ignore: control_flow_in_finally
-      if (!mounted) return;
-      setState(() {
-        isLoadingOffice = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingOffice = false;
+        });
+      }
     }
   }
 
@@ -269,9 +266,22 @@ class _LocationStepState extends State<LocationStep> {
                         widget.locationController.text = values
                             .map((id) => _offices[id] ?? '')
                             .join('; ');
+                        if (values.isNotEmpty && _locationError != null) {
+                          setState(() => _locationError = null);
+                        }
                         onOfficeSelectionChanged(values);
                       },
                     ),
+                    if (_locationError != null)
+                      Text(
+                        _locationError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     Text(
                       "2. Device affected",
                       style: Theme.of(context).textTheme.titleSmall,

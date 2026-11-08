@@ -4,8 +4,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'scout_enrollment.g.dart';
 
-/// An enrollment as the admin sees it: its status and, once the scout has
-/// claimed the token, the device information the scout reported.
 @JsonSerializable()
 class ScoutEnrollment {
   final int id;
@@ -34,8 +32,6 @@ class ScoutEnrollment {
       _$ScoutEnrollmentFromJson(json);
 }
 
-/// Returned once when a token is generated; the plain token can't be
-/// fetched again.
 @JsonSerializable()
 class ScoutEnrollmentToken {
   final int enrollmentId;

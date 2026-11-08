@@ -1,6 +1,5 @@
 namespace Deliverance.Model.Responses
 {
-    /// <summary>What a scout gets to know about itself.</summary>
     public class ScoutResponse
     {
         public int Id { get; set; }

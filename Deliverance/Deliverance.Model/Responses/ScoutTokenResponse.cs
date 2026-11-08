@@ -6,7 +6,6 @@ namespace Deliverance.Model.Responses
     {
         public ScoutTokenStatusEnum Status { get; set; }
 
-        // Only set when Status is Active.
         public string? AccessToken { get; set; }
         public DateTime? ExpiresAt { get; set; }
     }

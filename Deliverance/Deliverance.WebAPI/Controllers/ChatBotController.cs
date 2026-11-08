@@ -15,17 +15,15 @@ namespace Deliverance.WebAPI.Controllers
             _chatBotService = chatBotService;
         }
 
-        // The base action doesn't pass on whether the caller is an admin, which DeviceId needs.
         public override async Task<ActionResult<ChatBotMessageResponse>> Create([FromBody] ChatBotMessageInsertRequest request)
         {
             return await _chatBotService.InsertAsync(request, User.GetUserId(), User.IsAdmin());
         }
 
         [HttpGet("Conversations")]
-        public async Task<List<ConversationResponse>> GetConversations()
+        public async Task<PageResult<ConversationResponse>> GetConversations([FromQuery] int? page, [FromQuery] int? pageSize)
         {
-            var result = await _chatBotService.GetConversationsAsync(User.GetUserId());
-            return result;
+            return await _chatBotService.GetConversationsAsync(User.GetUserId(), page, pageSize);
         }
 
         [HttpGet("Conversations/{conversationId}/Messages")]

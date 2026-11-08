@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class Scout
 {
@@ -14,11 +14,8 @@ public class Scout
     [Required]
     public int DeviceId { get; set; }
 
-    // Set by an admin. A disabled scout keeps its device, logs and secret,
-    // but gets no access tokens until it is enabled again.
     public bool IsDisabled { get; set; }
 
-    // Navigation Properties
     [ForeignKey("DeviceId")]
     public Device? Device { get; set; }
 

@@ -1,14 +1,15 @@
 import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:deliverance_desktop/utils/api_client_exception.dart';
+import 'package:deliverance_desktop/utils/form_validators.dart';
+import 'package:deliverance_desktop/utils/server_field_errors.dart';
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Returns true when the password was changed. The user is logged out at that
-/// point, since the backend revokes all of their refresh tokens.
 Future<bool?> resetPasswordDialog(BuildContext context) {
   final formKey = GlobalKey<FormState>();
+  final serverErrors = ServerFieldErrors();
   final currentPasswordController = TextEditingController();
   final newPasswordController = TextEditingController();
   final newRePasswordController = TextEditingController();
@@ -25,6 +26,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
           Future<void> onSave() async {
+            serverErrors.clear();
             if (!formKey.currentState!.validate()) return;
             setDialogState(() {
               isSaving = true;
@@ -37,9 +39,10 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
               );
               if (dialogContext.mounted) Navigator.pop(dialogContext, true);
             } on ApiClientException catch (e) {
+              final shownOnField = serverErrors.show(e, formKey);
               setDialogState(() {
                 isSaving = false;
-                errorMessage = e.message;
+                errorMessage = shownOnField ? null : e.message;
               });
             }
           }
@@ -48,7 +51,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
             backgroundColor: Theme.of(context).colorScheme.surface,
             titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            title: const Center(child: Text("Reset password")),
+            title: const Center(child: Text("Change password")),
             titleTextStyle: Theme.of(context).textTheme.displayLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
@@ -66,12 +69,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                         labelText: "Current password",
                         obscureText: hideCurrentPassword,
                         controller: currentPasswordController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your current password';
-                          }
-                          return null;
-                        },
+                        validator: serverErrors.wrap('OldPassword', requiredField('Current password')),
                         suffixIcon: IconButton(
                           onPressed: () {
                             setDialogState(() {
@@ -90,18 +88,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                         labelText: "New password",
                         obscureText: hideNewPassword,
                         controller: newPasswordController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a new password';
-                          }
-                          if (value.length < 8) {
-                            return 'Password must be at least 8 characters long';
-                          }
-                          if (value == currentPasswordController.text) {
-                            return "Password can't be the same as the previous password";
-                          }
-                          return null;
-                        },
+                        validator: serverErrors.wrap('NewPassword', allOf([password('New password'), (value) => value == currentPasswordController.text ? 'New password must be different from the current password' : null])),
                         suffixIcon: IconButton(
                           onPressed: () {
                             setDialogState(() {
@@ -120,12 +107,7 @@ Future<bool?> resetPasswordDialog(BuildContext context) {
                         labelText: "Repeat new password",
                         obscureText: hideNewPassword,
                         controller: newRePasswordController,
-                        validator: (value) {
-                          if (value != newPasswordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
+                        validator: allOf([requiredField('Repeated new password'), sameAs(() => newPasswordController.text, 'Passwords do not match. Enter the same new password twice.')]),
                       ),
                       if (errorMessage != null)
                         Text(

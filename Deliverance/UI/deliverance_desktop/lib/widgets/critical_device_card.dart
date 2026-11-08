@@ -141,8 +141,6 @@ class _CriticalDeviceCardState extends State<CriticalDeviceCard> {
                             TableCellVerticalAlignment.middle,
                         columnWidths: const {
                           0: IntrinsicColumnWidth(),
-                          // Takes what is left, so a long name is cut off
-                          // instead of running past the card.
                           1: FlexColumnWidth(),
                         },
                         children: [

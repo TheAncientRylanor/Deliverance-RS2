@@ -1,17 +1,14 @@
-// ExceptionHandlingMiddleware.cs
-using System.Text.Json;
+﻿using System.Text.Json;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Responses;
 using FluentValidation;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
-/// <summary>
-/// The one place exceptions become HTTP responses. Services throw, controllers don't catch:
-/// ValidationException and BusinessException -> 400, UnauthorizedAccessException -> 401,
-/// ForbiddenException -> 403, NotFoundException -> 404, anything else -> 500 (logged).
-/// </summary>
+namespace Deliverance.WebAPI.Middlewares;
+
 public class ExceptionHandlingMiddleware
 {
-    // camelCase, so the body is { "message": ... } as the apps expect.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly RequestDelegate _next;
@@ -50,6 +47,13 @@ public class ExceptionHandlingMiddleware
         catch (ForbiddenException ex)
         {
             await WriteAsync(context, StatusCodes.Status403Forbidden, new ErrorResponse { Message = ex.Message });
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            await WriteAsync(context, StatusCodes.Status409Conflict, new ErrorResponse
+            {
+                Message = "This was just saved by another request, so it would be a duplicate. Reload and try again.",
+            });
         }
         catch (UnauthorizedAccessException)
         {

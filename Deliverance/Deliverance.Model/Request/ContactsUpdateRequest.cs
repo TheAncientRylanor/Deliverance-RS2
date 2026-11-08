@@ -1,6 +1,4 @@
-using Deliverance.Model.Request;
-
-namespace Deliverance.Model.Responses
+namespace Deliverance.Model.Request
 {
     public class ContactsUpdateRequest
     {
@@ -10,16 +8,16 @@ namespace Deliverance.Model.Responses
         public required ICollection<UpdateEmail> ContactEmails { get; set; }
 
         public required ICollection<UpdatePhoneNumber> ContactPhoneNumbers { get; set; }
-        public ICollection<AvailablitiesUpdateRequest>? Availabilities {get;set;}
+        public ICollection<AvailabilityUpdateRequest>? Availabilities { get; set; }
     }
     public class UpdateEmail
     {
-        public int? Id {get;set;}
-        public string Email {get;set;} = string.Empty;
+        public int? Id { get; set; }
+        public string Email { get; set; } = string.Empty;
     }
     public class UpdatePhoneNumber
     {
-        public int? Id {get;set;}
-        public string PhoneNumber {get;set;} = string.Empty;
+        public int? Id { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,4 @@
-import 'package:deliverance_mobile/layouts/globalLastScreen.dart';
+import 'package:deliverance_mobile/layouts/global_last_screen.dart';
 import 'package:deliverance_mobile/screens/chat_bot_screen.dart';
 import 'package:deliverance_mobile/screens/contacts_screen.dart';
 import 'package:deliverance_mobile/screens/home_screen.dart';
@@ -47,7 +47,6 @@ class _MasterScreenState extends State<MasterScreen> {
   Widget _buildButtonClass(String titleName) {
     final globalData = context.watch<GlobalData>();
     if (checkTitle(globalData, titleName)) {
-      // Already on this screen, so the button is disabled to avoid reloading it.
       return FilledButton(
         onPressed: null,
         style: FilledButton.styleFrom(
@@ -67,7 +66,6 @@ class _MasterScreenState extends State<MasterScreen> {
           ),
         ),
       );
-      // ignore: curly_braces_in_flow_control_structures
     } else {
       return OutlinedButton(
         onPressed: () async {
@@ -80,7 +78,6 @@ class _MasterScreenState extends State<MasterScreen> {
               builder: (context) => _buildScreenForTitle(globalData, titleName),
             ),
           );
-          // Returning to this page, so its drawer entry is the active one again.
           globalData.updateWidget(previousScreenName);
         },
         style: OutlinedButton.styleFrom(

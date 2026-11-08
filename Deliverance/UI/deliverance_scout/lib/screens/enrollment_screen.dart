@@ -43,7 +43,6 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
     try {
       final deviceInfo = await DeviceInfoCollector().collect();
       final secret = await enrollmentProvider.claim(token, deviceInfo);
-      // Switches the app to the "waiting for approval" screen.
       await authProvider.onEnrolled(secret);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -54,7 +53,6 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // E.g. why the scout was sent back here (enrollment cancelled).
     final message = _error ?? context.watch<ScoutAuthProvider>().message;
     return ScoutPage(
       message: message,

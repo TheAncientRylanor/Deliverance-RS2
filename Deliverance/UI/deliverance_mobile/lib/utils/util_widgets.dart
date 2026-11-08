@@ -1,14 +1,7 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 
-dynamic dateEncode(dynamic item) {
-  if (item is DateTime) {
-    return item.toIso8601String();
-  }
-  return item;
-}
 
 Widget globalLoadingSpinner({double size = 36, Color? color}) {
   return Center(
@@ -157,14 +150,6 @@ void alertBoxMoveBack(
   );
 }
 
-Image imageFromBase64String(String base64Image) {
-  return Image.memory(
-    base64Decode(base64Image),
-    height: 400,
-    width: 400,
-    fit: BoxFit.cover,
-  );
-}
 
 const String mField = "This filed is mandatory";
 

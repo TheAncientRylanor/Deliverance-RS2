@@ -1,6 +1,7 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class ChatBotMessage : IUserOwnedEntity
 {
@@ -17,7 +18,6 @@ public class ChatBotMessage : IUserOwnedEntity
 
     public DateTime? CreatedAt { get; set; }
 
-    // Navigation
     [ForeignKey("UserUUID")]
     public User? User { get; set; }
 

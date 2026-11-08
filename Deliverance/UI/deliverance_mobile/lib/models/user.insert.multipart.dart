@@ -36,24 +36,4 @@ class UserInsertRequest {
     }
     return request;
   }
-  /*
-  Map<String, String> _toFormFields() {
-    final fields = <String, String>{};
-    fields['firstName'] = firstName;
-    fields['lastName'] = lastName;
-    fields['email'] = email;
-    fields['username'] = username;
-    return fields;
-  }
-
-  Future<List<http.MultipartFile>> _toMultipartFiles() async {
-    final files = <http.MultipartFile>[];
-    if (profileImage != null) {
-      files.add(
-        await http.MultipartFile.fromPath('profileImage', profileImage!.path),
-      );
-    }
-    return files;
-  }
-  */
 }

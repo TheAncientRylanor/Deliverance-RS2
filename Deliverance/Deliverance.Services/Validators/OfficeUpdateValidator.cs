@@ -7,10 +7,7 @@ namespace Deliverance.Services.Validators
     {
         public OfficeUpdateValidator()
         {
-            RuleFor(x=>x.Name)
-            .NotEmpty().WithMessage("Office name is required")
-            .MinimumLength(3).WithMessage("Office name must be at least 3 characters long")
-            .MaximumLength(20).WithMessage("Office name cannot be longer more than 20 characters");
+            RuleFor(x => x.Name).OfficeName();
 
             RuleForEach(x => x.Devices)
                 .SetValidator(new DeviceUpdateValidator());
@@ -31,12 +28,11 @@ namespace Deliverance.Services.Validators
                 .WithMessage("Device MAC addresses must be unique within an office");
 
             RuleFor(x => x.Devices)
-                // New devices are sent with Id 0, so only existing ids must be unique.
                 .Must(devices => devices == null || devices
                     .Where(d => d.Id != 0)
                     .GroupBy(d => d.Id)
                     .All(g => g.Count() == 1))
-                .WithMessage("Duplicate device ids are not allowed within an office");
+                .WithMessage("The same device appears twice in this office; reload the office and try again");
         }
 
         private static bool HaveUniqueValues(IEnumerable<string?> values)

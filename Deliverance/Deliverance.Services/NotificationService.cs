@@ -23,7 +23,6 @@ namespace Deliverance.Services
             _logger = logger;
         }
 
-        // Always the caller's own rows, for admins too.
         protected override IQueryable<Notification> ApplyFilters(IQueryable<Notification> query,
             NotificationSearchObject? search, Guid userId = default, bool isAdmin = false)
         {
@@ -42,7 +41,6 @@ namespace Deliverance.Services
         {
             search ??= new NotificationSearchObject();
 
-            // Without a sort the base orders by id, which puts the oldest first.
             if (string.IsNullOrWhiteSpace(search.SortBy))
             {
                 search.SortBy = nameof(Notification.CreatedAt);
@@ -52,7 +50,6 @@ namespace Deliverance.Services
             return base.GetAllAsync(search, userId, isAdmin);
         }
 
-        // The base lets admins open any row, but notifications are personal.
         public override Task<NotificationResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
             => base.GetByIdAsync(id, userId, isAdmin: false);
 
@@ -62,7 +59,7 @@ namespace Deliverance.Services
         public async Task<NotificationResponse> MarkAsReadAsync(int id, Guid userId)
         {
             var entity = await _dbContext.Notifications.FirstOrDefaultAsync(x => x.Id == id && x.UserUUID == userId)
-                ?? throw new NotFoundException("Notification not found.");
+                ?? throw new NotFoundException($"Notification with id {id} was not found.");
 
             entity.IsRead = true;
             await _dbContext.SaveChangesAsync();
@@ -84,7 +81,6 @@ namespace Deliverance.Services
             => AddAsync(_dbContext.Users.Where(x => x.RoleId == RoleEnum.Admin && x.UUID != exceptUserId),
                 type, title, text, reportId, relatedUserUUID);
 
-        // Only adds to the shared DbContext; the caller's SaveChanges stores these with its own change.
         private async Task<IReadOnlyList<Notification>> AddAsync(IQueryable<User> recipients, NotificationTypeEnum type,
             string title, string text, int? reportId, Guid? relatedUserUUID = null)
         {

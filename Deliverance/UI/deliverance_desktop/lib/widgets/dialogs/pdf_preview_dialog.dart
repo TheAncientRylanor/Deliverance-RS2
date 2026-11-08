@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
-/// Shows a PDF with a print button and a save button.
 Future<void> showPdfPreviewDialog(
   BuildContext context, {
   required String title,
@@ -44,7 +43,6 @@ Future<void> showPdfPreviewDialog(
               ),
               Expanded(
                 child: PdfPreview(
-                  // The server already laid the pages out, so the page format is ignored.
                   build: (_) async => bytes,
                   pdfFileName: fileName,
                   allowSharing: false,

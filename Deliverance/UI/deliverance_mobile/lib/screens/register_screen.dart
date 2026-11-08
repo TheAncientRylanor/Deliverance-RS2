@@ -4,6 +4,8 @@ import 'package:deliverance_mobile/models/user.insert.multipart.dart';
 import 'package:deliverance_mobile/providers/user_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
 import 'package:deliverance_mobile/utils/api_constants.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
+import 'package:deliverance_mobile/utils/server_field_errors.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
@@ -24,6 +26,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ServerFieldErrors _serverErrors = ServerFieldErrors();
   final GlobalKey<FormFieldState> _usernameFieldKey =
       GlobalKey<FormFieldState>();
   UserProvider userProvider = UserProvider();
@@ -33,8 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _username = TextEditingController();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
-  // ignore: non_constant_identifier_names
-  final TextEditingController _re_password = TextEditingController();
+  final TextEditingController _confirmPassword = TextEditingController();
   late FocusNode _userNameFocusNode;
   File? _selectedImage;
   bool _isSaving = false;
@@ -57,14 +59,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _username.dispose();
     _email.dispose();
     _password.dispose();
-    _re_password.dispose();
+    _confirmPassword.dispose();
     super.dispose();
   }
 
   void _handleFocusChange() {
     if (!_userNameFocusNode.hasFocus) {
       checkUsernameUsage().then((_) {
-        // Validate only the username field so other empty fields don't light up.
         if (mounted) _usernameFieldKey.currentState?.validate();
       });
     }
@@ -130,59 +131,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     focusNode: _userNameFocusNode,
                     formFieldKey: _usernameFieldKey,
                     labelText: "Username",
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your Username';
-                      }
-                      if (_isUsernameUsed) {
-                        return "Username is used. Try different one";
-                      }
-                      return null;
-                    },
+                    validator: _serverErrors.wrap(
+                      'Username',
+                      allOf([
+                        username(),
+                        (_) => _isUsernameUsed
+                            ? 'This username is already taken. Choose a different username.'
+                            : null,
+                      ]),
+                    ),
                   ),
                   CustomTextField(
                     controller: _firstName,
                     labelText: "First name",
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your first name';
-                      }
-                      return null;
-                    },
+                    validator: _serverErrors.wrap(
+                      'FirstName',
+                      personName('First name'),
+                    ),
                   ),
                   CustomTextField(
                     controller: _lastName,
                     labelText: "Last name",
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your last name';
-                      }
-                      return null;
-                    },
+                    validator: _serverErrors.wrap(
+                      'LastName',
+                      personName('Last name'),
+                    ),
                   ),
                   CustomTextField(
                     controller: _email,
                     labelText: "Email",
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
+                    keyboardType: TextInputType.emailAddress,
+                    validator: _serverErrors.wrap('Email', email()),
                   ),
                   CustomTextField(
                     controller: _password,
                     labelText: "Password",
                     obscureText: _obscurePassword,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
+                    validator: _serverErrors.wrap(
+                      'Password',
+                      password('Password'),
+                    ),
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(() {
@@ -198,15 +186,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   CustomTextField(
-                    controller: _re_password,
-                    labelText: "Re-Password",
+                    controller: _confirmPassword,
+                    labelText: "Repeat password",
                     obscureText: _obscurePassword,
-                    validator: (value) {
-                      if (value != _password.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
+                    validator: allOf([
+                      requiredField('Repeated password'),
+                      sameAs(
+                        () => _password.text,
+                        'Passwords do not match. Enter the same password twice.',
+                      ),
+                    ]),
                   ),
                   SizedBox(height: 20),
                   Row(
@@ -253,6 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _saveProfile() async {
     await checkUsernameUsage();
     if (!mounted) return;
+    _serverErrors.clear();
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
       try {
@@ -266,12 +256,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         await userProvider.insertUser(request);
         if (!mounted) return;
-        showCustomToast(context, "Profile saved successfully");
+        showCustomToast(
+          context,
+          "Account ${request.username} created. You can now log in.",
+        );
         await Future.delayed(const Duration(milliseconds: 200));
         if (mounted) Navigator.pop(context);
       } on ApiClientException catch (e) {
         if (!mounted) return;
-        alertBox(context, "Register error", e.message, mode: AlertBoxMode.ok);
+        if (!_serverErrors.show(e, _formKey)) {
+          alertBox(context, "Register error", e.message, mode: AlertBoxMode.ok);
+        }
       } finally {
         if (mounted) setState(() => _isSaving = false);
       }

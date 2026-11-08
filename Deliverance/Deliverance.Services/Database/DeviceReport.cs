@@ -1,6 +1,7 @@
-using Deliverance.Model.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class DeviceReport
 {
@@ -8,7 +9,7 @@ public class DeviceReport
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public string? Occurance { get; set; }
+    public string? Occurrence { get; set; }
 
     [MaxLength(255)]
     public string? Detail { get; set; }
@@ -18,7 +19,6 @@ public class DeviceReport
     [Required]
     public int DeviceId { get; set; }
 
-    // Navigation
     [ForeignKey("OfficeReportId")]
     public OfficeReport? OfficeReport { get; set; }
 

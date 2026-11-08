@@ -9,11 +9,9 @@ class DeviceProvider extends BaseProvider<Devices> {
     return Devices.fromJson(data);
   }
 
-  /// Takes the device's id; the API looks up the scout installed on it.
   Future<void> setDisableScout(int deviceId) =>
       _setScoutState(deviceId, "Disable");
 
-  /// Takes the device's id; the API looks up the scout installed on it.
   Future<void> setEnabledScout(int deviceId) =>
       _setScoutState(deviceId, "Enable");
 

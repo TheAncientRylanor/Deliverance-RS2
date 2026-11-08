@@ -1,11 +1,10 @@
 using Deliverance.Model.Enums;
-using Deliverance.Services.Database;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-public class User 
+namespace Deliverance.Services.Database;
+
+public class User
 {
     [Key]
     public Guid UUID { get; set; }
@@ -21,19 +20,18 @@ public class User
     public RoleEnum? RoleId { get; set; }
 
     [Required]
-    public string Email { get; set; } =  string.Empty;
+    public string Email { get; set; } = string.Empty;
 
     [Required]
     public string PasswordHash { get; set; } = string.Empty;
 
     [Required]
-    public string PasswordSalt { get; set; }= string.Empty;
+    public string PasswordSalt { get; set; } = string.Empty;
     [Required]
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public string? ImagePath {get;set;} = string.Empty;
+    public string? ImagePath { get; set; } = string.Empty;
 
-    // Navigation Properties
     [ForeignKey("RoleId")]
     public Role? Role { get; set; }
     public ICollection<RefreshTokens>? RefreshToken { get; set; }

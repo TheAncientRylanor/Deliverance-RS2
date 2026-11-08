@@ -4,12 +4,6 @@ using System.Text;
 
 namespace Deliverance.Services.Configuration
 {
-    /// <summary>
-    /// The one place that reads configuration. Every value comes from the .env file in the
-    /// repository root (loaded at startup in Program.cs), is read once here, and is checked
-    /// right away, so a missing or broken value stops the API at startup with its name.
-    /// Services take the settings object they need in their constructor.
-    /// </summary>
     public sealed class DeliveranceSettings
     {
         public required string ApiUrl { get; init; }
@@ -27,7 +21,7 @@ namespace Deliverance.Services.Configuration
             {
                 Issuer = configuration.GetRequired("JWT_ISSUER"),
                 Audience = configuration.GetRequired("JWT_AUDIENCE"),
-                SigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetRequired("JWT_SECRET_KEY"))),
+                SigningKey = new SymmetricSecurityKey(configuration.GetSigningKeyBytes()),
                 AccessTokenLifetime = TimeSpan.FromMinutes(configuration.GetRequiredInt("JWT_DURATION_MINUTES")),
                 RefreshTokenLifetime = TimeSpan.FromDays(configuration.GetRequiredInt("REFRESH_TOKEN_DURATION_DAYS")),
                 ScoutTokenLifetime = TimeSpan.FromMinutes(configuration.GetRequiredInt("SCOUT_TOKEN_DURATION_MINUTES")),
@@ -53,14 +47,11 @@ namespace Deliverance.Services.Configuration
     public sealed class AuthSettings
     {
         public required string Issuer { get; init; }
-        /// <summary>Audience of user tokens. Scout tokens use <see cref="ScoutAuthDefaults.Audience"/>.</summary>
         public required string Audience { get; init; }
-        /// <summary>Signs and validates both user and scout tokens.</summary>
         public required SymmetricSecurityKey SigningKey { get; init; }
         public required TimeSpan AccessTokenLifetime { get; init; }
         public required TimeSpan RefreshTokenLifetime { get; init; }
         public required TimeSpan ScoutTokenLifetime { get; init; }
-        /// <summary>How long an admin's scout enrollment token can be claimed.</summary>
         public required TimeSpan ScoutEnrollmentTokenLifetime { get; init; }
     }
 
@@ -76,12 +67,21 @@ namespace Deliverance.Services.Configuration
     {
         public required Uri BaseUrl { get; init; }
         public required string Model { get; init; }
-        /// <summary>A local model on the CPU can take well over HttpClient's default 100 seconds.</summary>
         public required TimeSpan Timeout { get; init; }
     }
 
     internal static class ConfigurationExtensions
     {
+        public static byte[] GetSigningKeyBytes(this IConfiguration configuration)
+        {
+            var bytes = Encoding.UTF8.GetBytes(configuration.GetRequired("JWT_SECRET_KEY"));
+            if (bytes.Length < 32)
+            {
+                throw new InvalidOperationException("JWT_SECRET_KEY must be at least 32 characters long. Use a long random value in the .env file.");
+            }
+            return bytes;
+        }
+
         public static string GetRequired(this IConfiguration configuration, string key)
         {
             var value = configuration[key];

@@ -1,18 +1,12 @@
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 namespace Deliverance.Services.Messaging
 {
     public static class RabbitMqConnection
     {
-        /// <summary>
-        /// Opens the app's single RabbitMQ connection, retrying on <see cref="RetryBackoff"/>.
-        /// Every attempt, and anything that later happens to the connection, is logged.
-        /// </summary>
         public static async Task<IConnection> ConnectAsync(ConnectionFactory factory, ILogger logger)
         {
-            // Reopens the connection, its channels and its consumers after a network failure.
             factory.AutomaticRecoveryEnabled = true;
             factory.TopologyRecoveryEnabled = true;
 

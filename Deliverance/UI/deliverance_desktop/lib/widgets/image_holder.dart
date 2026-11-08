@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 
 Widget buildProfileImage(
@@ -22,9 +23,6 @@ Widget buildProfileImage(
           ? 200.0
           : finiteSizes.reduce(math.min);
 
-      // Decode images close to their on-screen size instead of at full
-      // resolution. The box is 2x the display size so BoxFit.cover still has
-      // enough pixels on the short side for landscape/portrait photos.
       final displaySize = finiteSizes.isEmpty
           ? 200.0
           : finiteSizes.reduce(math.max);
@@ -47,6 +45,9 @@ Widget buildProfileImage(
           ),
         );
       }
+      final authHeaders = {
+        'Authorization': 'Bearer ${AuthProvider.accesstoken ?? ''}',
+      };
       if (imagePath == null || imagePath.isEmpty) {
         return Center(
           child: Icon(Icons.person, size: iconSize, color: Colors.grey),
@@ -55,7 +56,9 @@ Widget buildProfileImage(
 
       return Center(
         child: Image(
-          image: resized(NetworkImage('$baseUrl$imagePath')),
+          image: resized(
+            NetworkImage('$baseUrl$imagePath', headers: authHeaders),
+          ),
           fit: BoxFit.cover,
           width: resolvedWidth,
           height: resolvedHeight,

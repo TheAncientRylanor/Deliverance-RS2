@@ -5,53 +5,45 @@ using Deliverance.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Deliverance.WebAPI.Controllers
+namespace Deliverance.WebAPI.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("[controller]")]
+public class UserController : ControllerBase
 {
-    public class UserController : BaseCRUDController<UserResponse, UserSearchObject,
-        UserInsertRequest, UserUpdateRequest, IUserService>
+    private readonly IUserService _service;
+
+    public UserController(IUserService service)
     {
-        public UserController(IUserService userService) : base(userService)
-        {
+        _service = service;
+    }
 
-        }
+    [HttpGet]
+    public async Task<PageResult<UserResponse>> GetAll([FromQuery] UserSearchObject? search)
+    {
+        return await _service.GetAllAsync(search, User.GetUserId(), User.IsAdmin());
+    }
 
-        // Users are keyed by UUID, so the generic int-id endpoints can't work.
-        // Use UUID/{id} and UpdateUser/{id} instead.
-        [NonAction]
-        public override Task<ActionResult<UserResponse>> GetById(int id) => throw new NotSupportedException();
+    [HttpGet("UUID/{id:guid}")]
+    public async Task<ActionResult<UserResponse>> GetByUUID(Guid id)
+    {
+        return await _service.GetByUUID(id, User.GetUserId(), User.IsAdmin());
+    }
 
-        [NonAction]
-        public override Task<ActionResult<UserResponse>> Update(int id, UserUpdateRequest request) => throw new NotSupportedException();
+    [HttpPut("UpdateUser/{id:guid}")]
+    [RequestSizeLimit(ImageService.MaxImageBytes + 1024 * 1024)]
+    public async Task<ActionResult<UserResponse>> UpdateUser(Guid id, [FromForm] UserUpdateRequest request)
+    {
+        return await _service.UpdateUserAsync(id, request, User.GetUserId(), User.IsAdmin());
+    }
 
-        [NonAction]
-        public override Task<IActionResult> Delete(int id) => throw new NotSupportedException();
-        // :guid makes a malformed id a 404 instead of a FormatException (500).
-        // A missing user throws NotFoundException, which the middleware turns into 404.
-        [HttpGet("UUID/{id:guid}")]
-        public async Task<ActionResult<UserResponse>> GetByUUID(Guid id)
-        {
-            var result = await _service.GetByUUID(id, User.GetUserId(), User.IsAdmin());
-            return Ok(result);
-        }
-        [HttpPut("UpdateUser/{id:guid}")]
-        public async Task<ActionResult<UserResponse>> UpdateUser(Guid id, [FromForm] UserUpdateRequest request)
-        {
-            var result = await _service.UpdateUserAsync(id, request, User.GetUserId(), User.IsAdmin());
-            return Ok(result);
-        }
-        [AllowAnonymous]
-        [HttpPost("InsertUser")]
-        public async Task<ActionResult<UserResponse>> InsertUser([FromForm] UserInsertRequest request)
-        {
-            var result = await _service.InsertAsync(request);
-            return Ok(result);
-        }
-        [AllowAnonymous]
-        [HttpPost("CheckUsername")]
-        public async Task<bool> CheckUsername(string request)
-        {
-            var result = await _service.IsUsernameUsed(request);
-            return result;
-        }
+    [HttpGet("{id:guid}/ProfileImage")]
+    public async Task<IActionResult> GetProfileImage(Guid id)
+    {
+        var (filePath, contentType) = await _service.GetProfileImageAsync(id, User.GetUserId(), User.IsAdmin());
+        Response.Headers.CacheControl = "private, max-age=3600";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return PhysicalFile(filePath, contentType);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Deliverance.Model.Request;
+using Deliverance.Model.Responses;
 using Deliverance.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,8 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Deliverance.WebAPI.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
-    public class AccessController : Controller
+    public class AccessController : ControllerBase
     {
         private readonly IAccessManager _accessManager;
         private readonly IUserService _userService;
@@ -18,49 +20,61 @@ namespace Deliverance.WebAPI.Controllers
             _userService = userService;
         }
 
+        [AllowAnonymous]
         [HttpPost("Login")]
-        public async Task<ActionResult> Login([FromBody] UserLoginRequest request)
+        public async Task<ActionResult<UserLoginResponse>> Login([FromBody] UserLoginRequest request)
         {
-            var result = await _accessManager.LoginAsync(request);
-            return Ok(result);
+            return await _accessManager.LoginAsync(request);
         }
 
+        [AllowAnonymous]
         [HttpPost("LoginWithRefreshToken")]
-        public async Task<ActionResult> LoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
+        public async Task<ActionResult<UserLoginResponse>> LoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
         {
-            var result = await _accessManager.LoginWithRefreshTokenAsync(request);
-            return Ok(result);
+            return await _accessManager.LoginWithRefreshTokenAsync(request);
         }
 
+        [AllowAnonymous]
         [HttpPost("AdminLogin")]
-        public async Task<ActionResult> AdminLogin([FromBody] UserLoginRequest request)
+        public async Task<ActionResult<UserLoginResponse>> AdminLogin([FromBody] UserLoginRequest request)
         {
-            var result = await _accessManager.AdminLoginAsync(request);
-            return Ok(result);
+            return await _accessManager.AdminLoginAsync(request);
         }
 
+        [AllowAnonymous]
         [HttpPost("AdminLoginWithRefreshToken")]
-        public async Task<ActionResult> AdminLoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
+        public async Task<ActionResult<UserLoginResponse>> AdminLoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
         {
-            var result = await _accessManager.AdminLoginWithRefreshTokenAsync(request);
-            return Ok(result);
+            return await _accessManager.AdminLoginWithRefreshTokenAsync(request);
         }
 
-        [Authorize]
+        [AllowAnonymous]
+        [HttpPost("Register")]
+        [RequestSizeLimit(ImageService.MaxImageBytes + 1024 * 1024)]
+        public async Task<ActionResult<UserResponse>> Register([FromForm] UserInsertRequest request)
+        {
+            return await _userService.InsertAsync(request);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("Register/CheckUsername")]
+        public async Task<bool> CheckUsername([FromQuery] string username)
+        {
+            return await _userService.IsUsernameUsed(username ?? string.Empty);
+        }
+
         [HttpPost("ChangePassword")]
         public async Task<IActionResult> ChangePassword([FromBody] UserPasswordChangeRequest request)
         {
-            var userId = User.GetUserId();
-            await _accessManager.ChangePasswordAsync(request, userId);
+            await _accessManager.ChangePasswordAsync(request, User.GetUserId());
             return Ok();
         }
 
-        [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] UserInsertRequest request)
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout()
         {
-            await _userService.InsertAsync(request);
-            return Ok("You have registered successfully");
+            await _accessManager.LogoutAsync(User.GetUserId(), User.GetSessionId());
+            return NoContent();
         }
     }
 }
-

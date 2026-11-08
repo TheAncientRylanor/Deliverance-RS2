@@ -5,8 +5,6 @@ import 'package:deliverance_scout/widgets/scout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Shown while ScoutAuthProvider polls the server: the token is claimed, but
-/// the admin hasn't saved the device yet.
 class AwaitingApprovalScreen extends StatelessWidget {
   const AwaitingApprovalScreen({super.key});
 
@@ -14,7 +12,6 @@ class AwaitingApprovalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<ScoutAuthProvider>();
     return ScoutPage(
-      // Connection problems while polling.
       message: auth.message,
       isError: true,
       children: [

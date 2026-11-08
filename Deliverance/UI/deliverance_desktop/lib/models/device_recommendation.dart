@@ -1,6 +1,5 @@
 import 'package:deliverance_desktop/utils/date_json.dart';
 
-/// A device the recommender expects to need a fix soon.
 class DeviceRecommendation {
   final int deviceId;
   final String deviceName;
@@ -28,12 +27,10 @@ class DeviceRecommendation {
         officeName: json['officeName'] as String,
         needsFixProbability: (json['needsFixProbability'] as num).toDouble(),
         likelyIssue: json['likelyIssue'] as int,
-        // A float on the API.
         reportsLast30Days: (json['reportsLast30Days'] as num).toInt(),
       );
 }
 
-/// The logs and reports behind a [DeviceRecommendation].
 class DeviceEvidence {
   final DeviceRecommendation recommendation;
   final List<DeviceEvidenceLog> logs;

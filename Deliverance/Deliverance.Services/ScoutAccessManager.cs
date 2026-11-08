@@ -38,13 +38,10 @@ namespace Deliverance.Services
             {
                 return new ScoutTokenResponse { Status = ScoutTokenStatusEnum.PendingApproval };
             }
-            // ScoutId is cleared when the device (and with it the Scout) is deleted,
-            // which revokes the secret.
             if (enrollment?.Status != ScoutEnrollmentStatusEnum.Completed || enrollment.ScoutId is not int scoutId)
             {
                 throw new UnauthorizedAccessException("Scout secret is invalid or was revoked.");
             }
-            // The secret stays valid, so the scout can keep polling until it is enabled again.
             if (enrollment.IsDisabled)
             {
                 return new ScoutTokenResponse { Status = ScoutTokenStatusEnum.Disabled };
@@ -61,8 +58,6 @@ namespace Deliverance.Services
 
         private string GenerateToken(int scoutId, DateTime expiresAt)
         {
-            // Same issuer and signing key as user tokens, but the scout audience,
-            // which only the Scout scheme in Program.cs accepts.
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -73,7 +68,7 @@ namespace Deliverance.Services
                 Expires = expiresAt,
                 Issuer = _authSettings.Issuer,
                 Audience = ScoutAuthDefaults.Audience,
-                SigningCredentials = new SigningCredentials(_authSettings.SigningKey, SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(_authSettings.SigningKey, SecurityAlgorithms.HmacSha256)
             };
             var tokenHandler = new JwtSecurityTokenHandler();
             return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));

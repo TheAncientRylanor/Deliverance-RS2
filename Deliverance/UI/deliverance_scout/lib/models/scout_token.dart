@@ -10,8 +10,6 @@ enum ScoutTokenStatus {
       ScoutTokenStatus.values.firstWhere((e) => e.value == value);
 }
 
-/// Answer to exchanging the scout secret: still waiting for the admin, disabled
-/// by an admin, or a short-lived access token.
 class ScoutToken {
   final ScoutTokenStatus status;
   final String? accessToken;

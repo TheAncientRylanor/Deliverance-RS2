@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 class ApiClientException implements Exception {
-  ApiClientException(this.message, {this.statusCode});
+  ApiClientException(this.message, {this.statusCode, this.fieldErrors = const {}});
 
   final String message;
   final int? statusCode;
+
+  final Map<String, String> fieldErrors;
 
   bool get isNotFound => statusCode == 404;
 
@@ -15,6 +17,21 @@ class ApiClientException implements Exception {
 class ApiErrorParser {
   ApiErrorParser._();
 
+  static Map<String, String> fieldErrorsFromBody(String body) {
+    try {
+      final decoded = jsonDecode(body.trim());
+      if (decoded is! Map || decoded['errors'] is! Map) return const {};
+      final result = <String, String>{};
+      (decoded['errors'] as Map).forEach((key, value) {
+        final messages = _messagesFromValue(value);
+        if (key is String && messages.isNotEmpty) result[key] = messages.first;
+      });
+      return result;
+    } catch (_) {
+      return const {};
+    }
+  }
+
   static String? messageFromBody(String body) {
     final trimmed = body.trim();
     if (trimmed.isEmpty) return null;
@@ -24,7 +41,6 @@ class ApiErrorParser {
       if (decoded is! Map) return null;
       final map = Map<String, dynamic>.from(decoded);
 
-      // Handle "message" as String, List<String>, or List of error objects.
       final root = map['message'];
       final rootMessages = _messagesFromValue(root);
       if (rootMessages.isNotEmpty) {
@@ -67,7 +83,6 @@ class ApiErrorParser {
           final s = e.trim();
           if (s.isNotEmpty) out.add(s);
         } else if (e is Map) {
-          // e.g. {"field": "firstName", "message": "must not be empty"}
           final m = e['message'] ?? e['msg'] ?? e['error'];
           if (m is String && m.trim().isNotEmpty) {
             out.add(m.trim());

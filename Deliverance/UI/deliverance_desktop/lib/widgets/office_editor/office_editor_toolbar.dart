@@ -4,11 +4,8 @@ import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-/// Collapsible bottom bar of the office editor with the Save and Cancel
-/// buttons.
 class OfficeEditorToolbar extends StatefulWidget {
   final VoidCallback onSave;
-  // Null disables the button (e.g. while saving).
   final VoidCallback? onCancel;
   final bool isSaving;
 
@@ -26,8 +23,6 @@ class OfficeEditorToolbar extends StatefulWidget {
 class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
   static const double _openHeight = 200;
   static const double _collapsedHeight = 80;
-  // Mode buttons + Save/Cancel + collapse button with no gaps, plus a little
-  // breathing room. Below this the bar scrolls.
   static const double _minOpenContentWidth = 420;
   static const Duration _animationDuration = Duration(milliseconds: 250);
 
@@ -46,8 +41,6 @@ class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
           top: BorderSide(color: theme.colorScheme.primary, width: 2),
         ),
       ),
-      // The gaps shrink with the window; once only the buttons themselves are
-      // left, the bar scrolls horizontally instead of overflowing.
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -106,8 +99,6 @@ class _OfficeEditorToolbarState extends State<OfficeEditorToolbar> {
   }
 }
 
-/// Space of up to [width] that shrinks, proportionally to the other gaps,
-/// when the toolbar is too narrow.
 class _Gap extends StatelessWidget {
   final double width;
 

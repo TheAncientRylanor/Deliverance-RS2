@@ -4,6 +4,8 @@ import 'package:deliverance_mobile/providers/auth_provider.dart';
 import 'package:deliverance_mobile/providers/user_provider.dart';
 import 'package:deliverance_mobile/utils/api_client_exception.dart';
 import 'package:deliverance_mobile/utils/api_constants.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
+import 'package:deliverance_mobile/utils/server_field_errors.dart';
 import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
@@ -23,6 +25,7 @@ class MyProfileScreen extends StatefulWidget {
 
 class _MyProfileScreen extends State<MyProfileScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ServerFieldErrors _serverErrors = ServerFieldErrors();
   final GlobalKey<FormFieldState> _usernameFieldKey =
       GlobalKey<FormFieldState>();
   late AuthProvider _authProvider;
@@ -55,7 +58,6 @@ class _MyProfileScreen extends State<MyProfileScreen> {
   void _handleUsernameFocusChange() {
     if (!_usernameFocusNode.hasFocus && !isReadOnly) {
       checkUsernameUsage().then((_) {
-        // Validate only the username field so other fields aren't affected.
         if (mounted) _usernameFieldKey.currentState?.validate();
       });
     }
@@ -63,7 +65,6 @@ class _MyProfileScreen extends State<MyProfileScreen> {
 
   Future<void> checkUsernameUsage() async {
     final username = _usernameController.text.trim();
-    // The user's current username is "used" by themselves, so it's always allowed.
     if (username.isEmpty || username == _userProvider.data?.username) {
       if (_isUsernameUsed) setState(() => _isUsernameUsed = false);
       return;
@@ -149,6 +150,7 @@ class _MyProfileScreen extends State<MyProfileScreen> {
   Future<void> saveValues() async {
     await checkUsernameUsage();
     if (!mounted) return;
+    _serverErrors.clear();
     if (_formKey.currentState!.validate()) {
       setState(() => isLoading = true);
       try {
@@ -165,10 +167,16 @@ class _MyProfileScreen extends State<MyProfileScreen> {
           isReadOnly = true;
           _selectedImage = null;
         });
-        showCustomToast(context, "Profile updated successfully");
+        showCustomToast(
+          context,
+          "Your profile (${newRequest.username}) was saved.",
+          type: ToastType.success,
+        );
       } on ApiClientException catch (e) {
         if (!mounted) return;
-        alertBox(context, "Update error", e.message);
+        if (!_serverErrors.show(e, _formKey)) {
+          alertBox(context, "Update error", e.message);
+        }
       } finally {
         if (mounted) setState(() => isLoading = false);
       }
@@ -273,23 +281,13 @@ class _MyProfileScreen extends State<MyProfileScreen> {
                               controller: _firstNameController,
                               labelText: "First name",
                               readOnly: isReadOnly,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your first name';
-                                }
-                                return null;
-                              },
+                              validator: _serverErrors.wrap('FirstName', personName('First name')),
                             ),
                             CustomTextField(
                               controller: _lastNameController,
                               labelText: "Last name",
                               readOnly: isReadOnly,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your last name';
-                                }
-                                return null;
-                              },
+                              validator: _serverErrors.wrap('LastName', personName('Last name')),
                             ),
                             CustomTextField(
                               controller: _usernameController,
@@ -297,29 +295,13 @@ class _MyProfileScreen extends State<MyProfileScreen> {
                               formFieldKey: _usernameFieldKey,
                               labelText: "Username",
                               readOnly: isReadOnly,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your username';
-                                }
-                                if (_isUsernameUsed) {
-                                  return "Username is used. Try different one";
-                                }
-                                return null;
-                              },
+                              validator: _serverErrors.wrap('Username', allOf([username(), (_) => _isUsernameUsed ? 'This username is already taken. Choose a different username.' : null])),
                             ),
                             CustomTextField(
                               controller: _emailController,
                               labelText: "Email",
                               readOnly: isReadOnly,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Please enter a valid email address';
-                                }
-                                return null;
-                              },
+                              validator: _serverErrors.wrap('Email', email()),
                             ),
                             !isReadOnly
                                 ? Row(

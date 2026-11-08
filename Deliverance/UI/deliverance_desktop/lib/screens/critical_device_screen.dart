@@ -57,11 +57,11 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
       if (!mounted) return;
       alertBoxMoveBack(context, "Error", e.message, onRetry: _loadEvidence);
     } finally {
-      // ignore: control_flow_in_finally
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -91,7 +91,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
       ),
     );
 
-    // The report may have been cleared, which changes its status and the score.
     if (mounted) await _loadEvidence();
   }
 
@@ -112,7 +111,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
     );
   }
 
-  /// A fixed height box whose content scrolls, or [emptyMessage] without items.
   Widget _buildScrollContainer(
     ThemeData theme, {
     required ScrollController controller,
@@ -173,7 +171,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
         "Status: ${report.status!.replaceAll('ReportState', '')}",
     ];
 
-    // The box's background would otherwise hide the hover and click highlight.
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
@@ -234,7 +231,6 @@ class _CriticalDeviceScreenState extends State<CriticalDeviceScreen> {
 
     return SingleChildScrollView(
       child: Padding(
-        // The extra space at the bottom lets the page scroll clear of the chat button.
         padding: const EdgeInsets.fromLTRB(40, 40, 40, 110),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -5,7 +5,7 @@ import 'package:deliverance_scout/screens/awaiting_approval_screen.dart';
 import 'package:deliverance_scout/screens/enrollment_screen.dart';
 import 'package:deliverance_scout/screens/scout_disabled_screen.dart';
 import 'package:deliverance_scout/screens/scout_home_screen.dart';
-import 'package:deliverance_scout/themes/fontTheme.dart';
+import 'package:deliverance_scout/themes/font_theme.dart';
 import 'package:deliverance_scout/utils/util_widgets.dart';
 import 'package:deliverance_scout/widgets/scout_page.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +54,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Picks the screen for the scout's credential state.
 class ScoutGate extends StatelessWidget {
   const ScoutGate({super.key});
 

@@ -10,7 +10,7 @@ class FinalStep extends StatelessWidget {
   final TextEditingController locationController;
   final TextEditingController devicesController;
   final TextEditingController dateController;
-  final List<ReportOccurance> selectedOccurance;
+  final List<ReportOccurrence> selectedOccurrence;
   final TextEditingController titleController;
   final TextEditingController descriptionController;
   final double severity;
@@ -24,7 +24,7 @@ class FinalStep extends StatelessWidget {
     required this.locationController,
     required this.devicesController,
     required this.dateController,
-    required this.selectedOccurance,
+    required this.selectedOccurrence,
     required this.titleController,
     required this.descriptionController,
     required this.severity,
@@ -50,7 +50,7 @@ class FinalStep extends StatelessWidget {
               locationController: locationController,
               devicesController: devicesController,
               dateController: dateController,
-              selectedOccurance: selectedOccurance,
+              selectedOccurrence: selectedOccurrence,
               titleController: titleController,
               descriptionController: descriptionController,
               severity: severity,

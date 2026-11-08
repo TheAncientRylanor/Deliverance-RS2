@@ -66,7 +66,11 @@ class _ContactsScreen extends State<ContactsScreen> {
     try {
       await _contactProvider.remove(contact.id as int);
       if (!mounted) return;
-      showCustomToast(context, "Contact removed successfully");
+      showCustomToast(
+        context,
+        "Contact ${contact.firstName} ${contact.lastName} removed.",
+        type: ToastType.success,
+      );
       setState(() => isLoading = true);
       await _initValues();
     } on Exception catch (e) {
@@ -398,10 +402,10 @@ String _formatTimeString(String? time) {
   return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
 }
 
-class _ContactAvailabilty extends StatelessWidget {
+class _ContactAvailability extends StatelessWidget {
   final List<Availability> availability;
 
-  const _ContactAvailabilty({required this.availability});
+  const _ContactAvailability({required this.availability});
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +533,7 @@ void showContactDialog(BuildContext context, Contact contact) {
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: _ContactAvailabilty(availability: availability),
+                child: _ContactAvailability(availability: availability),
               ),
             ),
           ),

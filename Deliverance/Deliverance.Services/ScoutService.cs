@@ -1,3 +1,4 @@
+using Deliverance.Services.Messaging;
 using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
@@ -12,7 +13,6 @@ namespace Deliverance.Services
 {
     public class ScoutService : IScoutService
     {
-        // DeviceLog.Log's column length.
         private const int LogMaxLength = 1000;
 
         private readonly DeliveranceDbContext _dbContext;
@@ -48,8 +48,6 @@ namespace Deliverance.Services
                 })
                 .FirstOrDefaultAsync();
 
-            // The device was deleted after this token was issued: treat it as revoked (401),
-            // so the scout re-checks its secret and finds out it has to enroll again.
             return scout ?? throw new UnauthorizedAccessException("This scout no longer exists.");
         }
 
@@ -57,16 +55,15 @@ namespace Deliverance.Services
         {
             await _scoutCommandValidator.ValidateAndThrowAsync(result);
 
-            // Matching ScoutId too, so a scout can't report results for another scout's commands.
             var command = await _dbContext.ScoutCommands.Include(x => x.Scout)
                 .FirstOrDefaultAsync(x => x.Id == commandId && x.ScoutId == scoutId);
             if (command is null)
             {
-                throw new NotFoundException("Command does not exist");
+                throw new NotFoundException($"Command with id {commandId} was not found for this scout.");
             }
             if (command.Status != ScoutCommandStatusEnum.Pending && command.Status != ScoutCommandStatusEnum.Running)
             {
-                throw new BusinessException("Command is not running anymore");
+                throw new BusinessException("This command has already finished, so its result can't be changed.");
             }
 
             _mapper.Map(result, command);
@@ -85,7 +82,6 @@ namespace Deliverance.Services
         {
             await _scoutLogValidator.ValidateAndThrowAsync(request);
 
-            // The scout resends a batch when it gets no answer, even if that batch was saved.
             var keys = request.Logs.Select(x => x.EventKey).Distinct().ToList();
             var savedKeys = await _dbContext.DeviceLogs
                 .Where(x => x.ScoutId == scoutId && keys.Contains(x.EventKey!))
@@ -100,8 +96,6 @@ namespace Deliverance.Services
                 {
                     ScoutId = scoutId,
                     EventKey = x.EventKey,
-                    // A PC with a fast clock would otherwise log into the future,
-                    // where the recommender never finds it.
                     DateLogged = x.DateLogged.AsUtc() > now ? now : x.DateLogged.AsUtc(),
                     Log = FormatLog(x),
                 });
@@ -110,7 +104,6 @@ namespace Deliverance.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        // Windows translates messages but not sources or event ids, so those go first.
         private static string FormatLog(ScoutLogEntryRequest log)
         {
             var repeated = log.Count > 1 ? $"(x{log.Count}) " : string.Empty;

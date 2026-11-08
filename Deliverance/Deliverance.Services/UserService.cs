@@ -1,21 +1,15 @@
-﻿using Azure;
-using Deliverance.Model.Enums;
+﻿using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
+using Deliverance.Services.Validators;
 using FluentValidation;
 using FluentValidation.Results;
 using MapsterMapper;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Deliverance.Services
 {
@@ -23,7 +17,7 @@ namespace Deliverance.Services
         BaseCRUDService<User, UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>, IUserService
     {
 
-        private readonly IWebHostEnvironment _env;
+        private readonly string _uploadsRoot;
         private readonly ICryptoService _cryptoService;
         private readonly INotificationService _notificationService;
 
@@ -33,7 +27,7 @@ namespace Deliverance.Services
              INotificationService notificationService) : base(dbContext, mapster, insertValidator, updateValidator)
         {
             _cryptoService = cryptoService;
-            _env = env;
+            _uploadsRoot = Path.Combine(env.ContentRootPath, "Uploads");
             _notificationService = notificationService;
         }
         protected override IQueryable<User> ApplyFilters(IQueryable<User> query, UserSearchObject? search, Guid userId, bool isAdmin = false)
@@ -67,9 +61,6 @@ namespace Deliverance.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            // SQL Server compares with the column's case-insensitive collation, so
-            // "admin" also finds "Admin". Require the exact case here. Uniqueness
-            // stays case-insensitive, so the query can't miss an exact match.
             if (user == null || !string.Equals(user.Username, username, StringComparison.Ordinal))
             {
                 return null;
@@ -77,26 +68,11 @@ namespace Deliverance.Services
 
             return _mapper.Map<UserSensitiveResponse>(user);
         }
-        public async Task<UserSensitiveResponse> GetByEmailAsync(string email)
-        {
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Email == email);
-
-            UserSensitiveResponse? response = null;
-
-            if (user != null)
-            {
-                response = _mapper.Map<UserSensitiveResponse>(user);
-            }
-            else throw new NotFoundException($"User with the {email} does not exist");
-            return response;
-        }
         public async Task<bool> IsUsernameUsed(string username)
         {
             if (string.IsNullOrWhiteSpace(username.Trim()))
             {
-                throw new BusinessException("Username cannot be empty string");
+                throw new BusinessException("Enter a username to check.");
             }
             var exists = await _dbContext.Users.AnyAsync(x => x.Username == username);
             return exists;
@@ -104,28 +80,42 @@ namespace Deliverance.Services
         protected override User MapInsertRequestToEntity(UserInsertRequest request)
         {
             var entity = base.MapInsertRequestToEntity(request);
-            var salt = _cryptoService.GenerateSlat();
-            entity.PasswordSalt = salt;
-            entity.PasswordHash = _cryptoService.GenerateHash(request.Password, salt);
+            (entity.PasswordHash, entity.PasswordSalt) = _cryptoService.HashPassword(request.Password);
             entity.UUID = Guid.CreateVersion7();
             entity.RoleId = RoleEnum.User;
             return entity;
         }
         public async Task<UserResponse> GetByUUID(Guid id)
         {
-            var entity = this._dbContext.Set<User>().FirstOrDefault(x => x.UUID == id);
+            var entity = await this._dbContext.Set<User>().FirstOrDefaultAsync(x => x.UUID == id);
             if (entity == null)
             {
-                throw new NotFoundException($"{typeof(User).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(User).Name} with id {id} was not found.");
             }
 
-            return await Task.FromResult(_mapper.Map<UserResponse>(entity));
+            return _mapper.Map<UserResponse>(entity);
         }
         public async Task<UserResponse> GetByUUID(Guid id, Guid userId, bool isAdmin)
         {
             EnsureSelfOrAdmin(id, userId, isAdmin);
             return await GetByUUID(id);
         }
+        public async Task<(string FilePath, string ContentType)> GetProfileImageAsync(Guid id, Guid userId, bool isAdmin)
+        {
+            EnsureSelfOrAdmin(id, userId, isAdmin);
+            if (!await _dbContext.Users.AnyAsync(u => u.UUID == id && u.ImagePath != null && u.ImagePath != ""))
+            {
+                throw new NotFoundException("This user has no profile picture.");
+            }
+            return ImageService.FindUserImage(id, _uploadsRoot)
+                ?? throw new NotFoundException("This user has no profile picture.");
+        }
+
+        public static string? ProfileImageUrl(User user) =>
+            string.IsNullOrEmpty(user.ImagePath)
+                ? null
+                : $"User/{user.UUID}/ProfileImage?v={(user.UpdatedAt ?? user.CreatedAt).Ticks}";
+
         private static void EnsureSelfOrAdmin(Guid id, Guid userId, bool isAdmin)
         {
             if (!isAdmin && id != userId)
@@ -139,12 +129,14 @@ namespace Deliverance.Services
 
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new BusinessException($"Email '{request.Email}' is already in use.");
+                throw FieldRules.FieldError(nameof(request.Email),
+                    $"The email {request.Email} already belongs to another account. Use a different email address.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new BusinessException($"Username '{request.Username}' is already in use.");
+                throw FieldRules.FieldError(nameof(request.Username),
+                    $"The username {request.Username} is already taken. Choose a different username.");
             }
 
             var entity = MapInsertRequestToEntity(request);
@@ -153,12 +145,11 @@ namespace Deliverance.Services
             if (request.ProfileImage is not null)
             {
                 var imagePath = await ImageService.SaveUserImageAsync(
-                    request.ProfileImage, entity.UUID, _env.WebRootPath);
+                    request.ProfileImage, entity.UUID, _uploadsRoot);
 
-                entity.ImagePath = imagePath; // store on your entity
+                entity.ImagePath = imagePath;
             }
             _dbContext.Users.Add(entity);
-            // Saved together with the user, so there's no user without its notifications.
             var notifications = await _notificationService.AddForAdminsAsync(NotificationTypeEnum.UserRegistered,
                 "New user", $"{entity.Username} has registered.", exceptUserId: userId, relatedUserUUID: entity.UUID);
             await _dbContext.SaveChangesAsync();
@@ -169,47 +160,35 @@ namespace Deliverance.Services
         public async Task<UserResponse> UpdateUserAsync(Guid id, UserUpdateRequest request, Guid userId, bool isAdmin)
         {
             EnsureSelfOrAdmin(id, userId, isAdmin);
-            var validationResult = await _updateValidator.ValidateAsync(request);
-            if (validationResult.IsValid == false)
-            {
-                var errors = validationResult.Errors.Select(e => _mapper.Map<ValidationFailure>(e));
-                throw new ValidationException(errors);
-            }
+            await _updateValidator.ValidateAndThrowAsync(request);
             var entity = await _dbContext.Users.FirstOrDefaultAsync(x => x.UUID == id);
             if (entity is null)
             {
-                throw new NotFoundException("Given user does not exist");
+                throw new NotFoundException($"User with id {id} was not found.");
             }
             if (entity.Email != request.Email && await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new BusinessException($"Email '{request.Email}' is already in use.");
+                throw FieldRules.FieldError(nameof(request.Email),
+                    $"The email {request.Email} already belongs to another account. Use a different email address.");
             }
 
             if (entity.Username != request.Username && await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new BusinessException($"Username '{request.Username}' is already in use.");
+                throw FieldRules.FieldError(nameof(request.Username),
+                    $"The username {request.Username} is already taken. Choose a different username.");
             }
             MapUpdateRequestToEntity(request, entity);
             if (request.ProfileImage is not null)
             {
                 var imagePath = await ImageService.SaveUserImageAsync(
-                    request.ProfileImage, id, _env.WebRootPath);
+                    request.ProfileImage, id, _uploadsRoot);
 
                 entity.ImagePath = imagePath;
             }
+            entity.UpdatedAt = DateTime.UtcNow;
             await this._dbContext.SaveChangesAsync();
 
             return await Task.FromResult(_mapper.Map<UserResponse>(entity));
-        }
-        public async Task DeleteUser(Guid id)
-        {
-            var entity = await this._dbContext.Set<User>().FirstOrDefaultAsync(x => x.UUID == id);
-
-            if (entity == null)
-                throw new NotFoundException($"{typeof(User).Name} with id {id} not found.");
-            ImageService.DeleteExistingImage(id, id.ToString(), _env.WebRootPath);
-            this._dbContext.Set<User>().Remove(entity);
-            await this._dbContext.SaveChangesAsync();
         }
     }
 }

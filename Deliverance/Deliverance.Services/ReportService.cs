@@ -1,3 +1,4 @@
+﻿using Deliverance.Model.RabbitMessages;
 using Deliverance.Model.Enums;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
@@ -5,12 +6,10 @@ using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
 using Deliverance.Services.Messaging;
-using Deliverance.Services.ServiceStateMachine;
+using Deliverance.Services.ReportStateMachine;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Deliverance.Services
 {
@@ -45,11 +44,11 @@ namespace Deliverance.Services
                 .Select(officeReportRequest => new OfficeReport
                 {
                     OfficeId = officeReportRequest.OfficeId,
-                    NumReportedDevices = officeReportRequest.NumReportedDevices,
+                    NumReportedDevices = officeReportRequest.DeviceReports?.Count ?? 0,
                     DeviceReports = officeReportRequest.DeviceReports?
                         .Select(deviceReportRequest => new DeviceReport
                         {
-                            Occurance = deviceReportRequest.Occurance,
+                            Occurrence = deviceReportRequest.Occurrence,
                             Detail = deviceReportRequest.Detail,
                             DeviceId = deviceReportRequest.DeviceId,
                         })
@@ -57,86 +56,18 @@ namespace Deliverance.Services
                 })
                 .ToList() ?? new List<OfficeReport>();
 
-            entity.ReportOccurances = request.ReportOccurances?
-                .Where(reportOccuranceRequest => reportOccuranceRequest.Answer != null)
-                .Select(reportOccuranceRequest => new ReportOccurance
+            entity.ReportOccurrences = request.ReportOccurrences?
+                .Where(reportOccurrenceRequest => reportOccurrenceRequest.Answer != null)
+                .Select(reportOccurrenceRequest => new ReportOccurrence
                 {
-                    OccuranceId = reportOccuranceRequest.OccuranceId,
-                    Answer = reportOccuranceRequest.Answer!.Value,
+                    OccurrenceId = reportOccurrenceRequest.OccurrenceId,
+                    Answer = reportOccurrenceRequest.Answer!.Value,
                 })
-                .ToList() ?? new List<ReportOccurance>();
+                .ToList() ?? new List<ReportOccurrence>();
 
             return entity;
         }
 
-        protected override void MapUpdateRequestToEntity(ReportUpdateRequest request, Report entity)
-        {
-            base.MapUpdateRequestToEntity(request, entity);
-
-            SyncCollection(
-                entity.OfficeReports,
-                request.OfficeReports,
-                officeReport => officeReport.Id.ToString(),
-                officeReportRequest => officeReportRequest.Id.ToString(),
-                officeReportRequest => new OfficeReport
-                {
-                    ReportId = entity.Id,
-                    OfficeId = officeReportRequest.OfficeId,
-                    NumReportedDevices = officeReportRequest.NumReportedDevices,
-                    DeviceReports = officeReportRequest.DeviceReports?
-                        .Select(deviceReportRequest => new DeviceReport
-                        {
-                            Occurance = deviceReportRequest.Occurance,
-                            Detail = deviceReportRequest.Detail,
-                            DeviceId = deviceReportRequest.DeviceId,
-                        })
-                        .ToList() ?? new List<DeviceReport>()
-                },
-                (existingOfficeReport, officeReportRequest) =>
-                {
-                    existingOfficeReport.OfficeId = officeReportRequest.OfficeId;
-                    existingOfficeReport.NumReportedDevices = officeReportRequest.NumReportedDevices;
-
-                    SyncCollection(
-                        existingOfficeReport.DeviceReports,
-                        officeReportRequest.DeviceReports,
-                        deviceReport => deviceReport.Id.ToString(),
-                        deviceReportRequest => deviceReportRequest.Id.ToString(),
-                        deviceReportRequest => new DeviceReport
-                        {
-                            OfficeReportId = existingOfficeReport.Id,
-                            Occurance = deviceReportRequest.Occurance,
-                            Detail = deviceReportRequest.Detail,
-                            DeviceId = deviceReportRequest.DeviceId,
-                        },
-                        (existingDeviceReport, deviceReportRequest) =>
-                        {
-                            existingDeviceReport.Occurance = deviceReportRequest.Occurance;
-                            existingDeviceReport.Detail = deviceReportRequest.Detail;
-                            existingDeviceReport.DeviceId = deviceReportRequest.DeviceId;
-                        });
-                });
-
-            var answeredOccurances = request.ReportOccurances?
-                .Where(occuranceUpdateRequest => occuranceUpdateRequest.Answer != null)
-                .ToList() ?? new List<ReportOccuranceUpdate>();
-
-            SyncCollection(
-                entity.ReportOccurances,
-                answeredOccurances,
-                reportOccurance => reportOccurance.OccuranceId.ToString(),
-                occuranceUpdateRequest => occuranceUpdateRequest.OccuranceId.ToString(),
-                occuranceUpdateRequest => new ReportOccurance
-                {
-                    ReportId = entity.Id,
-                    OccuranceId = occuranceUpdateRequest.OccuranceId,
-                    Answer = occuranceUpdateRequest.Answer!.Value,
-                },
-                (existingReportOccurance, occuranceUpdateRequest) =>
-                {
-                    existingReportOccurance.Answer = occuranceUpdateRequest.Answer!.Value;
-                });
-        }
 
         protected override IQueryable<Report> ApplyFilters(IQueryable<Report> query, ReportSearchObject? search, Guid userId, bool isAdmin = false)
         {
@@ -191,7 +122,7 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new NotFoundException($"{typeof(Report).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Report).Name} with id {id} was not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
@@ -204,23 +135,25 @@ namespace Deliverance.Services
         public override IQueryable<Report> GetQuery()
         {
             return this._dbContext.Set<Report>()
-            .Include(x => x.ReportOccurances)
-                .ThenInclude(x => x.Occurance)
+            .Include(x => x.ReportOccurrences)
+                .ThenInclude(x => x.Occurrence)
                 .Include(x => x.OfficeReports)
                     .ThenInclude(x => x.DeviceReports)
                     .ThenInclude(x => x.Device)
                 .Include(x => x.OfficeReports)
                     .ThenInclude(x => x.Office)
                 .Include(x => x.User)
-                // One SQL query per included collection instead of a single
-                // join that repeats each report once per occurance x device row.
                 .AsSplitQuery();
         }
 
-        // The report is saved first (its id is needed for the notifications), then the
-        // notifications; the transaction keeps both or neither. Pushes go out after the commit.
         public override async Task<ReportResponse> InsertAsync(ReportInsertRequest request, Guid userId)
         {
+            await _insertValidator.ValidateAndThrowAsync(request);
+            await EnsureReportCanBeSavedAsync(
+                request.OfficeReports.Select(o => (o.OfficeId, o.DeviceReports.Select(d => d.DeviceId))),
+                request.ReportOccurrences.Where(o => o.Answer != null).Select(o => o.OccurrenceId),
+                isSending: !request.IsDraft, userId, reportId: null);
+
             var (inserted, notifications) = await _dbContext.InTransactionAsync(async () =>
             {
                 var inserted = await base.InsertAsync(request, userId);
@@ -239,9 +172,17 @@ namespace Deliverance.Services
         public override async Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request, Guid userId, bool isAdmin = false)
         {
             var entity = await EnsureOwnedEntityAsync(id, userId, isAdmin);
-            // The state changes this same tracked entity, so read the status first.
             var status = entity.Status ?? nameof(DraftReportState);
             var state = _reportState.GetReportState(status);
+
+            if (status is nameof(DraftReportState) or nameof(UnseenReportState))
+            {
+                await _updateValidator.ValidateAndThrowAsync(request);
+                await EnsureReportCanBeSavedAsync(
+                    request.OfficeReports.Select(o => (o.OfficeId, o.DeviceReports.Select(d => d.DeviceId))),
+                    request.ReportOccurrences.Where(o => o.Answer != null).Select(o => o.OccurrenceId),
+                    isSending: !request.IsDraft, entity.UserUUID, reportId: id);
+            }
 
             var (result, notifications) = await _dbContext.InTransactionAsync(async () =>
             {
@@ -302,13 +243,69 @@ namespace Deliverance.Services
             return result;
         }
 
+        private async Task EnsureReportCanBeSavedAsync(
+            IEnumerable<(int OfficeId, IEnumerable<int> DeviceIds)> officeReports,
+            IEnumerable<int> answeredOccurrenceIds, bool isSending, Guid ownerId, int? reportId)
+        {
+            var offices = officeReports.Select(o => (o.OfficeId, DeviceIds: o.DeviceIds.ToList())).ToList();
+            var officeIds = offices.Select(o => o.OfficeId).Distinct().ToList();
+            var deviceIds = offices.SelectMany(o => o.DeviceIds).Distinct().ToList();
+            var occurrenceIds = answeredOccurrenceIds.Distinct().ToList();
+
+            var existingOfficeCount = await _dbContext.Offices.CountAsync(o => officeIds.Contains(o.Id));
+            if (existingOfficeCount != officeIds.Count)
+            {
+                throw new BusinessException("One of the selected offices no longer exists. Reload the offices and choose again.");
+            }
+
+            var devices = await _dbContext.Devices
+                .Where(d => deviceIds.Contains(d.Id))
+                .Select(d => new { d.Id, d.Name, d.OfficeId })
+                .ToDictionaryAsync(d => d.Id);
+            if (devices.Count != deviceIds.Count)
+            {
+                throw new BusinessException("One of the selected devices no longer exists. Reload the office and choose again.");
+            }
+            foreach (var (officeId, officeDeviceIds) in offices)
+            {
+                var misplaced = officeDeviceIds.Select(id => devices[id]).FirstOrDefault(d => d.OfficeId != officeId);
+                if (misplaced != null)
+                {
+                    throw new BusinessException($"{misplaced.Name} is not in the office it was reported under. Pick it from its own office.");
+                }
+            }
+
+            var existingOccurrenceCount = await _dbContext.Occurrences.CountAsync(o => occurrenceIds.Contains(o.Id));
+            if (existingOccurrenceCount != occurrenceIds.Count)
+            {
+                throw new BusinessException("One of the answered questions no longer exists. Reload the report and answer again.");
+            }
+
+            if (isSending && deviceIds.Count > 0)
+            {
+                var duplicate = await _dbContext.DeviceReports
+                    .Where(dr => deviceIds.Contains(dr.DeviceId)
+                        && dr.OfficeReport!.Report!.UserUUID == ownerId
+                        && dr.OfficeReport.ReportId != (reportId ?? 0)
+                        && (dr.OfficeReport.Report.Status == nameof(UnseenReportState)
+                            || dr.OfficeReport.Report.Status == nameof(SeenReportState)))
+                    .Select(dr => new { DeviceName = dr.Device!.Name, dr.OfficeReport!.Report!.ReportName })
+                    .FirstOrDefaultAsync();
+                if (duplicate != null)
+                {
+                    throw new BusinessException(
+                        $"You already have an open report about {duplicate.DeviceName} (\"{duplicate.ReportName}\"). " +
+                        "Wait until it is cleared, or save this one as a draft.");
+                }
+            }
+        }
+
         private static readonly IReadOnlyList<Notification> NoNotifications = Array.Empty<Notification>();
 
         private Task<IReadOnlyList<Notification>> AddReportSentNotificationsAsync(ReportResponse report, Guid senderId)
             => _notificationService.AddForAdminsAsync(NotificationTypeEnum.ReportSent, "New report",
                 $"\"{report.ReportName}\" was sent.", report.Id, senderId);
 
-        // Nobody is told about their own action, such as an admin clearing their own report.
         private Task<IReadOnlyList<Notification>> AddOwnerNotificationAsync(Report report, Guid actorId,
             NotificationTypeEnum type, string title, string text)
             => report.UserUUID == actorId
@@ -320,7 +317,7 @@ namespace Deliverance.Services
             var entity = await this._dbContext.Set<Report>().FindAsync(id);
             if (entity == null)
             {
-                throw new NotFoundException($"{typeof(Report).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Report).Name} with id {id} was not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {

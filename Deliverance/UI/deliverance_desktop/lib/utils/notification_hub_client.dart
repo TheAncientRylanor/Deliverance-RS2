@@ -4,15 +4,12 @@ import 'package:deliverance_desktop/utils/api_constants.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 
-/// Receives the logged-in user's new notifications. There is nothing to join:
-/// the server sends them to the user the token belongs to.
 class NotificationHubClient {
   static const _hubPath = "hubs/notification";
   static const _createdEvent = "NotificationCreated";
 
   final void Function(AppNotification notification) onCreated;
 
-  /// Anything sent while the connection was down has to be loaded again.
   final void Function() onReconnected;
 
   NotificationHubClient({required this.onCreated, required this.onReconnected});

@@ -13,10 +13,10 @@ namespace Deliverance.WebAPI.Controllers
         }
         [Authorize]
         [HttpGet("GetStatistics")]
-        public async Task<ReportStatisticsResponse> GetStats([FromQuery]ReportStatisticsSearchObject? search)
-    {
-        var results = await _service.GetStatistics(search,User.IsAdmin());
-        return results;
-    }
+        public async Task<ReportStatisticsResponse> GetStats([FromQuery] ReportStatisticsSearchObject? search)
+        {
+            var results = await _service.GetStatistics(search, User.IsAdmin());
+            return results;
+        }
     }
 }

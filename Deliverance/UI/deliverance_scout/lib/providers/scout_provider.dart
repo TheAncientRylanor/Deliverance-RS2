@@ -9,7 +9,6 @@ import 'package:deliverance_scout/utils/api_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-/// Scout endpoints that need the scout's access token.
 class ScoutProvider with ChangeNotifier {
   static const _meEndpoint = "Scout/Me";
   static const _commandsEndpoint = "Scout/Commands";
@@ -27,7 +26,6 @@ class ScoutProvider with ChangeNotifier {
     return Scout.fromJson(jsonDecode(response.body));
   }
 
-  /// Reports how command [commandId] ended.
   Future<void> reportCommandResult(
     int commandId,
     ScoutCommandResult result,
@@ -47,7 +45,6 @@ class ScoutProvider with ChangeNotifier {
     );
   }
 
-  /// Saves one batch of logs. Resending a batch is safe.
   Future<void> sendLogs(List<ScoutLogEntry> logs) async {
     final uri = Uri.parse("${ApiConstants.baseUrl}$_logsEndpoint");
     await _sendAuthorized(
@@ -69,8 +66,6 @@ class ScoutProvider with ChangeNotifier {
     try {
       response = await send(await _auth.getAccessToken());
       if (response.statusCode == 401) {
-        // Expired token, or the scout was deleted. Exchanging the secret again
-        // tells which, and sends the app back to enrollment when revoked.
         response = await send(await _auth.getAccessToken(forceRefresh: true));
       }
     } on ApiClientException {

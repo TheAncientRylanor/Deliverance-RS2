@@ -1,29 +1,30 @@
 import 'package:deliverance_mobile/models/issue_enum.dart';
 import 'package:deliverance_mobile/models/severity_enum.dart';
-import 'package:deliverance_mobile/utils/util_widgets.dart';
 import 'package:deliverance_mobile/widgets/custom_buttons.dart';
 import 'package:deliverance_mobile/widgets/custom_drop_down.dart';
 import 'package:deliverance_mobile/widgets/custom_text_field.dart';
+import 'package:deliverance_mobile/utils/form_validators.dart';
 import 'package:flutter/material.dart';
 
-// ignore: must_be_immutable
 class DetailsStep extends StatefulWidget {
-  final TextEditingController _title;
-  final TextEditingController _description;
-  double _severity;
-  ValueChanged<double>? onSeverityChanged;
-  VoidCallback? onBack;
-  VoidCallback? onNext;
-  IssueEnum _issueType;
+  final TextEditingController title;
+  final TextEditingController description;
+  final double severity;
+  final ValueChanged<double> onSeverityChanged;
+  final IssueEnum issueType;
+  final ValueChanged<IssueEnum> onIssueTypeChanged;
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
   final GlobalKey<FormState> detailsKey;
-  DetailsStep({
+  const DetailsStep({
     super.key,
     required this.detailsKey,
-    required this._title,
-    required this._description,
-    required this._severity,
-    required this._issueType,
-    this.onSeverityChanged,
+    required this.title,
+    required this.description,
+    required this.severity,
+    required this.onSeverityChanged,
+    required this.issueType,
+    required this.onIssueTypeChanged,
     this.onBack,
     this.onNext,
   });
@@ -38,32 +39,20 @@ class _DetailsStepState extends State<DetailsStep> {
     super.initState();
   }
 
-  String? _validateRequired(dynamic value) {
-    if (value == null || (value as String).trim().isEmpty) {
-      return mField;
-    }
-    return null;
-  }
+  final FieldValidator _validateTitle = maxLength(
+    'Report title',
+    FieldLimits.reportTitleMax,
+    required: true,
+  );
+  final FieldValidator _validateDescription = maxLength(
+    'Description',
+    FieldLimits.reportDetailMax,
+    required: true,
+  );
 
   void _handleNext() {
     if (widget.detailsKey.currentState!.validate()) {
       widget.onNext?.call();
-    } else {
-      final errors = <String>[];
-      final titleError = _validateRequired(widget._title.text);
-      if (titleError != null) {
-        errors.add("Report title: $titleError");
-      }
-      final descriptionError = _validateRequired(widget._description.text);
-      if (descriptionError != null) {
-        errors.add("Description: $descriptionError");
-      }
-      alertBox(
-        context,
-        "Incomplete form",
-        errors.join("\n"),
-        mode: AlertBoxMode.ok,
-      );
     }
   }
 
@@ -82,8 +71,9 @@ class _DetailsStepState extends State<DetailsStep> {
               CustomTextField(
                 labelText: "1. Report title",
                 textStyle: style,
-                controller: widget._title,
-                validator: _validateRequired,
+                controller: widget.title,
+                maxLength: FieldLimits.reportTitleMax,
+                validator: _validateTitle,
               ),
               Column(
                 children: [
@@ -92,9 +82,9 @@ class _DetailsStepState extends State<DetailsStep> {
                     textStyle: style,
                     minLines: 4,
                     maxLines: 20,
-                    maxLength: 255,
-                    controller: widget._description,
-                    validator: _validateRequired,
+                    maxLength: FieldLimits.reportDetailMax,
+                    controller: widget.description,
+                    validator: _validateDescription,
                   ),
                   Text(
                     "Please describe the problem in detail",
@@ -114,19 +104,14 @@ class _DetailsStepState extends State<DetailsStep> {
                       tickMarkShape: const _VerticalLineSliderTickMarkShape(),
                     ),
                     child: Slider(
-                      value: widget._severity,
+                      value: widget.severity,
                       min: 1.0,
                       max: 5.0,
                       divisions: 4,
                       label: SeverityEnum.fromValue(
-                        widget._severity.round(),
+                        widget.severity.round(),
                       ).label,
-                      onChanged: (double newValue) {
-                        setState(() {
-                          widget._severity = newValue;
-                        });
-                        widget.onSeverityChanged?.call(newValue);
-                      },
+                      onChanged: widget.onSeverityChanged,
                     ),
                   ),
                   Padding(
@@ -135,7 +120,7 @@ class _DetailsStepState extends State<DetailsStep> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: SeverityEnum.values.map((severity) {
                         final isSelected =
-                            widget._severity.round() == severity.value;
+                            widget.severity.round() == severity.value;
                         return Text(
                           severity.label,
                           style: Theme.of(context).textTheme.labelSmall
@@ -156,12 +141,10 @@ class _DetailsStepState extends State<DetailsStep> {
               CustomDropDown<IssueEnum>(
                 label: "4. Issue type",
                 items: {for (final e in IssueEnum.values) e: e.label},
-                initialValue: widget._issueType,
+                initialValue: widget.issueType,
                 textStyle: style,
                 onChanged: (value) {
-                  setState(() {
-                    widget._issueType = value!;
-                  });
+                  if (value != null) widget.onIssueTypeChanged(value);
                 },
               ),
               const SizedBox(height: 40),

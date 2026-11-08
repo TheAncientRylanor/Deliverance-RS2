@@ -12,6 +12,5 @@ enum ScoutCommandStatusEnum {
   static ScoutCommandStatusEnum fromValue(int value) =>
       ScoutCommandStatusEnum.values.firstWhere((e) => e.value == value);
 
-  /// Pending and Running can still change; the rest are final.
   bool get isFinished => this != pending && this != running;
 }

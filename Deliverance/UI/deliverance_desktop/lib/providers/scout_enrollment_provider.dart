@@ -12,8 +12,6 @@ class ScoutEnrollmentProvider extends BaseProvider<ScoutEnrollment> {
     return ScoutEnrollment.fromJson(data);
   }
 
-  /// Creates a pending enrollment. The returned token is shown to the admin,
-  /// who pastes it into the scout app.
   Future<ScoutEnrollmentToken> generateToken() async {
     final uri = Uri.parse("${BaseProvider.baseUrl}$endpoint");
     final response = await sendWithRetry(
@@ -22,6 +20,5 @@ class ScoutEnrollmentProvider extends BaseProvider<ScoutEnrollment> {
     return ScoutEnrollmentToken.fromJson(jsonDecode(response.body));
   }
 
-  /// Cancels an enrollment, so its token can no longer be claimed.
   Future<void> cancel(int id) => remove(id);
 }

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:deliverance_desktop/models/user.dart';
-import 'package:deliverance_desktop/models/user.insert.multipart.dart';
 import 'package:deliverance_desktop/models/user.update.multipart.dart';
 import 'package:deliverance_desktop/providers/auth_provider.dart';
 import 'package:deliverance_desktop/providers/base_provider.dart';
@@ -24,7 +23,6 @@ class UserProvider extends BaseProvider<User> {
     return await getByUUID(userId);
   }
 
-  /// The sidebar shows [data], so only the logged-in user may be stored there.
   Future<User> getByUUID(String id, {bool isCurrentUser = true}) async {
     final response = await sendWithRetry(() async {
       var baseURL = BaseProvider.baseUrl;
@@ -54,21 +52,6 @@ class UserProvider extends BaseProvider<User> {
     return user;
   }
 
-  Future<User> insertUser(UserInsertRequest request) async {
-    var baseURL = BaseProvider.baseUrl;
-    var url = "$baseURL$endpoint/InsertUser";
-    var uri = Uri.parse(url);
-    final response = await _sendMultipart(
-      request.toMultipartRequest,
-      "POST",
-      uri,
-    );
-    var data = jsonDecode(response.body);
-    final user = fromJson(data);
-    setData(user);
-    return user;
-  }
-
   Future<http.Response> _sendMultipart(
     Future<http.MultipartRequest> Function(String method, Uri uri) build,
     String method,
@@ -87,10 +70,10 @@ class UserProvider extends BaseProvider<User> {
     final response = await sendWithRetry(() async {
       var baseURL = BaseProvider.baseUrl;
       var url =
-          "$baseURL$endpoint/CheckUsername?request=${Uri.encodeQueryComponent(username)}";
+          "${baseURL}Access/Register/CheckUsername?username=${Uri.encodeQueryComponent(username)}";
       var uri = Uri.parse(url);
       var headers = createHeaders();
-      return await http.post(uri, headers: headers);
+      return await http.get(uri, headers: headers);
     });
     var data = jsonDecode(response.body);
     return data;

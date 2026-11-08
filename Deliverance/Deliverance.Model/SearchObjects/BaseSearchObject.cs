@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Deliverance.Model.SearchObjects
+﻿namespace Deliverance.Model.SearchObjects
 {
     public class BaseSearchObject
     {

@@ -11,12 +11,10 @@ namespace Deliverance.Services.Pdf
 
     internal record DeviceLogLine(DateTime Date, string? Text);
 
-    // Every device ranked by how likely it is to need a fix, with the logs behind the top ones.
     internal static class DeviceHealthDocument
     {
         public const float NeedsFixThreshold = 0.5f;
 
-        // Every date passed in is already in display time.
         public static byte[] Generate(List<DeviceHealthRow> rows, Dictionary<string, List<DeviceLogLine>> topDeviceLogs,
             string? officeName, DateTime generatedAt)
         {
@@ -59,7 +57,6 @@ namespace Deliverance.Services.Pdf
                     {
                         foreach (var (device, logs) in topDeviceLogs)
                         {
-                            // A device's few lines stay on one page with its name.
                             section.Item().PaddingTop(6).ShowEntire().Column(block =>
                             {
                                 block.Item().Text(device).SemiBold();
@@ -115,7 +112,6 @@ namespace Deliverance.Services.Pdf
                     var risk = table.Cell().Element(BodyCell).AlignRight()
                         .Text(row.NeedsFixProbability == null ? "-" : $"{row.NeedsFixProbability * 100:0}%");
                     if (isRisky) risk.SemiBold().FontColor(Colors.Red.Darken2);
-                    // The likely issue only means something when the device is likely to have one.
                     table.Cell().Element(BodyCell).Text(isRisky ? row.LikelyIssue?.ToString() ?? "-" : "-");
                 }
             });

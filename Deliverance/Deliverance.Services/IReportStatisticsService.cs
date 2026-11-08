@@ -6,7 +6,7 @@ namespace Deliverance.Services
     public interface IReportStatisticsService :
         IBaseReadService<ReportStatisticsResponse, ReportStatisticsSearchObject>
     {
-        
-         Task<ReportStatisticsResponse> GetStatistics(ReportStatisticsSearchObject? search, bool isAdmin = false);
+
+        Task<ReportStatisticsResponse> GetStatistics(ReportStatisticsSearchObject? search, bool isAdmin = false);
     }
 }

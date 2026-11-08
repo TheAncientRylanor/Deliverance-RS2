@@ -31,9 +31,7 @@ class Devices {
   final String? os;
   final String? manufacturer;
   bool? isReported;
-  // Null when no scout is installed on the device.
   Scout? scout;
-  // Sent when saving an office: links the device to a claimed scout enrollment.
   final int? enrollmentId;
   Devices({
     required this.id,

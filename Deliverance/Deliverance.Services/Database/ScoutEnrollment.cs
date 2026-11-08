@@ -1,7 +1,8 @@
 using Deliverance.Model.Enums;
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class ScoutEnrollment
 {
@@ -9,13 +10,10 @@ public class ScoutEnrollment
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    // SHA-256 hex of the enrollment token; the plain token is never stored.
     [Required]
     [MaxLength(64)]
     public string TokenHash { get; set; } = string.Empty;
 
-    // SHA-256 hex of the scout's long-term secret, issued when the token is claimed.
-    // It only authenticates once the enrollment is Completed and linked to a Scout.
     [MaxLength(64)]
     public string? SecretHash { get; set; }
 
@@ -31,7 +29,6 @@ public class ScoutEnrollment
     [Required]
     public ScoutEnrollmentStatusEnum Status { get; set; } = ScoutEnrollmentStatusEnum.Pending;
 
-    // Reported by the scout when it claims the token
     [MaxLength(45)]
     public string? IpAddress { get; set; }
 
@@ -55,10 +52,8 @@ public class ScoutEnrollment
 
     public DateTime? ClaimedAt { get; set; }
 
-    // Set once the admin saves the office and the Scout is created
     public int? ScoutId { get; set; }
 
-    // Navigation
     [ForeignKey("CreatedByUserUUID")]
     public User? CreatedByUser { get; set; }
 

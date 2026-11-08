@@ -14,6 +14,7 @@ class CustomTextField extends StatelessWidget {
   final double? width;
   final int? maxLines;
   final int? minLines;
+  final int? maxLength;
   final TextStyle? textStyle;
   final Icon? prefixIcon;
   final Widget? suffixIcon;
@@ -21,8 +22,6 @@ class CustomTextField extends StatelessWidget {
   final ScrollController? scrollController;
   final GlobalKey<FormFieldState>? formFieldKey;
   final Widget? hint;
-  // Fills the parent's height and scrolls instead of growing with the text.
-  // The parent must give the field a bounded height.
   final bool expands;
   const CustomTextField({
     super.key,
@@ -42,6 +41,7 @@ class CustomTextField extends StatelessWidget {
     this.width,
     this.maxLines = 1,
     this.minLines = 1,
+    this.maxLength,
     this.textStyle,
     this.prefixIcon,
     this.suffixIcon,
@@ -50,8 +50,6 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Multiline fields get a scrollbar from the desktop scroll behavior;
-    // keep its thumb visible whenever the text overflows.
     Widget field = ScrollbarTheme(
       data: ScrollbarTheme.of(
         context,
@@ -69,6 +67,7 @@ class CustomTextField extends StatelessWidget {
           readOnly: readOnly == null ? false : readOnly as bool,
           expands: expands,
           maxLines: expands ? null : maxLines,
+          maxLength: maxLength,
           minLines: expands ? null : minLines,
           textAlignVertical: expands ? TextAlignVertical.top : null,
           onFieldSubmitted: onSubmited,
@@ -116,8 +115,6 @@ class CustomTextField extends StatelessWidget {
       ),
     );
 
-    // Enter only inserts a newline in a multiline field, so it never reaches
-    // onFieldSubmitted. Make Enter submit and leave Shift+Enter for newlines.
     final isMultiline = expands || maxLines != 1;
     if (isMultiline && onSubmited != null) {
       void submit() => onSubmited!(controller?.text ?? "");

@@ -1,3 +1,4 @@
+using Deliverance.Model.Request;
 using Deliverance.Model.Exceptions;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
@@ -9,10 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Deliverance.Services
 {
-    public class ContactsService : BaseCRUDService<Contact,ContactsResponse,ContactsSearchObject
-        ,ContactsInsertRequest,ContactsUpdateRequest>,IContactsService
+    public class ContactsService : BaseCRUDService<Contact, ContactsResponse, ContactsSearchObject
+        , ContactsInsertRequest, ContactsUpdateRequest>, IContactsService
     {
-        public ContactsService(DeliveranceDbContext dbContext,IMapper mapper,
+        public ContactsService(DeliveranceDbContext dbContext, IMapper mapper,
             IValidator<ContactsInsertRequest> insertValidator, IValidator<ContactsUpdateRequest> updateValidator)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
@@ -33,22 +34,22 @@ namespace Deliverance.Services
                     CreatedAt = DateTime.UtcNow
                 })
                 .ToList() ?? new List<Availability>();
-            entity.ContactEmails = request.ContactEmails.Select(x=>new ContactEmail
+            entity.ContactEmails = request.ContactEmails.Select(x => new ContactEmail
             {
                 Email = x.Email,
             }).ToList();
-            entity.ContactPhoneNumbers = request.ContactPhoneNumbers.Select(x=>new ContactPhoneNumber
+            entity.ContactPhoneNumbers = request.ContactPhoneNumbers.Select(x => new ContactPhoneNumber
             {
                 PhoneNumber = x.PhoneNumber,
             }).ToList();
             return entity;
         }
 
-       
+
         protected override void MapUpdateRequestToEntity(ContactsUpdateRequest request, Contact entity)
         {
             base.MapUpdateRequestToEntity(request, entity);
-            SyncCollection(
+            CollectionSync.Sync(
                 entity.Availabilities,
                 request.Availabilities,
                 availability => availability.Id.ToString(),
@@ -70,7 +71,7 @@ namespace Deliverance.Services
                     existingAvailability.Pause = availabilityRequest.Pause;
                 });
 
-            SyncCollection(
+            CollectionSync.Sync(
                 entity.ContactEmails,
                 request.ContactEmails,
                 email => email.Id.ToString(),
@@ -82,7 +83,7 @@ namespace Deliverance.Services
                 },
                 (existingEmail, emailRequest) => existingEmail.Email = emailRequest.Email);
 
-            SyncCollection(
+            CollectionSync.Sync(
                 entity.ContactPhoneNumbers,
                 request.ContactPhoneNumbers,
                 phoneNumber => phoneNumber.Id.ToString(),
@@ -95,38 +96,38 @@ namespace Deliverance.Services
                 (existingPhoneNumber, phoneNumberRequest) => existingPhoneNumber.PhoneNumber = phoneNumberRequest.PhoneNumber);
         }
 
-        protected override IQueryable<Contact> ApplyFilters(IQueryable<Contact> query, ContactsSearchObject? search,Guid userId, bool isAdmin = false)
+        protected override IQueryable<Contact> ApplyFilters(IQueryable<Contact> query, ContactsSearchObject? search, Guid userId, bool isAdmin = false)
         {
             if (!isAdmin)
             {
-                query = query.Where(x=>x.UserUUID == userId);
+                query = query.Where(x => x.UserUUID == userId);
             }
             return query;
         }
-        public override async Task<ContactsResponse> GetByIdAsync(int id,Guid userId, bool isAdmin = false)
+        public override async Task<ContactsResponse> GetByIdAsync(int id, Guid userId, bool isAdmin = false)
         {
             var entity = this._dbContext.Set<Contact>()
-            .Include(x=>x.ContactEmails)
-            .Include(x=>x.ContactPhoneNumbers)
-            .Include(x=>x.Availabilities)
-            .AsNoTracking().FirstOrDefault(x=>x.Id == id);
+            .Include(x => x.ContactEmails)
+            .Include(x => x.ContactPhoneNumbers)
+            .Include(x => x.Availabilities)
+            .AsNoTracking().FirstOrDefault(x => x.Id == id);
             if (entity == null)
             {
-                throw new NotFoundException($"{typeof(Contact).Name} with id {id} not found.");
+                throw new NotFoundException($"{typeof(Contact).Name} with id {id} was not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
                 throw new ForbiddenException("You do not have access to this contact.");
             }
-            
+
             return await Task.FromResult(_mapper.Map<ContactsResponse>(entity));
         }
         public override IQueryable<Contact> GetQuery()
         {
             return this._dbContext.Set<Contact>()
-            .Include(x=>x.ContactEmails)
-            .Include(x=>x.ContactPhoneNumbers)
-            .Include(x=>x.Availabilities);
+            .Include(x => x.ContactEmails)
+            .Include(x => x.ContactPhoneNumbers)
+            .Include(x => x.Availabilities);
         }
     }
 }

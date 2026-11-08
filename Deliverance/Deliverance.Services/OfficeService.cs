@@ -4,6 +4,7 @@ using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Model.SearchObjects;
 using Deliverance.Services.Database;
+using Deliverance.Services.Validators;
 using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -13,14 +14,12 @@ namespace Deliverance.Services
     public class OfficeService : BaseCRUDService<Office, OfficeResponse, OfficeSearchObject
         , OfficeInsertRequest, OfficeUpdateRequest>, IOfficeService
     {
-        protected readonly DeliveranceDbContext _dbContext;
         private readonly IScoutEnrollmentService _scoutEnrollmentService;
         public OfficeService(DeliveranceDbContext dbContext, IMapper mapper,
         IValidator<OfficeInsertRequest> insertValidator, IValidator<OfficeUpdateRequest> updateValidator,
         IScoutEnrollmentService scoutEnrollmentService)
         : base(dbContext, mapper, insertValidator, updateValidator)
         {
-            _dbContext = dbContext;
             _scoutEnrollmentService = scoutEnrollmentService;
         }
 
@@ -37,9 +36,6 @@ namespace Deliverance.Services
                 {
                     query = query.Where(p => search.Offices.Contains(p.Id));
                 }
-                // Lists only load devices when asked for them, or when specific
-                // offices are requested (the mobile report wizard needs their
-                // devices). Dropdowns only need id and name.
                 if (search.IncludeDevices || search.Offices != null)
                 {
                     query = query.Include(x => x.Devices).ThenInclude(x => x.Scout);
@@ -58,8 +54,6 @@ namespace Deliverance.Services
             var response = base.MapToResponse(entity, isAdmin);
             if (!isAdmin && response.Devices != null)
             {
-                // Regular users only need enough to find and pick a device on the
-                // office map; the network details stay admin-only.
                 response.Devices = _mapper.Map<List<DeviceReportSensitiveResponse>>(entity.Devices);
             }
 
@@ -72,7 +66,7 @@ namespace Deliverance.Services
             .Include(x => x.Devices).ThenInclude(d => d.Scout).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new NotFoundException("Office does not exist");
+                throw new NotFoundException($"Office with id {id} was not found.");
             }
             if (!isAdmin && entity.UserUUID != userId)
             {
@@ -111,11 +105,9 @@ namespace Deliverance.Services
         protected override Office MapInsertRequestToEntity(OfficeInsertRequest request)
         {
             var entity = base.MapInsertRequestToEntity(request);
-            // The base service only timestamps the office itself, not its devices.
             var createdAt = DateTime.UtcNow;
             entity.Devices = request.Devices?.Select(x => new Device
             {
-                // From the office, not the request's OfficeName, so it can't disagree.
                 OfficeName = entity.Name,
                 CreatedAt = createdAt,
                 IconName = x.IconName,
@@ -141,12 +133,9 @@ namespace Deliverance.Services
             var enrollments = await _scoutEnrollmentService.GetClaimedForLinkingAsync(
                 request.Devices?.Select(d => d.EnrollmentId) ?? [], userId);
 
-            // Not base.InsertAsync: scouts have to be attached to the mapped devices
-            // before the office is saved, so it all goes in one SaveChanges.
             var entity = MapInsertRequestToEntity(request);
             entity.CreatedAt = DateTime.UtcNow;
             entity.UserUUID = userId;
-            // MapInsertRequestToEntity keeps the request's order, so devices line up by index.
             foreach (var (device, deviceRequest) in entity.Devices.Zip(request.Devices ?? []))
             {
                 AttachEnrollment(device, deviceRequest.EnrollmentId, enrollments);
@@ -166,10 +155,6 @@ namespace Deliverance.Services
             }
         }
 
-        /// <summary>
-        /// Office names are unique (unique index on Offices.Name). Checking first
-        /// gives a clear message instead of a database error.
-        /// </summary>
         private async Task EnsureNameIsFreeAsync(string name, int? excludeOfficeId = null)
         {
             var trimmed = name.Trim();
@@ -177,7 +162,8 @@ namespace Deliverance.Services
                 .AnyAsync(o => o.Name == trimmed && o.Id != excludeOfficeId);
             if (taken)
             {
-                throw new BusinessException($"An office named '{trimmed}' already exists.");
+                throw FieldRules.FieldError("Name",
+                    $"An office named {trimmed} already exists. Office names must be unique.");
             }
         }
 
@@ -187,16 +173,13 @@ namespace Deliverance.Services
             await _updateValidator.ValidateAndThrowAsync(request);
             await EnsureNameIsFreeAsync(request.Name, id);
 
-            // Devices must be loaded so SyncCollection can match them by id;
-            // the base UpdateAsync uses Find(), which leaves the collection empty.
-            // Their Scout is loaded so enrolling an existing scout twice is caught.
             var entity = await _dbContext.Set<Office>()
                 .Include(x => x.Devices)
                 .ThenInclude(d => d.Scout)
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new NotFoundException("Office does not exist");
+                throw new NotFoundException($"Office with id {id} was not found.");
             }
             await EnsureRemovedDevicesHaveNoReportsAsync(entity, request);
             var enrollments = await _scoutEnrollmentService.GetClaimedForLinkingAsync(
@@ -218,25 +201,21 @@ namespace Deliverance.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
-                throw new NotFoundException($"Office with id {id} not found.");
+                throw new NotFoundException($"Office with id {id} was not found.");
             }
 
-            // Offices that appear in reports are kept, so report history stays intact.
-            var hasReports = await _dbContext.Set<OfficeReport>().AnyAsync(x => x.OfficeId == id);
-            if (hasReports)
+            var reportCount = await _dbContext.Set<OfficeReport>().CountAsync(x => x.OfficeId == id);
+            if (reportCount > 0)
             {
-                throw new BusinessException("This office has reports and can't be deleted.");
+                throw new BusinessException(
+                    $"{entity.Name} appears in {reportCount} report(s) and can't be deleted, so the report history stays intact.");
             }
 
-            // Device -> Office is Restrict in the database, so the devices have to
-            // be removed explicitly before the office.
             _dbContext.RemoveRange(entity.Devices);
             _dbContext.Remove(entity);
             await _dbContext.SaveChangesAsync();
         }
 
-        // A device left out of the request is deleted by SyncCollection, which
-        // must not happen to a device that reports point to.
         private async Task EnsureRemovedDevicesHaveNoReportsAsync(Office entity, OfficeUpdateRequest request)
         {
             if (request.Devices == null) return;
@@ -271,10 +250,8 @@ namespace Deliverance.Services
         private void MapUpdateRequestToEntity(OfficeUpdateRequest request, Office entity,
             IReadOnlyDictionary<int, ScoutEnrollment> enrollments)
         {
-            // Mapped by hand: letting Mapster map the request would replace the
-            // tracked Devices collection with new, untracked Device objects.
             entity.Name = request.Name;
-            SyncCollection(
+            CollectionSync.Sync(
                 entity.Devices,
                 request.Devices,
                 device => device.Id.ToString(),
@@ -303,9 +280,7 @@ namespace Deliverance.Services
                 },
                 (existingDevice, deviceRequest) =>
                 {
-                    // An existing device can be turned into a scout by enrolling it later.
                     AttachEnrollment(existingDevice, deviceRequest.EnrollmentId, enrollments);
-                    // Keeps the copied name in sync when the office is renamed.
                     existingDevice.OfficeName = entity.Name;
                     existingDevice.IconName = deviceRequest.IconName;
                     existingDevice.IpAddress = deviceRequest.IpAddress;

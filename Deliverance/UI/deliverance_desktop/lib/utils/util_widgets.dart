@@ -1,14 +1,7 @@
-import 'dart:convert';
 
 import 'package:deliverance_desktop/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
 
-dynamic dateEncode(dynamic item) {
-  if (item is DateTime) {
-    return item.toIso8601String();
-  }
-  return item;
-}
 
 Widget globalLoadingSpinner({double size = 36, Color? color}) {
   return Center(
@@ -94,9 +87,6 @@ Future<bool?> alertBox(
   );
 }
 
-/// Error dialog for a screen whose data failed to load. "Back" closes the
-/// dialog and the screen; pass [allowBack] false for screens that must not be
-/// popped (e.g. home), in which case "Close" only dismisses the dialog.
 void alertBoxMoveBack(
   BuildContext context,
   String title,
@@ -159,14 +149,6 @@ void alertBoxMoveBack(
   );
 }
 
-Image imageFromBase64String(String base64Image) {
-  return Image.memory(
-    base64Decode(base64Image),
-    height: 400,
-    width: 400,
-    fit: BoxFit.cover,
-  );
-}
 
 const String mField = "This filed is mandatory";
 

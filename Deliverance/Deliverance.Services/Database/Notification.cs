@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Deliverance.Services.Database
 {
-    /// <summary>One notification for one recipient, so each person has their own read status.</summary>
     public class Notification : IUserOwnedEntity
     {
         [Key]
@@ -26,12 +25,8 @@ namespace Deliverance.Services.Database
 
         public DateTime CreatedAt { get; set; }
 
-        // Not a foreign key: Users -> Reports -> Notifications next to the cascade from
-        // Users would be a second delete path, which SQL Server can reject.
         public int? ReportId { get; set; }
 
-        // The user the notification is about, such as a new registration. Not a foreign key
-        // for the same reason as ReportId.
         public Guid? RelatedUserUUID { get; set; }
 
         [ForeignKey("UserUUID")]

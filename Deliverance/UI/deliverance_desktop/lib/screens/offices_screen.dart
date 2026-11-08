@@ -60,8 +60,6 @@ class _OfficesScreenState extends State<OfficesScreen> {
   Future<void> _getOffice() async {
     setState(() {
       isLoadingOffice = true;
-      // Drop the previous office so a failed load can't leave it on screen
-      // under a different selection.
       _selectedOffice = null;
     });
     try {
@@ -120,8 +118,6 @@ class _OfficesScreenState extends State<OfficesScreen> {
                         CustomDropDown(
                           items: _offices,
                           label: "Offices",
-                          // The dropdown is rebuilt after every reload, so
-                          // seed it with the current selection to keep it.
                           initialValue: selectedKey,
                           onChanged: (value) {
                             selectedKey = value;

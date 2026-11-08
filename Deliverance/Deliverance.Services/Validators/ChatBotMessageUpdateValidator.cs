@@ -10,7 +10,7 @@ namespace Deliverance.Services.Validators
             RuleFor(x => x.Content)
                 .Must(text => !string.IsNullOrWhiteSpace(text)).WithMessage("Message is required")
                 .MaximumLength(ChatBotMessageInsertValidator.ContentMaxLength)
-                .WithMessage($"Message cannot exceed {ChatBotMessageInsertValidator.ContentMaxLength} characters");
+                .WithMessage($"Message can have at most {ChatBotMessageInsertValidator.ContentMaxLength} characters");
         }
     }
 }

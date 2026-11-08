@@ -1,3 +1,4 @@
+using Deliverance.Services.ReportStateMachine;
 using Deliverance.Model.Exceptions;
 using Deliverance.Services.Configuration;
 using Deliverance.Services.Database;
@@ -29,8 +30,6 @@ namespace Deliverance.Services
         public async Task<byte[]> GetReportActivityAsync(DateTime? from, DateTime? to, int? officeId, bool isAdmin)
         {
             EnsureAdmin(isAdmin);
-            // Picked times are kept as they are. Without a start, the period starts at midnight
-            // (display time zone) 29 days before the end, so it covers 30 calendar days.
             var end = to?.AsUtc() ?? DateTime.UtcNow;
             var start = from?.AsUtc()
                 ?? _displayTimeZone.ToUtc(_displayTimeZone.FromUtc(end).Date.AddDays(-(DefaultPeriodDays - 1)));
@@ -96,7 +95,6 @@ namespace Deliverance.Services
                         d.Type,
                         deviceReports.Count(r => r.DateReported >= now.AddDays(-30)),
                         deviceReports.Count(r => r.Status != nameof(ClearedReportState)),
-                        // Only shown, so converted to display time here.
                         _displayTimeZone.FromUtc(deviceReports.Count == 0 ? null : deviceReports.Max(r => r.DateReported)),
                         _displayTimeZone.FromUtc(deviceReports.Max(r => r.DateCleared)),
                         score?.NeedsFixProbability,
@@ -138,10 +136,9 @@ namespace Deliverance.Services
                 .Where(o => o.Id == officeId)
                 .Select(o => o.Name)
                 .FirstOrDefaultAsync()
-                ?? throw new NotFoundException($"Office with id {officeId} not found.");
+                ?? throw new NotFoundException($"Office with id {officeId} was not found.");
         }
 
-        // Both reports cover every user's reports, so they are for admins only.
         private static void EnsureAdmin(bool isAdmin)
         {
             if (!isAdmin)

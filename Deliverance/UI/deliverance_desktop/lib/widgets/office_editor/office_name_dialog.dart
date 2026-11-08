@@ -3,19 +3,23 @@ import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:deliverance_desktop/widgets/office_editor/office_validators.dart';
 import 'package:flutter/material.dart';
 
-/// Asks for the office's name before saving. Returns the trimmed name, or
-/// null when cancelled.
-Future<String?> showOfficeNameDialog(BuildContext context, String initialName) {
+Future<String?> showOfficeNameDialog(
+  BuildContext context,
+  String initialName, {
+  String? serverError,
+}) {
   return showDialog<String>(
     context: context,
-    builder: (_) => _OfficeNameDialog(initialName: initialName),
+    builder: (_) =>
+        _OfficeNameDialog(initialName: initialName, serverError: serverError),
   );
 }
 
 class _OfficeNameDialog extends StatefulWidget {
   final String initialName;
+  final String? serverError;
 
-  const _OfficeNameDialog({required this.initialName});
+  const _OfficeNameDialog({required this.initialName, this.serverError});
 
   @override
   State<_OfficeNameDialog> createState() => _OfficeNameDialogState();
@@ -24,6 +28,23 @@ class _OfficeNameDialog extends StatefulWidget {
 class _OfficeNameDialogState extends State<_OfficeNameDialog> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.initialName);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.serverError != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _formKey.currentState?.validate(),
+      );
+    }
+  }
+
+  String? _validate(String? value) {
+    final local = validateOfficeName(value);
+    if (local != null) return local;
+    final unchanged = value?.trim() == widget.initialName.trim();
+    return unchanged ? widget.serverError : null;
+  }
 
   @override
   void dispose() {
@@ -60,7 +81,7 @@ class _OfficeNameDialogState extends State<_OfficeNameDialog> {
                 key: _formKey,
                 child: CustomTextField(
                   controller: _nameController,
-                  validator: (value) => validateOfficeName(value as String?),
+                  validator: (value) => _validate(value as String?),
                   onSubmited: (_) => _submit(),
                 ),
               ),

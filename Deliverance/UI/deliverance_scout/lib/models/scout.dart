@@ -1,4 +1,3 @@
-/// The scout's own record, as returned by GET Scout/Me.
 class Scout {
   final int id;
   final int deviceId;

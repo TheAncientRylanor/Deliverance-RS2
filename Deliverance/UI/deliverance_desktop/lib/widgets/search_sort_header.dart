@@ -2,14 +2,9 @@ import 'package:deliverance_desktop/utils/util_widgets.dart';
 import 'package:deliverance_desktop/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 
-/// Search + sort buttons with a slide-down search field.
-///
-/// Owns its own visibility state so toggling the search field only rebuilds
-/// this header, not the list of cards below it.
 class SearchSortHeader extends StatefulWidget {
   final String searchHint;
 
-  /// Width of the search field; null stretches it across the header.
   final double? searchFieldWidth;
   final String sortDialogTitle;
   final Map<String, String> sortColumns;

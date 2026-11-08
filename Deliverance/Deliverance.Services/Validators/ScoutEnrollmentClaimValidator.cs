@@ -4,8 +4,6 @@ using FluentValidation;
 
 namespace Deliverance.Services.Validators
 {
-    // Same formats and limits as the device validators, so whatever a scout reports
-    // can be saved on the device later without failing validation there.
     public class ScoutEnrollmentClaimValidator : AbstractValidator<ScoutEnrollmentClaimRequest>
     {
         private static readonly Regex IpAddressRegex = new(

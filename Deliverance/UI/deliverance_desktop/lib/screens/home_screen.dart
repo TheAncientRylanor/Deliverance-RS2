@@ -28,8 +28,6 @@ class _MyWidgetState extends State<HomeScreen> {
   ReportStatistics? _reportStatistics;
   bool isLoading = true;
 
-  /// Month the chart shows: the one the statistics were computed for,
-  /// falling back to the current month.
   DateTime get _chartMonth =>
       _reportStatistics?.timeBreakdown?.month ?? DateTime.now();
 
@@ -46,10 +44,13 @@ class _MyWidgetState extends State<HomeScreen> {
       isLoading = true;
     });
     try {
-      _reportList = await _reportProvider.get(
+      final reports = _reportProvider.get(
         filter: ReportSearchObject(status: ReportStatusFilter.active).toJson(),
       );
-      _reportStatistics = await _reportStatisticsProvider.getStatistics();
+      final statistics = _reportStatisticsProvider.getStatistics();
+      await Future.wait([reports, statistics]);
+      _reportList = await reports;
+      _reportStatistics = await statistics;
     } on ApiClientException catch (e) {
       if (!mounted) return;
       alertBoxMoveBack(

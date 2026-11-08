@@ -17,21 +17,15 @@ namespace Deliverance.Services
     public class ChatBotService : BaseCRUDService<ChatBotMessage, ChatBotMessageResponse, ChatBotMessageSearchObject
         , ChatBotMessageInsertRequest, ChatBotMessageUpdateRequest>, IChatBotService
     {
-        // The limits below keep the prompt small: a local model on the CPU reads
-        // the whole prompt before answering, so every extra line adds waiting time.
-        // How many earlier messages of the conversation are sent back to the model.
         private const int HistoryLimit = 10;
         private const int RecentReportsLimit = 3;
         private const int DevicesLimit = 30;
-        // Windows event messages can be long, so a device's lines are cut before they reach the prompt.
         private const int DeviceLogsLimit = 10;
         private const int DeviceReportsLimit = 5;
         private const int DeviceLineMaxLength = 200;
-        // Matches the Content column.
         private const int ContentMaxLength = 3000;
         private const int TitleMaxLength = 100;
 
-        // Small models follow a few short, direct rules better than a long list.
         private const string Instructions = """
             You are the Deliverance helpdesk assistant. You help office workers fix
             hardware, software and network problems with their office devices.
@@ -46,7 +40,6 @@ namespace Deliverance.Services
             - Keep answers under 200 words.
             """;
 
-        // For an admin looking into one device from the recommendations.
         private const string DeviceInstructions = """
             You are the Deliverance assistant. You help an IT administrator understand
             the problems of the one device described below.
@@ -69,29 +62,19 @@ namespace Deliverance.Services
             HttpClient httpClient, OllamaSettings ollamaSettings, IDeviceRecommendationService recommendationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
-            // Base address and timeout are set where the client is registered (Program.cs).
             _httpClient = httpClient;
             _model = ollamaSettings.Model;
             _recommendationService = recommendationService;
         }
 
-        // Without knowing the caller is an admin, a message about a device is refused.
         public override Task<ChatBotMessageResponse> InsertAsync(ChatBotMessageInsertRequest request, Guid userId)
         {
             return InsertAsync(request, userId, isAdmin: false);
         }
 
-        /// <summary>
-        /// Saves the user's message, asks the model for a reply and returns the bot's message.
-        /// Starts a new conversation when the request has no ConversationId.
-        /// </summary>
         public async Task<ChatBotMessageResponse> InsertAsync(ChatBotMessageInsertRequest request, Guid userId, bool isAdmin)
         {
-            var validationResult = await _insertValidator.ValidateAsync(request);
-            if (validationResult.IsValid == false)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
+            await _insertValidator.ValidateAndThrowAsync(request);
 
             Conversation conversation;
             List<ChatBotMessage> history = new();
@@ -99,7 +82,7 @@ namespace Deliverance.Services
             if (request.ConversationId.HasValue)
             {
                 conversation = await _dbContext.Conversations.FindAsync(request.ConversationId.Value)
-                    ?? throw new NotFoundException($"Conversation with id {request.ConversationId} not found.");
+                    ?? throw new NotFoundException($"Conversation with id {request.ConversationId} was not found.");
                 if (conversation.UserUUID != userId)
                 {
                     throw new ForbiddenException("You do not have access to this conversation.");
@@ -108,7 +91,6 @@ namespace Deliverance.Services
                 history = await _dbContext.ChatBotMessages
                     .AsNoTracking()
                     .Where(x => x.ConversationId == conversation.Id)
-                    // Same order as GetConversationMessagesAsync.
                     .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
                     .Take(HistoryLimit)
                     .ToListAsync();
@@ -125,8 +107,6 @@ namespace Deliverance.Services
                 _dbContext.Conversations.Add(conversation);
             }
 
-            // Ask the model before saving anything, so a failed call doesn't leave
-            // an unanswered message in the conversation.
             var systemPrompt = request.DeviceId.HasValue
                 ? await BuildDevicePromptAsync(request.DeviceId.Value, isAdmin)
                 : Instructions + "\n" + await BuildContextAsync(userId);
@@ -147,7 +127,6 @@ namespace Deliverance.Services
                 UserUUID = userId,
                 IsFromBot = true,
                 Content = Truncate(reply, ContentMaxLength),
-                // Keeps the reply ordered after the question when sorting by CreatedAt.
                 CreatedAt = now.AddMilliseconds(1),
             };
             _dbContext.ChatBotMessages.Add(botMessage);
@@ -157,29 +136,34 @@ namespace Deliverance.Services
             return _mapper.Map<ChatBotMessageResponse>(botMessage);
         }
 
-        public async Task<List<ConversationResponse>> GetConversationsAsync(Guid userId)
+        public async Task<PageResult<ConversationResponse>> GetConversationsAsync(Guid userId, int? page, int? pageSize)
         {
-            var conversations = await _dbContext.Conversations
+            var (pageNumber, size) = Paging.Normalize(page, pageSize);
+            var query = _dbContext.Conversations
                 .AsNoTracking()
-                .Where(x => x.UserUUID == userId)
+                .Where(x => x.UserUUID == userId);
+
+            var totalCount = await query.CountAsync();
+            var conversations = await query
                 .OrderByDescending(x => x.Id)
+                .ToPage(pageNumber, size)
                 .ToListAsync();
 
-            return _mapper.Map<List<ConversationResponse>>(conversations);
+            return new PageResult<ConversationResponse>
+            {
+                Items = _mapper.Map<List<ConversationResponse>>(conversations),
+                TotalCount = totalCount,
+                TotalPages = Paging.TotalPages(totalCount, size),
+            };
         }
 
-        /// <summary>
-        /// Returns up to <paramref name="take"/> messages of one of the user's conversations,
-        /// newest first. With <paramref name="beforeId"/>, returns the messages older than that one,
-        /// so the app can load the history page by page while scrolling up.
-        /// </summary>
         public async Task<List<ChatBotMessageResponse>> GetConversationMessagesAsync(int conversationId,
             Guid userId, int? beforeId, int take)
         {
             var conversation = await _dbContext.Conversations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == conversationId)
-                ?? throw new NotFoundException($"Conversation with id {conversationId} not found.");
+                ?? throw new NotFoundException($"Conversation with id {conversationId} was not found.");
             if (conversation.UserUUID != userId)
             {
                 throw new ForbiddenException("You do not have access to this conversation.");
@@ -197,13 +181,12 @@ namespace Deliverance.Services
                     .Where(x => x.Id == beforeId.Value && x.ConversationId == conversationId)
                     .Select(x => new { x.CreatedAt, x.Id })
                     .FirstOrDefaultAsync()
-                    ?? throw new NotFoundException($"Message with id {beforeId} not found.");
+                    ?? throw new NotFoundException($"Message with id {beforeId} was not found.");
 
                 query = query.Where(x => x.CreatedAt < cursor.CreatedAt
                     || (x.CreatedAt == cursor.CreatedAt && x.Id < cursor.Id));
             }
 
-            // The question and its reply are saved together, so CreatedAt orders them, not Id.
             var messages = await query
                 .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
                 .Take(take)
@@ -252,7 +235,6 @@ namespace Deliverance.Services
             {
                 new("system", systemPrompt),
             };
-            // Start the history at a user message, which the history limit can cut off.
             foreach (var message in history.SkipWhile(x => x.IsFromBot == true))
             {
                 messages.Add(new(message.IsFromBot == true ? "assistant" : "user", message.Content ?? string.Empty));
@@ -260,12 +242,8 @@ namespace Deliverance.Services
             messages.Add(new("user", content));
 
             var request = new OllamaChatRequest(_model, messages, false, new OllamaOptions(
-                // Ollama's default context is small and it silently cuts off the start of a
-                // longer prompt, which is the system prompt, so set it explicitly.
                 NumCtx: 8192,
-                // Caps the answer length, about 300 words.
                 NumPredict: 400,
-                // Lower is more focused and less creative, which suits troubleshooting steps.
                 Temperature: 0.3));
 
             OllamaChatResponse? response;
@@ -275,7 +253,6 @@ namespace Deliverance.Services
                 httpResponse.EnsureSuccessStatusCode();
                 response = await httpResponse.Content.ReadFromJsonAsync<OllamaChatResponse>();
             }
-            // Ollama isn't running, the model isn't pulled, or the answer took longer than the timeout.
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 throw new BusinessException("The assistant is currently unavailable. Please try again later.");
@@ -290,10 +267,6 @@ namespace Deliverance.Services
             return reply;
         }
 
-        /// <summary>
-        /// Describes the user, the offices with their devices and the user's recent reports,
-        /// so the model can give answers specific to this office.
-        /// </summary>
         private async Task<string> BuildContextAsync(Guid userId)
         {
             var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UUID == userId);
@@ -341,10 +314,6 @@ namespace Deliverance.Services
             return context.ToString();
         }
 
-        /// <summary>
-        /// Describes one device with the same evidence the admin sees. This replaces the
-        /// general context, which would only make the prompt longer and slower.
-        /// </summary>
         private async Task<string> BuildDevicePromptAsync(int deviceId, bool isAdmin)
         {
             var evidence = await _recommendationService.GetDeviceEvidenceAsync(deviceId, isAdmin);
@@ -359,7 +328,6 @@ namespace Deliverance.Services
 
             prompt.AppendLine();
             prompt.AppendLine("Logs from the last 7 days, most frequent first:");
-            // Counted here, because a small model can't be trusted to count lines itself.
             var logs = evidence.Logs
                 .GroupBy(x => Truncate(x.Log, DeviceLineMaxLength))
                 .OrderByDescending(x => x.Count())
@@ -397,7 +365,6 @@ namespace Deliverance.Services
             return value.Length <= maxLength ? value : value[..maxLength];
         }
 
-        // Request and response shapes of Ollama's POST /api/chat.
         private record OllamaMessage(string Role, string Content);
 
         private record OllamaOptions(

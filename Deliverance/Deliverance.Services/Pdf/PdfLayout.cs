@@ -1,10 +1,10 @@
+using Deliverance.Services.ReportStateMachine;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace Deliverance.Services.Pdf
 {
-    // Page frame and building blocks shared by both PDF reports.
     internal static class PdfLayout
     {
         public static void ComposePage(PageDescriptor page, string title, string subtitle, DateTime generatedAt,
@@ -38,7 +38,6 @@ namespace Deliverance.Services.Pdf
             });
         }
 
-        // The heading moves to the next page with its content instead of being left alone at the bottom.
         public static void Section(this ColumnDescriptor col, string title, Action<IContainer> content) =>
             col.Item().PaddingTop(12).EnsureSpace(80).Column(section =>
             {
@@ -64,7 +63,6 @@ namespace Deliverance.Services.Pdf
                 }
             });
 
-        // QuestPDF has no charts, so each count gets a bar drawn as a filled box.
         public static void BarTable(IContainer container, IReadOnlyList<(string Label, int Count)> items)
         {
             var max = items.Count == 0 ? 0 : items.Max(x => x.Count);

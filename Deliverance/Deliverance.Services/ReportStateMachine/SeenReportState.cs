@@ -2,43 +2,28 @@ using Deliverance.Model.Exceptions;
 using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Services.Database;
-using Deliverance.Services.ServiceStateMachine;
-using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
+namespace Deliverance.Services.ReportStateMachine;
+
 public class SeenReportState : BaseReportState
 {
-    public SeenReportState(DeliveranceDbContext dbContext, IMapper mapper,
-    
-     IServiceProvider serviceProvider,IValidator<ReportInsertRequest> insert,   IValidator<ReportUpdateRequest> update) : 
-     base(dbContext, mapper, serviceProvider,insert,update)
+    public SeenReportState(DeliveranceDbContext dbContext, IMapper mapper, IServiceProvider serviceProvider)
+        : base(dbContext, mapper, serviceProvider)
     {
-        
     }
 
     public override Task<ReportResponse> UpdateAsync(int id, ReportUpdateRequest request)
-    {
-        throw new BusinessException("This report has already been seen by an admin and can't be edited.");
-    }
+        => throw new BusinessException("This report has already been seen by an admin and can't be edited.");
 
     public override async Task<ReportResponse> ClearAsync(int id, ReportClearRequest request, Guid adminId, bool isAdmin = false)
     {
         if (!isAdmin)
         {
-            throw new ForbiddenException("Only an admin can clear a Report.");
+            throw new ForbiddenException("Only an admin can clear a report.");
         }
-        var entity = await DbContext.Reports
-            .Include(x => x.OfficeReports)
-                .ThenInclude(x => x.DeviceReports)
-                .ThenInclude(x => x.Device)
-            .Include(x => x.ReportOccurances)
-                .ThenInclude(x => x.Occurance)
-            .FirstOrDefaultAsync(x => x.Id == id);
-        if(entity == null)
-        {
-            throw new NotFoundException($"Report with {id} not found");
-        }
+        var entity = await LoadReportAsync(id);
         entity.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
         if (request.IssueType != null)
         {
@@ -51,7 +36,6 @@ public class SeenReportState : BaseReportState
             .Select(x => x.Username)
             .FirstOrDefaultAsync();
         await DbContext.SaveChangesAsync();
-
         return Mapper.Map<ReportResponse>(entity);
     }
 }

@@ -1,4 +1,4 @@
-using Deliverance.Model.Request;
+﻿using Deliverance.Model.Request;
 using Deliverance.Model.Responses;
 using Deliverance.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Deliverance.WebAPI.Controllers
 {
-    /// <summary>Endpoints called by the scout app, not by users.</summary>
     [ApiController]
+    [Authorize(AuthenticationSchemes = ScoutAuthDefaults.Scheme)]
     [Route("[controller]")]
     public class ScoutController : ControllerBase
     {
@@ -23,7 +23,6 @@ namespace Deliverance.WebAPI.Controllers
             _scoutService = scoutService;
         }
 
-        // Anonymous: the scout has no account, the enrollment token itself is the proof.
         [AllowAnonymous]
         [HttpPost("Enrollment/Claim")]
         public async Task<ActionResult<ScoutEnrollmentClaimResponse>> ClaimEnrollment([FromBody] ScoutEnrollmentClaimRequest request)
@@ -31,8 +30,6 @@ namespace Deliverance.WebAPI.Controllers
             return await _scoutEnrollmentService.ClaimAsync(request);
         }
 
-        // Anonymous: authenticated by the scout secret in the body. Also used to poll
-        // until the admin has saved the device.
         [AllowAnonymous]
         [HttpPost("Auth/Token")]
         public async Task<ActionResult<ScoutTokenResponse>> CreateToken([FromBody] ScoutTokenRequest request)
@@ -40,14 +37,12 @@ namespace Deliverance.WebAPI.Controllers
             return await _scoutAccessManager.CreateTokenAsync(request);
         }
 
-        [Authorize(AuthenticationSchemes = ScoutAuthDefaults.Scheme)]
         [HttpGet("Me")]
         public async Task<ActionResult<ScoutResponse>> GetMe()
         {
             return await _scoutService.GetMeAsync(User.GetScoutId());
         }
 
-        [Authorize(AuthenticationSchemes = ScoutAuthDefaults.Scheme)]
         [HttpPost("Commands/{id}/Result")]
         public async Task<IActionResult> CommandUpdate(int id, [FromBody] ScoutCommandResultRequest result)
         {
@@ -55,7 +50,6 @@ namespace Deliverance.WebAPI.Controllers
             return NoContent();
         }
 
-        [Authorize(AuthenticationSchemes = ScoutAuthDefaults.Scheme)]
         [HttpPost("Logs")]
         public async Task<IActionResult> SaveLogs([FromBody] ScoutLogBatchRequest request)
         {

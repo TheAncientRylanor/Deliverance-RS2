@@ -6,12 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Deliverance.WebAPI.Controllers;
 
-/// <summary>
-/// Generic base controller for read-only operations (GetAll, GetById)
-/// </summary>
-/// <typeparam name="TResponse">The response model type</typeparam>
-/// <typeparam name="TSearch">The search/filter object type</typeparam>
-/// <typeparam name="TService">The service interface type implementing IBaseReadService</typeparam>
 [Authorize]
 [ApiController]
 [Route("[controller]")]
@@ -30,14 +24,13 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     public virtual async Task<PageResult<TResponse>> GetAll([FromQuery] TSearch? search)
     {
         var userId = User.GetUserId();
-        var results = await _service.GetAllAsync(search,userId,User.IsAdmin());
+        var results = await _service.GetAllAsync(search, userId, User.IsAdmin());
         return results;
     }
 
     [HttpGet("{id}")]
     public virtual async Task<ActionResult<TResponse>> GetById(int id)
     {
-        // A missing record throws NotFoundException, which the middleware turns into 404.
         var result = await _service.GetByIdAsync(id, User.GetUserId(), User.IsAdmin());
         return Ok(result);
     }

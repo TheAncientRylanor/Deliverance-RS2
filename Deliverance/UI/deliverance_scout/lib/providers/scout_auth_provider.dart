@@ -9,32 +9,22 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 enum ScoutState {
-  /// Checking the stored secret with the server.
   loading,
 
-  /// No secret: the token has to be pasted and claimed.
   unenrolled,
 
-  /// Claimed, but the admin hasn't saved the device yet.
   awaitingApproval,
 
-  /// Approved: the secret can be exchanged for access tokens.
   active,
 
-  /// An admin disabled the scout: no access tokens until it is enabled again.
   disabled,
 }
 
-/// The server answered 401: the secret is unknown, the enrollment was
-/// cancelled, or the device was deleted.
 class ScoutRevokedException implements Exception {}
 
-/// Owns the scout's credentials: the long-term secret (from claiming the
-/// enrollment token) and the short-lived access token it is exchanged for.
 class ScoutAuthProvider with ChangeNotifier {
   static const _tokenEndpoint = "Scout/Auth/Token";
   static const _pollInterval = Duration(seconds: 5);
-  // Renew a little before expiry so a request doesn't race the deadline.
   static const _expiryMargin = Duration(minutes: 1);
   static const _revokedMessage =
       "This scout's enrollment was cancelled or its device was deleted. "
@@ -54,7 +44,6 @@ class ScoutAuthProvider with ChangeNotifier {
 
   ScoutState get state => _state;
 
-  /// Why the scout is back at enrollment, or a connection problem.
   String? get message => _message;
 
   Future<void> initialize() async {
@@ -66,7 +55,6 @@ class ScoutAuthProvider with ChangeNotifier {
     await _checkCredentials();
   }
 
-  /// Called after the enrollment token was claimed successfully.
   Future<void> onEnrolled(String secret) async {
     await ScoutStorage.writeSecret(secret);
     _secret = secret;
@@ -75,8 +63,6 @@ class ScoutAuthProvider with ChangeNotifier {
     _startPolling();
   }
 
-  /// A valid access token for scout endpoints, exchanging the secret when the
-  /// cached one is missing or about to expire.
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     final expiresAt = _accessTokenExpiresAt;
     if (!forceRefresh &&
@@ -99,11 +85,8 @@ class ScoutAuthProvider with ChangeNotifier {
     return token;
   }
 
-  /// Asks the server again right away, e.g. to see if the scout was enabled.
   Future<void> refresh() => _checkCredentials();
 
-  /// Removes the credentials from this PC. The scout stays registered on the
-  /// server until an admin deletes its device.
   Future<void> forget({String? message}) async {
     _stopPolling();
     await ScoutStorage.deleteSecret();
@@ -115,7 +98,6 @@ class ScoutAuthProvider with ChangeNotifier {
     _setState(ScoutState.unenrolled);
   }
 
-  /// Exchanges the secret and moves to the state the server reports.
   Future<void> _checkCredentials() async {
     if (_checking) return;
     _checking = true;
@@ -128,7 +110,6 @@ class ScoutAuthProvider with ChangeNotifier {
         _stopPolling();
         _setState(ScoutState.active);
       } else {
-        // Pending approval or disabled: no token, keep polling until that changes.
         _accessToken = null;
         _accessTokenExpiresAt = null;
         _setState(
@@ -141,7 +122,6 @@ class ScoutAuthProvider with ChangeNotifier {
     } on ScoutRevokedException {
       await forget(message: _revokedMessage);
     } on ApiClientException catch (e) {
-      // Server unreachable or failing: keep the secret and keep trying.
       _message = e.message;
       notifyListeners();
       _startPolling();

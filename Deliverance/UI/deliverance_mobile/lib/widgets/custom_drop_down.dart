@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 enum DropDownMode { single, multi }
 
 class CustomDropDown<T> extends StatefulWidget {
-  /// Lists longer than this get a search: typing in the field (single) or a
-  /// search box in the dialog (multi). Short lists don't open the keyboard.
   static const searchThreshold = 8;
 
   final String label;
@@ -19,13 +17,10 @@ class CustomDropDown<T> extends StatefulWidget {
   final ValueChanged<T?>? onChanged;
   final ValueChanged<List<T>>? onChangedMulti;
 
-  /// Called before an item is unchecked in multi-select mode. Return `true`
-  /// to allow the removal, `false` to keep the item selected.
   final Future<bool> Function(BuildContext context, T item)? onBeforeRemove;
 
   final TextStyle? textStyle;
 
-  /// The single-select menu grows up to this height, then scrolls.
   final double menuHeight;
 
   const CustomDropDown({
@@ -80,7 +75,6 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
       context: context,
       builder: (dialogContext) {
         final tempSelected = List<T>.from(selectedValues);
-        // Ticked items stay in tempSelected while the search hides them.
         var query = '';
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -108,7 +102,6 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
               content: SizedBox(
                 width: 300,
                 child: ConstrainedBox(
-                  // Long lists scroll instead of covering the whole screen.
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.sizeOf(context).height * 0.5,
                   ),
@@ -236,7 +229,6 @@ class _CustomDropDownState<T> extends State<CustomDropDown<T>> {
   Widget _buildSingleDropDown(BuildContext context) {
     return DropdownMenu<T>(
       enableSearch: false,
-      // The filter only starts once the user types, so the full list shows on open.
       enableFilter: _isSearchable,
       requestFocusOnTap: _isSearchable,
       selectOnly: !_isSearchable,

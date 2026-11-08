@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Deliverance.Services.Database;
 
 public class Office : IUserOwnedEntity
 {
@@ -18,11 +18,10 @@ public class Office : IUserOwnedEntity
     public int? NumOfDevices { get; set; }
     public int? NumOfScouts { get; set; }
 
-    public Guid UserUUID {get;set;}
+    public Guid UserUUID { get; set; }
 
     [ForeignKey("UserUUID")]
-    public User User {get;set;}
-    // Navigation
+    public User User { get; set; }
     public ICollection<Device> Devices { get; set; } = new List<Device>();
     public ICollection<OfficeReport> OfficeReports { get; set; } = new List<OfficeReport>();
 }

@@ -1,3 +1,5 @@
+using Deliverance.Services.ReportStateMachine;
+using Deliverance.Services.Database;
 using Deliverance.Model.Enums;
 using Deliverance.Services.Configuration;
 using QuestPDF.Fluent;
@@ -6,12 +8,10 @@ using static Deliverance.Services.Pdf.PdfLayout;
 
 namespace Deliverance.Services.Pdf
 {
-    // What was reported in a period: totals, breakdowns, time to clear and the full list.
     internal static class ReportActivityDocument
     {
         private const int TopDevicesLimit = 10;
 
-        // Dates come in as UTC; durations are worked out in UTC and only shown times are converted.
         public static byte[] Generate(List<Report> reports, DateTime from, DateTime to,
             int? officeId, string? officeName, DisplayTimeZone displayTimeZone)
         {
@@ -60,7 +60,6 @@ namespace Deliverance.Services.Pdf
 
                 col.Section("By issue type", c => BarTable(c, CountByEnum(reports, r => r.IssueType)));
 
-                // With one office picked, this would be a single bar.
                 if (officeId == null)
                 {
                     col.Section("By office", c => BarTable(c, reports
@@ -79,7 +78,6 @@ namespace Deliverance.Services.Pdf
             });
         }
 
-        // Every value of the enum in order, plus "Not set" when some reports left it empty.
         private static List<(string, int)> CountByEnum<TEnum>(List<Report> reports, Func<Report, TEnum?> selector)
             where TEnum : struct, Enum
         {
@@ -93,7 +91,6 @@ namespace Deliverance.Services.Pdf
 
         private static void ComposeTopDevices(IContainer container, List<Report> reports, int? officeId)
         {
-            // A report can name devices in several offices; only count the picked office's.
             var devices = reports
                 .SelectMany(r => r.OfficeReports
                     .Where(o => officeId == null || o.OfficeId == officeId)

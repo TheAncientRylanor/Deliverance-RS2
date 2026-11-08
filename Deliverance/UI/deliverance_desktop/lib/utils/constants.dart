@@ -20,8 +20,6 @@ String iconForType(String type) {
   }
 }
 
-/// White for regular devices, the primary color for scouts, and a faded
-/// primary color for disabled scouts.
 ColorFilter deviceColorFilter(Scout? scout, BuildContext context) {
   final primary = Theme.of(context).colorScheme.primary;
   if (scout == null) {

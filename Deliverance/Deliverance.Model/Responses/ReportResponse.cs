@@ -11,7 +11,7 @@ namespace Deliverance.Model.Responses
         public DateTime DateReported { get; set; }
 
         public SeverityEnum? Severity { get; set; }
-        public IssueEnum? IssueType {get;set;}
+        public IssueEnum? IssueType { get; set; }
 
         public string? Detail { get; set; }
 
@@ -26,13 +26,13 @@ namespace Deliverance.Model.Responses
         public DateTime? DateCleared { get; set; }
 
         public ICollection<OfficeReportResponse> OfficeReports { get; set; } = new List<OfficeReportResponse>();
-        public ICollection<ReportOccuranceResponse> ReportOccurances { get; set; } = new List<ReportOccuranceResponse>();
+        public ICollection<ReportOccurrenceResponse> ReportOccurrences { get; set; } = new List<ReportOccurrenceResponse>();
     }
 
-     public class UserReportResponse
+    public class UserReportResponse
     {
         public Guid UUID { get; set; }
         public string Username { get; set; } = string.Empty;
-        public string? ImagePath {get;set;}
+        public string? ImagePath { get; set; }
     }
 }

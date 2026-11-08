@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Deliverance.Services.Validators;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace Deliverance.Services.Database
@@ -56,13 +57,11 @@ namespace Deliverance.Services.Database
             .HasForeignKey(dl => dl.ScoutId)
             .OnDelete(DeleteBehavior.Cascade);
 
-            // Unique among non-null values: seeded logs have no key.
             modelBuilder.Entity<DeviceLog>()
             .HasIndex(dl => new { dl.ScoutId, dl.EventKey })
             .IsUnique()
             .HasFilter("[EventKey] IS NOT NULL");
 
-            // The recommender reads a device's logs by date.
             modelBuilder.Entity<DeviceLog>()
             .HasIndex(dl => new { dl.ScoutId, dl.DateLogged });
 
@@ -84,7 +83,6 @@ namespace Deliverance.Services.Database
             .WithMany(u => u.Reports)
             .HasForeignKey(r => r.UserUUID)
             .HasPrincipalKey(u => u.UUID)
-            // Reports are history, and UserUUID is required, so SetNull couldn't work.
             .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Report>(entity =>
@@ -92,6 +90,21 @@ namespace Deliverance.Services.Database
                 entity.Property(r => r.Status).HasMaxLength(50);
                 entity.HasIndex(r => r.Status);
             });
+            modelBuilder.Entity<OfficeReport>()
+                .HasIndex(or => new { or.ReportId, or.OfficeId })
+                .IsUnique();
+            modelBuilder.Entity<DeviceReport>()
+                .HasIndex(dr => new { dr.OfficeReportId, dr.DeviceId })
+                .IsUnique();
+            modelBuilder.Entity<ReportOccurrence>()
+                .HasIndex(ro => new { ro.ReportId, ro.OccurrenceId })
+                .IsUnique();
+            modelBuilder.Entity<Availability>(entity =>
+            {
+                entity.Property(a => a.Day).HasMaxLength(CollectionRules.DayMaxLength);
+                entity.HasIndex(a => new { a.ContactId, a.Day, a.FromTime }).IsUnique();
+            });
+
             modelBuilder.Entity<OfficeReport>()
             .HasOne(or => or.Report)
             .WithMany(r => r.OfficeReports)
@@ -114,7 +127,6 @@ namespace Deliverance.Services.Database
             .HasOne(dr => dr.Device)
             .WithMany(d => d.DeviceReports)
             .HasForeignKey(dr => dr.DeviceId)
-            // A device in a report can't be deleted (DeviceService and OfficeService check first).
             .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ChatBotMessage>()
@@ -122,21 +134,18 @@ namespace Deliverance.Services.Database
             .WithMany(u => u.ChatBotMessages)
             .HasForeignKey(m => m.UserUUID)
             .HasPrincipalKey(u => u.UUID)
-            // User -> Conversation -> ChatBotMessage already cascades; a second
-            // cascade path from User would be rejected by SQL Server.
             .OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<ReportOccurance>()
+            modelBuilder.Entity<ReportOccurrence>()
             .HasOne(ro => ro.Report)
-            .WithMany(r => r.ReportOccurances)
+            .WithMany(r => r.ReportOccurrences)
             .HasForeignKey(ro => ro.ReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<ReportOccurance>()
-            .HasOne(ro => ro.Occurance)
-            .WithMany(o => o.ReportOccurances)
-            .HasForeignKey(ro => ro.OccuranceId)
-            // Deleting a question must not remove its answers from reports.
+            modelBuilder.Entity<ReportOccurrence>()
+            .HasOne(ro => ro.Occurrence)
+            .WithMany(o => o.ReportOccurrences)
+            .HasForeignKey(ro => ro.OccurrenceId)
             .OnDelete(DeleteBehavior.Restrict);
 
 
@@ -155,7 +164,6 @@ namespace Deliverance.Services.Database
             .HasIndex(se => se.TokenHash)
             .IsUnique();
 
-            // Unique among non-null values: unclaimed enrollments have no secret yet.
             modelBuilder.Entity<ScoutEnrollment>()
             .HasIndex(se => se.SecretHash)
             .IsUnique()
@@ -174,7 +182,6 @@ namespace Deliverance.Services.Database
             .HasForeignKey(se => se.ScoutId)
             .OnDelete(DeleteBehavior.SetNull);
 
-            // Deleting the device deletes its scout, and with it the command history.
             modelBuilder.Entity<ScoutCommand>()
             .HasOne(sc => sc.Scout)
             .WithMany(s => s.Commands)
@@ -194,7 +201,6 @@ namespace Deliverance.Services.Database
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.SetNull);
 
-            // The device screen lists a scout's latest commands.
             modelBuilder.Entity<ScoutCommand>()
             .HasIndex(sc => new { sc.ScoutId, sc.CreatedAt });
 
@@ -214,7 +220,6 @@ namespace Deliverance.Services.Database
             .HasForeignKey(rs => rs.DeviceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-            // Offices outlive the admin who created them.
             modelBuilder.Entity<Office>()
             .HasOne(o => o.User)
             .WithMany()
@@ -229,13 +234,11 @@ namespace Deliverance.Services.Database
             .HasPrincipalKey(u => u.UUID)
             .OnDelete(DeleteBehavior.Cascade);
 
-            // The apps list a user's latest notifications and count the unread ones.
             modelBuilder.Entity<Notification>()
             .HasIndex(n => new { n.UserUUID, n.CreatedAt });
 
             modelBuilder.Entity<Office>(entity =>
             {
-                // nvarchar(max) can't be indexed, so the name needs a length.
                 entity.Property(o => o.Name).HasMaxLength(100);
                 entity.HasIndex(o => o.Name).IsUnique();
             });
